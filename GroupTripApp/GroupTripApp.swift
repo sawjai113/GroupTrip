@@ -4,7 +4,7 @@ import SwiftUI
 struct GroupTripApp: App {
     var body: some Scene {
         WindowGroup {
-            TripDashboardView(store: .sample)
+            AuthGateView()
         }
     }
 }
