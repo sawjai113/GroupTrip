@@ -9,6 +9,8 @@ struct TripPlanningView: View {
             VStack(alignment: .leading, spacing: 16) {
                 header
 
+                calendarPlaceholder
+
                 if items.isEmpty {
                     EmptyFeatureCard(
                         title: "No itinerary items yet",
@@ -62,6 +64,35 @@ struct TripPlanningView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    private var calendarPlaceholder: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "calendar")
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(AppTheme.warning)
+                    .frame(width: 44, height: 44)
+                    .background(AppTheme.warning.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Calendar View")
+                        .font(.headline)
+                    Text("Placeholder for a future native, third-party, or hybrid calendar integration.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            CalendarPreviewGrid()
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
     private func deleteItem(_ item: TripPlanningItem) {
         withAnimation(.snappy) {
             items.removeAll { $0.id == item.id }
@@ -73,6 +104,48 @@ struct TripPlanningView: View {
             guard let itemIndex = items.firstIndex(where: { $0.id == item.id }) else { return }
             items[itemIndex].isDone.toggle()
         }
+    }
+}
+
+private struct CalendarPreviewGrid: View {
+    private let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    private let highlightedDays: Set<Int> = [6, 9, 13, 17]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Sample Month")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text("Not connected yet")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.warning)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(AppTheme.warning.opacity(0.12))
+                    .clipShape(Capsule())
+            }
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 8) {
+                ForEach(weekdays, id: \.self) { weekday in
+                    Text(weekday)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                }
+
+                ForEach(1...21, id: \.self) { day in
+                    Text("\(day)")
+                        .font(.caption.weight(highlightedDays.contains(day) ? .semibold : .regular))
+                        .foregroundStyle(highlightedDays.contains(day) ? .white : .secondary)
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                        .background(highlightedDays.contains(day) ? AppTheme.warning : AppTheme.background)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Calendar placeholder. Calendar integration is not connected yet.")
     }
 }
 

@@ -77,12 +77,6 @@ struct TripSummaryView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
 
-                        HStack(spacing: 10) {
-                            AvatarCluster(participants: viewModel.calculator.participants)
-                            Text("\(viewModel.calculator.participants.count) \(viewModel.calculator.participants.count == 1 ? "traveler" : "travelers")")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
