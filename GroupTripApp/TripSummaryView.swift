@@ -89,6 +89,17 @@ struct TripSummaryView: View {
                         Text("Trip Overview")
                             .font(.headline)
 
+                        Text("Tap a card to manage that part of the trip.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        NavigationLink {
+                            PeopleFeatureView(viewModel: viewModel)
+                        } label: {
+                            PeoplePreviewCard(participants: viewModel.calculator.participants)
+                        }
+                        .buttonStyle(.plain)
+
                         NavigationLink {
                             TripPlanningView(items: planningItemsBinding)
                         } label: {
@@ -115,57 +126,10 @@ struct TripSummaryView: View {
                         .buttonStyle(.plain)
                     }
 
-                    VStack(spacing: 12) {
-                        NavigationLink {
-                            ExpenseTrackerView(tripName: viewModel.tripName, destination: trip.destination, viewModel: viewModel)
-                        } label: {
-                            ActionCard(
-                                title: "Expenses",
-                                description: "Track and split costs • \(viewModel.calculator.totalExpenses.currencyText) total",
-                                systemImage: "receipt.fill",
-                                tint: AppTheme.primary
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        NavigationLink {
-                            PeopleFeatureView(viewModel: viewModel)
-                        } label: {
-                            ActionCard(
-                                title: "People",
-                                description: peopleCardDescription,
-                                systemImage: "person.badge.plus",
-                                tint: AppTheme.purple
-                            )
-                        }
-                        .buttonStyle(.plain)
-
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Coming Soon")
+                            .font(.headline)
                         PlaceholderActionCard(title: "Trip Chat", description: "Discuss plans with your group", systemImage: "message.fill", tint: AppTheme.lightBlue)
-
-                        NavigationLink {
-                            TripPlacesView(places: placesBinding)
-                        } label: {
-                            ActionCard(
-                                title: "Places & Interests",
-                                description: placesCardDescription,
-                                systemImage: "mappin.and.ellipse",
-                                tint: AppTheme.error
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        NavigationLink {
-                            TripPlanningView(items: planningItemsBinding)
-                        } label: {
-                            ActionCard(
-                                title: "Itinerary",
-                                description: planningCardDescription,
-                                systemImage: "calendar",
-                                tint: AppTheme.warning
-                            )
-                        }
-                        .buttonStyle(.plain)
-
                         PlaceholderActionCard(title: "Map View", description: "See all your saved places on a map", systemImage: "map.fill", tint: AppTheme.success)
                     }
                 }
@@ -174,32 +138,6 @@ struct TripSummaryView: View {
         }
         .background(AppTheme.background)
         .toolbar(.hidden, for: .navigationBar)
-    }
-
-    private var peopleCardDescription: String {
-        let count = viewModel.calculator.participants.count
-        if count == 0 {
-            return "Add travelers before splitting expenses"
-        }
-
-        return "\(count) \(count == 1 ? "traveler" : "travelers") on this trip"
-    }
-
-    private var placesCardDescription: String {
-        if trip.places.isEmpty {
-            return "Save restaurants, shops, and attractions"
-        }
-
-        return "\(trip.places.count) saved \(trip.places.count == 1 ? "place" : "places")"
-    }
-
-    private var planningCardDescription: String {
-        if trip.planningItems.isEmpty {
-            return "Plan your daily schedule"
-        }
-
-        let completedCount = trip.planningItems.filter(\.isDone).count
-        return "\(trip.planningItems.count) planning \(trip.planningItems.count == 1 ? "item" : "items") • \(completedCount) done"
     }
 
     private var expenseSettlementHint: String {
@@ -212,6 +150,36 @@ struct TripSummaryView: View {
         }
 
         return "All settled up"
+    }
+}
+
+private struct PeoplePreviewCard: View {
+    let participants: [Participant]
+
+    private var previewNames: String {
+        participants.prefix(3).map(\.name).joined(separator: ", ")
+    }
+
+    var body: some View {
+        SummaryPreviewCard(title: "People", systemImage: "person.2.fill", tint: AppTheme.purple) {
+            if participants.isEmpty {
+                PreviewEmptyRow(text: "No travelers added yet")
+            } else {
+                HStack(spacing: 12) {
+                    AvatarCluster(participants: participants, size: 34, maxVisible: 4)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(participants.count) \(participants.count == 1 ? "traveler" : "travelers")")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text(previewNames)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -333,6 +301,9 @@ private struct SummaryPreviewCard<Content: View>: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
                 Spacer()
+                Text("View details")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(tint)
                 Image(systemName: "chevron.right")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)

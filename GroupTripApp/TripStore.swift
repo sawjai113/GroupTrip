@@ -184,7 +184,7 @@ final class TripStore: ObservableObject {
 
 extension TripStore {
     static var sample: TripStore {
-        TripStore(trips: [makeJapanSpring2027Trip()])
+        TripStore(trips: [makeJapanSpring2027Trip(), makeLakeTahoeWeekendTrip()])
     }
 
     private static func makeJapanSpring2027Trip() -> TripPlan {
@@ -235,6 +235,50 @@ extension TripStore {
                 TripPlanningItem(title: "Pick Kyoto day trip date"),
                 TripPlanningItem(title: "Confirm shared hotel payment"),
                 TripPlanningItem(title: "Collect passport names for reservations")
+            ]
+        )
+    }
+
+    private static func makeLakeTahoeWeekendTrip() -> TripPlan {
+        let calendar = Calendar.current
+        let startDate = calendar.date(from: DateComponents(year: 2026, month: 8, day: 14)) ?? Date()
+        let endDate = calendar.date(from: DateComponents(year: 2026, month: 8, day: 16)) ?? startDate
+
+        let sawjai = Participant(name: "Sawjai")
+        let maya = Participant(name: "Maya")
+        let noah = Participant(name: "Noah")
+        let people = [sawjai, maya, noah]
+        let everyone = Set(people.map(\.id))
+
+        return TripPlan(
+            destination: "Lake Tahoe, California",
+            emoji: "🏕️",
+            imageURL: "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?w=800",
+            startDate: startDate,
+            endDate: endDate,
+            viewModel: TripCalculatorViewModel(
+                tripName: "Tahoe Weekend",
+                calculator: TripExpenseCalculator(
+                    participants: people,
+                    expenses: [
+                        ExpenseItem(title: "Cabin deposit", paidBy: maya.id, amount: 540, participants: everyone),
+                        ExpenseItem(title: "Groceries", paidBy: sawjai.id, amount: 126.75, participants: everyone),
+                        ExpenseItem(title: "Kayak rentals", paidBy: noah.id, amount: 180, participants: everyone)
+                    ],
+                    payments: [
+                        DirectPayment(title: "Noah sent Maya for cabin", from: noah.id, to: maya.id, amount: 120)
+                    ]
+                )
+            ),
+            places: [
+                TripPlace(name: "Emerald Bay State Park", note: "Morning hike and viewpoints", category: "Hike"),
+                TripPlace(name: "Sand Harbor", note: "Beach afternoon if weather is clear", category: "Beach"),
+                TripPlace(name: "Base Camp Pizza", note: "Casual dinner after arrival", category: "Food")
+            ],
+            planningItems: [
+                TripPlanningItem(title: "Confirm cabin check-in instructions", isDone: true),
+                TripPlanningItem(title: "Reserve kayak rental time"),
+                TripPlanningItem(title: "Split grocery list")
             ]
         )
     }
