@@ -27,29 +27,29 @@ Assumptions:
 
 # Milestone 1: Local Demo
 
+Status: Milestone 1 local demo is complete. Implementation/build/test finished through chunks 1–13, documentation was updated in chunk 14, and final integration review passed in chunk 15. The demo is accessed with `Continue with Test Data` and uses the working app name `Wani`.
+
 ## Goal
 
 Create a local working demo that clearly communicates the product idea on one device.
 
-This milestone is for showing the concept to friends/family and validating the direction. It does not need production collaboration, polished auth, or final Supabase sharing.
+This milestone is for showing the concept to friends/family and validating the direction. It does not need production collaboration, polished auth, invites, cloud collaboration, or final Supabase sharing.
+
+Current sample trip: `Japan Spring 2027`, a six-person trip to Tokyo & Kyoto, Japan.
 
 ## Product Scope
 
-### Trip Dashboard
+### Trip Dashboard and Summary Hub
 
-Must show:
+Implemented:
 
-- Trip name.
-- Trip dates.
-- Participant count/list preview.
-- Places preview.
-- Planning/itinerary preview.
-- Expense/balance summary.
-- Clear navigation to each major area.
+- Dashboard shows trip name, destination, trip dates, participant count, saved-place count, and total expenses.
+- Trip summary shows trip dates, people/traveler count, and lightweight previews for planning, saved places, and expenses.
+- Clear navigation from the dashboard/summary to each major area.
 
 ### People
 
-Must support:
+Implemented:
 
 - View participants.
 - Add participant.
@@ -58,34 +58,38 @@ Must support:
 
 ### Dates
 
-Must support:
+Implemented:
 
 - Show trip start date and end date.
-- Edit dates locally or through simple form.
+- Creating a trip supports start/end dates.
+
+Full trip detail editing is deferred.
 
 ### Places
 
-Must support:
+Implemented:
 
 - Add a place manually by name.
-- Optional notes/category if simple.
+- Optional notes/category.
 - View saved places for the trip.
+- Delete a place for the current local session.
 
 No deep Google Maps integration yet.
 
 ### Planning / Itinerary
 
-Must support:
+Implemented:
 
 - Basic list of planning items or itinerary items.
-- Add/edit/remove simple item.
-- Optional date/time field if easy.
+- Add/remove simple item.
+- Toggle done state.
+- Optional date support for newly added planning items.
 
 No reminders or calendar sync yet.
 
 ### Expenses
 
-Must support:
+Implemented:
 
 - Add expense.
 - Select payer.
@@ -97,12 +101,13 @@ Must support:
 
 ### Demo Data
 
-Should include:
+Implemented:
 
-- A realistic 6-person international trip sample.
+- A realistic 6-person international trip sample: `Japan Spring 2027`.
 - Several places.
 - Several planning items.
 - Several expenses and payments.
+- A local-demo smoke-test checklist.
 
 ## Acceptance Criteria
 
@@ -110,13 +115,17 @@ Should include:
 - The app feels like a trip hub, not just an expense calculator.
 - The main screens work on one device.
 - Expense calculations remain correct.
-- The app builds successfully.
+- The app builds successfully. Chunk 13 generic iOS build succeeded.
+- iPhone 17 simulator expense calculator tests succeeded in Chunk 13.
 
 ## Non-Goals
 
 - Production auth.
 - Production invite links.
 - Full Supabase sync.
+- Cloud collaboration for Milestone 1 verification.
+- Full trip detail editing.
+- Durable persistence of local demo edits across app restart.
 - Google Calendar integration.
 - Google Maps SDK integration.
 - Push notifications.
@@ -327,6 +336,8 @@ Only add these if they clearly support real usage:
 ---
 
 # Recommended Build Order
+
+Milestone 1 build order is complete through Chunk 14 docs update. Next implementation focus should move toward Milestone 2 collaboration unless Chunk 15 final integration review finds a blocker.
 
 1. Update data models for hybrid trip hub: dates, places, planning items.
 2. Build local demo dashboard around sample 6-person international trip.

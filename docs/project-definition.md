@@ -8,19 +8,24 @@ Longer term, the app can become a shared trip hub: itinerary, maps, calendar eve
 
 ## Current Product Stage
 
-Stage: early MVP / product definition.
+Stage: Milestone 1 local demo complete; collaborative MVP/TestFlight scope remains next.
 
-The codebase already contains a SwiftUI iOS app with:
+The codebase contains a SwiftUI iOS app with the working app name `Wani`. The current local-demo path starts from `Continue with Test Data` and opens a realistic six-person `Japan Spring 2027` sample trip.
+
+Implemented local-demo surfaces include:
 
 - Trip dashboard and summary surfaces.
+- Trip summary hub previews for planning, saved places, and expenses.
 - Trip models and local store structure.
+- Saved places add/delete for the current local session.
+- Planning item add/delete/toggle for the current local session.
 - Expense, participant, payment, balance, and settlement logic.
 - Supabase client/config/service files.
 - Auth-related views/view model.
 - Figma exports/design material.
 - Unit tests for expense calculation.
 
-The product is not yet fully defined enough to scale features safely, so the next step is to clarify the user, MVP, core flows, non-goals, and release criteria.
+Milestone 1 is intentionally a one-device local demo. Supabase sync/auth/invites/cloud collaboration, full trip detail editing, and durable persistence across app restart are deferred from Milestone 1 verification.
 
 ## Target User
 
@@ -254,28 +259,34 @@ Important product behavior:
 8. User shares or uses the settlement plan with the group.
 9. User is prompted to create/sign into an account when it unlocks clear value, such as saving ownership, syncing, inviting others, or recovering access.
 
-## Key Product Questions
+## Resolved Framing Decisions
 
-These need your decisions before the project can be considered well-defined:
+These product framing questions guided the current definition and now have working answers captured in this document:
 
-1. Who is the first real user: you personally, your friend group, couples/families, or general App Store users?
-2. Is the MVP mainly an expense splitter, or should it include itinerary/planning from the start?
-3. Should users be required to sign in, or can a trip be local/anonymous first?
-4. Do all trip members need accounts, or can one organizer manage everyone?
-5. What makes this better than Splitwise, Tricount, a spreadsheet, or a group chat?
-6. Should the app optimize for simplicity or rich trip-planning features?
-7. Is collaboration required for MVP, or can the first version be single-device?
-8. What is the first trip/scenario we should design around?
-9. What does “done enough to show someone” mean?
-10. What does “done enough to ship/TestFlight” mean?
+1. First real user: the creator plus close friends/family.
+2. MVP direction: a hybrid trip hub, not only an expense splitter.
+3. Sign-in model: local/demo paths can be low-friction, but real collaboration needs account-backed ownership and invite-based access.
+4. Member model: organizer/account-backed ownership with possible guest collaborators.
+5. Differentiation: consolidate Discord, calendar, maps, and spreadsheet workflows for small/medium trips.
+6. Product strategy: progressive complexity.
+7. Collaboration: required for the real MVP/TestFlight milestone, deferred from the one-device local demo.
+8. First scenario: a 6-person international trip.
+9. Demo bar: a local working demo that clearly communicates the concept.
+10. TestFlight bar: a confident collaborative version suitable for close friends/family.
 
 ## Demo Milestone
 
 Definition of “good enough to show someone”:
 
-A local working demo is enough to show the idea of the app.
+A local working demo is enough to show the idea of the app. This milestone is now implemented through chunks 1–13 under the working name `Wani`.
 
-For this milestone, the app does not need production collaboration, polished auth, or full Supabase sharing. It should be good enough to hand the phone to someone and communicate the product concept clearly.
+For this milestone, the app does not need production collaboration, polished auth, invites, cloud collaboration, or full Supabase sharing. It should be good enough to hand the phone to someone and communicate the product concept clearly.
+
+Current demo path:
+
+- Launch the app and choose `Continue with Test Data`.
+- Open the `Japan Spring 2027` six-person sample trip.
+- Demonstrate dashboard, trip summary previews, places, planning, people, expenses, direct payments, balances, and settlement suggestions.
 
 Demo should support:
 
@@ -285,9 +296,17 @@ Demo should support:
 - Show core trip dates.
 - Show places the group wants to check out.
 - Show a basic itinerary/planning list.
+- Add/delete saved places for the current local session.
+- Add/delete/toggle planning items for the current local session.
 - Add or view expenses.
+- Record direct payments.
 - Show balances/settlement suggestions.
 - Feel understandable without a long explanation.
+
+Latest build/test verification from Chunk 13:
+
+- Generic iOS build succeeded.
+- iPhone 17 simulator expense calculator tests succeeded.
 
 Success criteria:
 
@@ -346,11 +365,10 @@ For project definition work, use:
 - iOS Platform Agent: validates architecture/build implications.
 - QA/Release Agent: converts definition into test plan and release checklist.
 
-## Immediate Next Steps
+## Current Next Steps
 
-1. Answer the key product questions above.
-2. Convert the answers into a sharper MVP brief.
-3. Create a feature roadmap: MVP, v1, later.
-4. Create acceptance criteria for each MVP flow.
-5. Align Figma screens to those MVP flows.
-6. Then implement in small, reviewable tasks.
+1. Run the Milestone 1 smoke-test checklist from `docs/plans/milestone-1-local-demo.md` on a simulator or device.
+2. Fix any smoke-test issues found in the local demo.
+3. Commit and push the completed Milestone 1 checkpoint.
+4. Begin Milestone 2 planning for collaborative TestFlight readiness: Supabase persistence, account-backed trip creation, invite/guest access, and safe shared data permissions.
+5. Align logo/brand direction with the working app name `Wani` before broader visible copy polish.

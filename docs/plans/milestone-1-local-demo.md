@@ -2,11 +2,19 @@
 
 > **For Hermes:** Use subagent-driven-development skill to implement this plan task-by-task.
 
-**Goal:** Build a one-device local demo that clearly communicates Group Trip as a shared trip hub for a realistic 6-person international trip.
+**Goal:** Build a one-device local demo that clearly communicates Wani as a shared trip hub for a realistic 6-person international trip.
+
+**Implemented state:** Milestone 1 local demo is complete. Implementation/build/test finished through chunks 1–13, documentation was updated in chunk 14, and final integration review passed in chunk 15. The current local-demo path uses `Continue with Test Data` and opens the `Japan Spring 2027` six-person sample trip.
 
 **Architecture:** Extend the current SwiftUI app and local sample data before production collaboration. Add lightweight local models for places and planning items to `TripPlan`, render them on the dashboard/detail surfaces, and add simple CRUD views. Keep Supabase/auth/invite work out of this milestone except where existing code paths already exist.
 
 **Tech Stack:** SwiftUI, ObservableObject state in `TripStore` and `TripCalculatorViewModel`, current Xcode project, existing expense calculator/test structure.
+
+**Implemented local-demo features:** trip dashboard, trip summary hub previews, places add/delete, planning add/delete/toggle, people/expense/payment/balance flows, smoke-test checklist, and build/test verification.
+
+**Milestone 1 deferred/non-goals:** Supabase sync/auth/invites/cloud collaboration for Milestone 1 verification, full trip detail editing, and durable persistence of local demo edits across app restart.
+
+**Chunk 13 verification result:** generic iOS build succeeded; iPhone 17 simulator expense calculator tests succeeded.
 
 ---
 
@@ -15,13 +23,13 @@
 Existing relevant files:
 
 - `GroupTripApp/TripModels.swift`
-  - Defines `TripPlan` with destination, emoji, imageURL, startDate, endDate, and `TripCalculatorViewModel`.
+  - Defines `TripPlan` with destination, emoji, imageURL, startDate, endDate, places, planning items, and `TripCalculatorViewModel`.
 - `GroupTripApp/TripStore.swift`
-  - Holds `[TripPlan]`, creates local/remote trips, and includes `TripStore.sample`.
+  - Holds `[TripPlan]`, creates local/remote trips, includes the `Japan Spring 2027` sample, and supports local-session places/planning mutation.
 - `GroupTripApp/TripDashboardView.swift`
   - Shows trip carousel and creates trips.
 - `GroupTripApp/TripSummaryView.swift`
-  - Shows trip hero, expenses link, people link, and placeholder cards for chat/places/itinerary/map.
+  - Shows trip hero, overview previews, expenses/people links, working places/planning links, and deferred chat/map placeholders.
 - `GroupTripApp/TripForms.swift`
   - Contains forms for new trip, people, expense, and payment.
 - `GroupTripApp/ExpenseViews.swift`
@@ -437,28 +445,32 @@ If simulator is not available, run build and note that full tests require an ins
 
 **Files:**
 
-- Create: `docs/checklists/milestone-1-local-demo-smoke-test.md`
+- Modify: `docs/plans/milestone-1-local-demo.md`
 
-**Content:**
+**Manual smoke-test checklist**
 
-Include steps:
+Use this checklist for a quick Milestone 1 local demo pass. Precondition: validate the local/test-data demo path, not real sign-in. Mark each row Pass/Fail and add a short note only when something needs follow-up.
 
-1. Launch app.
-2. Confirm sample international trip appears.
-3. Open trip summary.
-4. Confirm dates, participants, places, planning, and expenses are visible.
-5. Add a place.
-6. Add a planning item.
-7. Add a participant.
-8. Add an expense involving multiple people.
-9. Add a direct payment.
-10. Confirm balances/settlements update.
-11. Delete an expense/place/planning item.
-12. Restart app and confirm demo data returns to the intended baseline sample trip.
+| # | Check | Pass/Fail | Notes |
+|---|---|---|---|
+| 1 | App launches successfully, `Continue with Test Data` opens the Wani dashboard, and the local-demo path is clear. |  |  |
+| 2 | `Japan Spring 2027` sample trip is visible on the dashboard. |  |  |
+| 3 | Opening the sample trip shows the trip summary with dates, people/traveler count, and overview previews for planning, saved places, and expenses. |  |  |
+| 4 | `Places & Interests` opens the places screen, shows sample saved places, and add/delete place works for the current app session. |  |  |
+| 5 | `Itinerary` opens the planning screen, shows sample planning items, and add/delete/toggle done works for the current app session. |  |  |
+| 6 | `Expenses` opens the expense screen and the `Expenses`, `Balances`, and `People` tabs are understandable for a demo user. |  |  |
+| 7 | `People` opens the people screen and adding a person works. |  |  |
+| 8 | Adding an expense works when participants exist. |  |  |
+| 9 | `Balances` → `Record Payment` is accessible and works when at least two people exist. |  |  |
+| 10 | Balances and settlement hints are understandable after expenses/payments change. |  |  |
+| 11 | Force quit/relaunch the app, then choose `Continue with Test Data` and confirm the intended baseline `Japan Spring 2027` sample trip is available. Local session edits do not need cloud persistence in Milestone 1. |  |  |
+| 12 | Demo expectations are clear: for the local demo path, Supabase sync, invites, and cloud collaboration are not part of Milestone 1 verification. |  |  |
 
 **Verification:**
 
-Checklist exists and matches actual UI labels.
+- Checklist exists in this Task 10 section.
+- Checklist covers launch, sample data, trip summary, places, planning, people, expenses, direct payments, balances/settlement hints, relaunch baseline behavior, and Milestone 1 non-goals.
+- No build is required for this docs-only change.
 
 ---
 
