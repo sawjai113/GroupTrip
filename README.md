@@ -24,6 +24,10 @@ Latest verification:
 
 ## Development
 
+### Practice
+
+Wani uses test-driven development as the default for behavior changes, bug fixes, and refactors. See `docs/development/tdd-practice.md`.
+
 ### Build
 
 ```sh
