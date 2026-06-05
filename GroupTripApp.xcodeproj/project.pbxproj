@@ -12,6 +12,8 @@
 		7B0000012C00000000000003 /* TripExpenseCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000013 /* TripExpenseCalculator.swift */; };
 		7B0000012C00000000000004 /* TripCalculatorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000014 /* TripCalculatorViewModel.swift */; };
 		7B0000012C00000000000006 /* TripExpenseCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000016 /* TripExpenseCalculatorTests.swift */; };
+		7B0000012C0000000000008B /* TripCollaborationModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C0000000000008C /* TripCollaborationModelsTests.swift */; };
+		7B0000012C0000000000008D /* TripCollaborationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C0000000000008E /* TripCollaborationModels.swift */; };
 		7B0000012C00000000000060 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000064 /* SupabaseConfig.swift */; };
 		7B0000012C00000000000061 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000065 /* AuthViewModel.swift */; };
 		7B0000012C00000000000062 /* AuthViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000066 /* AuthViews.swift */; };
@@ -48,6 +50,8 @@
 		7B0000012C00000000000013 /* TripExpenseCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripExpenseCalculator.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000014 /* TripCalculatorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCalculatorViewModel.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000016 /* TripExpenseCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripExpenseCalculatorTests.swift; sourceTree = "<group>"; };
+		7B0000012C0000000000008C /* TripCollaborationModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCollaborationModelsTests.swift; sourceTree = "<group>"; };
+		7B0000012C0000000000008E /* TripCollaborationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCollaborationModels.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000064 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000065 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000066 /* AuthViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViews.swift; sourceTree = "<group>"; };
@@ -104,6 +108,7 @@
 				7B0000012C00000000000012 /* ContentView.swift */,
 				7B0000012C00000000000080 /* TripStore.swift */,
 				7B0000012C00000000000081 /* TripModels.swift */,
+				7B0000012C0000000000008E /* TripCollaborationModels.swift */,
 				7B0000012C00000000000082 /* AppTheme.swift */,
 				7B0000012C00000000000083 /* TripDashboardView.swift */,
 				7B0000012C00000000000084 /* TripSummaryView.swift */,
@@ -123,6 +128,7 @@
 			isa = PBXGroup;
 			children = (
 				7B0000012C00000000000016 /* TripExpenseCalculatorTests.swift */,
+				7B0000012C0000000000008C /* TripCollaborationModelsTests.swift */,
 			);
 			path = GroupTripAppTests;
 			sourceTree = "<group>";
@@ -250,6 +256,7 @@
 				7B0000012C00000000000002 /* ContentView.swift in Sources */,
 				7B0000012C00000000000070 /* TripStore.swift in Sources */,
 				7B0000012C00000000000071 /* TripModels.swift in Sources */,
+				7B0000012C0000000000008D /* TripCollaborationModels.swift in Sources */,
 				7B0000012C00000000000072 /* AppTheme.swift in Sources */,
 				7B0000012C00000000000073 /* TripDashboardView.swift in Sources */,
 				7B0000012C00000000000074 /* TripSummaryView.swift in Sources */,
@@ -269,6 +276,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7B0000012C00000000000006 /* TripExpenseCalculatorTests.swift in Sources */,
+				7B0000012C0000000000008B /* TripCollaborationModelsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
