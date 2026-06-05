@@ -69,13 +69,13 @@ This milestone should evolve that groundwork rather than duplicate it.
 - Payment processing.
 - Android.
 
-## Key Product/Data Decisions to Confirm
+## Key Product/Data Decisions
 
-These are the remaining decisions before implementation should start.
+These decisions are confirmed for the start of Milestone 2.
 
 ### Decision 1: Members vs Participants
 
-**Recommended default:** Keep them separate.
+**Selected direction:** Keep them separate.
 
 - `trip_members`: people who can access/collaborate on the trip.
 - `trip_participants`: people represented in the trip and expense calculations.
@@ -88,27 +88,27 @@ Why:
 
 ### Decision 2: First Auth Method
 
-**Selected direction:** Start with Supabase email magic link / OTP, using the user's Gmail account as a temporary SMTP sender if Supabase's built-in email limits are not enough.
+**Selected direction:** Start with Supabase email magic link / OTP using Supabase's built-in email sender for early Milestone 2 development.
 
 Why:
 
-- Lower setup complexity than Sign in with Apple.
-- Good enough for close friends/family TestFlight.
+- Fastest path to start auth without setting up a separate SMTP server.
+- Good enough for early low-volume development and private testing.
 - Works naturally with Supabase.
-- Gmail SMTP can be replaced later with a production sender such as Resend, Postmark, SendGrid, AWS SES, or a custom domain email provider.
+- Avoids putting Gmail or third-party SMTP credentials into the workflow now.
 
 Important constraints:
 
-- Gmail SMTP credentials must be configured in the Supabase dashboard or another secure secrets store, never committed to the iOS app or repository.
-- Use a Gmail app password if required; never paste the password into source code or chat logs.
-- Gmail sending limits and deliverability are acceptable for small private testing but not a production launch.
-- Replace Gmail SMTP before broader external release.
+- Supabase built-in email has rate limits and is not intended as the final launch sender.
+- If testing volume exceeds Supabase's built-in limits, temporarily configure a transactional SMTP provider or Gmail app-password SMTP in the Supabase dashboard only.
+- SMTP credentials must never be committed to the iOS app or repository.
+- Before broader launch, replace the built-in sender with a production sender such as Resend, Postmark, SendGrid, AWS SES, or a custom-domain email provider.
 
 Sign in with Apple can be added later when the collaboration model is proven.
 
 ### Decision 3: Guest Invite Model
 
-**Recommended default:** Google Docs-style lightweight guest flow.
+**Selected direction:** Google Docs-style lightweight guest flow.
 
 - Organizer creates a trip.
 - Organizer creates/shares invite code or link.
@@ -119,7 +119,7 @@ Sign in with Apple can be added later when the collaboration model is proven.
 
 ### Decision 4: Realtime vs Refresh
 
-**Recommended default:** Start with persistence + refresh, not realtime.
+**Selected direction:** Start with persistence + refresh, not realtime.
 
 - Load cloud trips on sign-in/app launch.
 - Save mutations to Supabase.
@@ -129,7 +129,7 @@ Realtime can be added after the table model and RLS policies are stable.
 
 ### Decision 5: Demo Mode
 
-**Recommended default:** Keep Demo Mode separate from Signed-in Mode.
+**Selected direction:** Keep Demo Mode separate from Signed-in Mode.
 
 - Demo Mode: local sample trips, resets to baseline.
 - Signed-in Mode: Supabase-backed real trips.
@@ -322,12 +322,14 @@ Prefer testing below the SwiftUI view layer first:
 - Confirm balances/settlements match expected values.
 - Confirm no service-role credentials or secrets are present in client code.
 
-## Open Questions for User
+## Confirmed Start Gate
 
-1. Confirm members and participants should be separate concepts?
-2. Confirm first auth method should be Supabase email magic link / OTP?
-3. Confirm guest invite should allow display-name-only guests at first?
-4. Confirm realtime can wait until after persistence is stable?
-5. Confirm Demo Mode should remain separate from Signed-in Mode?
+The five Milestone 2 start decisions are confirmed:
 
-Once these are confirmed, implementation can start with Chunk 2 using TDD.
+1. Members and participants are separate concepts.
+2. Auth starts with Supabase email magic link / OTP using Supabase's built-in email sender for now.
+3. Guest invite flow allows display-name-only guests at first.
+4. Realtime waits until persistence is stable.
+5. Demo Mode remains separate from Signed-in Mode.
+
+Implementation can start with Chunk 2 using TDD.
