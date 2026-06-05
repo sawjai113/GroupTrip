@@ -88,13 +88,21 @@ Why:
 
 ### Decision 2: First Auth Method
 
-**Recommended default:** Start with Supabase email magic link / OTP.
+**Selected direction:** Start with Supabase email magic link / OTP, using the user's Gmail account as a temporary SMTP sender if Supabase's built-in email limits are not enough.
 
 Why:
 
 - Lower setup complexity than Sign in with Apple.
 - Good enough for close friends/family TestFlight.
 - Works naturally with Supabase.
+- Gmail SMTP can be replaced later with a production sender such as Resend, Postmark, SendGrid, AWS SES, or a custom domain email provider.
+
+Important constraints:
+
+- Gmail SMTP credentials must be configured in the Supabase dashboard or another secure secrets store, never committed to the iOS app or repository.
+- Use a Gmail app password if required; never paste the password into source code or chat logs.
+- Gmail sending limits and deliverability are acceptable for small private testing but not a production launch.
+- Replace Gmail SMTP before broader external release.
 
 Sign in with Apple can be added later when the collaboration model is proven.
 
