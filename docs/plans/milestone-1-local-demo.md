@@ -16,6 +16,8 @@
 
 **Chunk 13 verification result:** generic iOS build succeeded; iPhone 17 simulator expense calculator tests succeeded.
 
+**Manual smoke-test result:** User completed a Milestone 1 smoke test and confirmed the local demo is good enough to move forward into Milestone 2 planning.
+
 ---
 
 ## Current Code Context
