@@ -10,11 +10,136 @@ struct BackButton: View {
             Image(systemName: "arrow.left")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.primary)
-                .frame(width: 44, height: 44)
+                .frame(width: AppTheme.IconSize.medium, height: AppTheme.IconSize.medium)
                 .background(.white.opacity(0.92))
                 .clipShape(Circle())
         }
         .accessibilityLabel("Back")
+    }
+}
+
+struct WaniCard<Content: View>: View {
+    var padding: CGFloat = AppTheme.Spacing.large
+    var radius: CGFloat = AppTheme.Radius.large
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .padding(padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(AppTheme.paper)
+            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+    }
+}
+
+struct WaniSectionHeader: View {
+    let title: String
+    var subtitle: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
+            Text(title)
+                .font(.title2.weight(.semibold))
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct WaniIconBadge: View {
+    enum BadgeShape {
+        case roundedSquare
+        case circle
+    }
+
+    let systemImage: String
+    let tint: Color
+    var size: CGFloat = AppTheme.IconSize.medium
+    var cornerRadius: CGFloat = AppTheme.Radius.medium
+    var badgeShape: BadgeShape = .roundedSquare
+
+    var body: some View {
+        Group {
+            switch badgeShape {
+            case .roundedSquare:
+                iconBody
+                    .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            case .circle:
+                iconBody
+                    .clipShape(Circle())
+            }
+        }
+    }
+
+    private var iconBody: some View {
+        Image(systemName: systemImage)
+            .font(.title3.weight(.semibold))
+            .foregroundStyle(tint)
+            .frame(width: size, height: size)
+            .background(tint.opacity(0.1))
+    }
+}
+
+struct WaniPreviewRow: View {
+    let icon: String
+    let title: String
+    var subtitle: String?
+    var status: String?
+    var tint: Color = AppTheme.primary
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.small) {
+            Image(systemName: icon)
+                .foregroundStyle(tint)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(subtitle == nil ? .regular : .medium))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            if let status {
+                Text(status)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(tint)
+            }
+        }
+    }
+}
+
+struct WaniPrimaryActionButton: View {
+    let title: String
+    var systemImage: String?
+    var tint: Color = AppTheme.primary
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            if let systemImage {
+                Label(title, systemImage: systemImage)
+                    .font(.headline)
+            } else {
+                Text(title)
+                    .font(.headline)
+            }
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(tint)
     }
 }
 
@@ -25,33 +150,26 @@ struct ActionCard: View {
     let tint: Color
 
     var body: some View {
-        HStack(spacing: 16) {
-            Image(systemName: systemImage)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(tint)
-                .frame(width: 48, height: 48)
-                .background(tint.opacity(0.09))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        WaniCard {
+            HStack(spacing: AppTheme.Spacing.large) {
+                WaniIconBadge(systemImage: systemImage, tint: tint, size: AppTheme.IconSize.large, cornerRadius: AppTheme.Radius.large)
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
-                Text(description)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
+                    Text(title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(description)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.tertiary)
             }
-
-            Spacer()
-
-            Image(systemName: "chevron.right")
-                .foregroundStyle(.tertiary)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -79,12 +197,12 @@ struct EmptyTripsView: View {
     var createTrip: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: AppTheme.Spacing.large) {
             Image(systemName: "paperplane")
-                .font(.system(size: 62))
+                .font(.system(size: AppTheme.IconSize.xLarge))
                 .foregroundStyle(.tertiary)
 
-            VStack(spacing: 6) {
+            VStack(spacing: AppTheme.Spacing.xSmall + 2) {
                 Text("No trips yet")
                     .font(.title3.weight(.semibold))
                 Text("Create your first trip to start organizing the details")
@@ -93,12 +211,7 @@ struct EmptyTripsView: View {
                     .multilineTextAlignment(.center)
             }
 
-            Button(action: createTrip) {
-                Label("Create Your First Trip", systemImage: "plus")
-                    .font(.headline)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(AppTheme.primary)
+            WaniPrimaryActionButton(title: "Create Your First Trip", systemImage: "plus", action: createTrip)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 64)
@@ -110,17 +223,15 @@ struct EmptyFeatureCard: View {
     let subtitle: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.body.weight(.semibold))
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        WaniCard {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
+                Text(title)
+                    .font(.body.weight(.semibold))
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .background(AppTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

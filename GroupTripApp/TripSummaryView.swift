@@ -46,13 +46,13 @@ struct TripSummaryView: View {
                         )
 
                     BackButton()
-                        .padding(16)
+                        .padding(AppTheme.Spacing.large)
                 }
 
                 VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
                         HStack(alignment: .top) {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
                                 Text(viewModel.tripName)
                                     .font(.title2.weight(.semibold))
                                 Text(trip.destination)
@@ -66,10 +66,10 @@ struct TripSummaryView: View {
                                 Text(badgeText)
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(.white)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
+                                    .padding(.horizontal, AppTheme.Spacing.medium)
+                                    .padding(.vertical, AppTheme.Spacing.xSmall + 2)
                                     .background(trip.status.tint)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.small, style: .continuous))
                             }
                         }
 
@@ -79,7 +79,7 @@ struct TripSummaryView: View {
 
                     }
 
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
                         Text("Trip Overview")
                             .font(.headline)
 
@@ -120,14 +120,14 @@ struct TripSummaryView: View {
                         .buttonStyle(.plain)
                     }
 
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
                         Text("Coming Soon")
                             .font(.headline)
-                        PlaceholderActionCard(title: "Trip Chat", description: "Discuss plans with your group", systemImage: "message.fill", tint: AppTheme.lightBlue)
-                        PlaceholderActionCard(title: "Map View", description: "See all your saved places on a map", systemImage: "map.fill", tint: AppTheme.success)
+                        PlaceholderActionCard(title: "Trip Chat", description: "Discuss plans with your group", systemImage: "message.fill", tint: AppTheme.FeatureColor.chat)
+                        PlaceholderActionCard(title: "Map View", description: "See all your saved places on a map", systemImage: "map.fill", tint: AppTheme.FeatureColor.map)
                     }
                 }
-                .padding(16)
+                .padding(AppTheme.Spacing.large)
             }
         }
         .background(AppTheme.background)
@@ -155,11 +155,11 @@ private struct PeoplePreviewCard: View {
     }
 
     var body: some View {
-        SummaryPreviewCard(title: "People", systemImage: "person.2.fill", tint: AppTheme.purple) {
+        SummaryPreviewCard(title: "People", systemImage: "person.2.fill", tint: AppTheme.FeatureColor.people) {
             if participants.isEmpty {
                 PreviewEmptyRow(text: "No travelers added yet")
             } else {
-                HStack(spacing: 12) {
+                HStack(spacing: AppTheme.Spacing.medium) {
                     AvatarCluster(participants: participants, size: 34, maxVisible: 4)
 
                     VStack(alignment: .leading, spacing: 2) {
@@ -185,24 +185,18 @@ private struct PlanningPreviewCard: View {
     }
 
     var body: some View {
-        SummaryPreviewCard(title: "Planning", systemImage: "calendar", tint: AppTheme.warning) {
+        SummaryPreviewCard(title: "Planning", systemImage: "calendar", tint: AppTheme.FeatureColor.itinerary) {
             if items.isEmpty {
                 PreviewEmptyRow(text: "No itinerary items yet")
             } else {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
                     ForEach(previewItems) { item in
-                        HStack(spacing: 8) {
-                            Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(item.isDone ? AppTheme.success : Color.secondary)
-                            Text(item.title)
-                                .font(.subheadline)
-                                .foregroundStyle(.primary)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                            Text(item.isDone ? "Done" : "To-do")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(item.isDone ? AppTheme.success : .secondary)
-                        }
+                        WaniPreviewRow(
+                            icon: item.isDone ? "checkmark.circle.fill" : "circle",
+                            title: item.title,
+                            status: item.isDone ? "Done" : "To-do",
+                            tint: item.isDone ? AppTheme.success : AppTheme.FeatureColor.itinerary
+                        )
                     }
 
                     if items.count > previewItems.count {
@@ -224,29 +218,18 @@ private struct PlacesPreviewCard: View {
     }
 
     var body: some View {
-        SummaryPreviewCard(title: "Saved Places", systemImage: "mappin.and.ellipse", tint: AppTheme.error) {
+        SummaryPreviewCard(title: "Saved Places", systemImage: "mappin.and.ellipse", tint: AppTheme.FeatureColor.places) {
             if places.isEmpty {
                 PreviewEmptyRow(text: "No saved places yet")
             } else {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
                     ForEach(previewPlaces) { place in
-                        HStack(spacing: 8) {
-                            Image(systemName: "mappin.circle.fill")
-                                .foregroundStyle(AppTheme.error)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(place.name)
-                                    .font(.subheadline.weight(.medium))
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
-                                if !place.category.isEmpty {
-                                    Text(place.category)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                }
-                            }
-                            Spacer(minLength: 0)
-                        }
+                        WaniPreviewRow(
+                            icon: "mappin.circle.fill",
+                            title: place.name,
+                            subtitle: place.category.isEmpty ? nil : place.category,
+                            tint: AppTheme.FeatureColor.places
+                        )
                     }
 
                     if places.count > previewPlaces.count {
@@ -266,8 +249,8 @@ private struct ExpenseSnapshotCard: View {
     let settlementHint: String
 
     var body: some View {
-        SummaryPreviewCard(title: "Expense Snapshot", systemImage: "receipt.fill", tint: AppTheme.primary) {
-            VStack(alignment: .leading, spacing: 6) {
+        SummaryPreviewCard(title: "Expense Snapshot", systemImage: "receipt.fill", tint: AppTheme.FeatureColor.expenses) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
                 Text(totalExpenses.currencyText)
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.primary)
@@ -287,28 +270,25 @@ private struct SummaryPreviewCard<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .foregroundStyle(tint)
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                Spacer()
-                Text("View details")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(tint)
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.tertiary)
-            }
+        WaniCard {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                HStack(spacing: AppTheme.Spacing.small) {
+                    WaniIconBadge(systemImage: systemImage, tint: tint, size: AppTheme.IconSize.small, cornerRadius: AppTheme.Radius.small)
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Spacer()
+                    Text("View details")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(tint)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
 
-            content
+                content
+            }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

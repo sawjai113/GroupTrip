@@ -10,6 +10,38 @@ enum AppTheme {
     static let background = Color(.systemGroupedBackground)
     static let paper = Color(.systemBackground)
     static let card = Color(.secondarySystemGroupedBackground)
+
+    enum Spacing {
+        static let xSmall: CGFloat = 4
+        static let small: CGFloat = 8
+        static let medium: CGFloat = 12
+        static let large: CGFloat = 16
+        static let xLarge: CGFloat = 24
+    }
+
+    enum Radius {
+        static let small: CGFloat = 8
+        static let medium: CGFloat = 14
+        static let large: CGFloat = 16
+        static let xLarge: CGFloat = 18
+    }
+
+    enum IconSize {
+        static let small: CGFloat = 32
+        static let medium: CGFloat = 44
+        static let large: CGFloat = 48
+        static let xLarge: CGFloat = 62
+    }
+
+    enum FeatureColor {
+        static let trip = AppTheme.primary
+        static let people = AppTheme.purple
+        static let itinerary = AppTheme.warning
+        static let places = AppTheme.error
+        static let expenses = AppTheme.primary
+        static let chat = AppTheme.lightBlue
+        static let map = AppTheme.success
+    }
 }
 
 struct CoverImage: Identifiable, Hashable {

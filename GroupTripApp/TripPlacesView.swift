@@ -6,7 +6,7 @@ struct TripPlacesView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
                 header
 
                 if places.isEmpty {
@@ -15,7 +15,7 @@ struct TripPlacesView: View {
                         subtitle: "Restaurants, shops, and attractions you save for this trip will appear here."
                     )
                 } else {
-                    VStack(spacing: 12) {
+                    VStack(spacing: AppTheme.Spacing.medium) {
                         ForEach(places) { place in
                             TripPlaceCard(place: place) {
                                 deletePlace(place)
@@ -24,7 +24,7 @@ struct TripPlacesView: View {
                     }
                 }
             }
-            .padding(16)
+            .padding(AppTheme.Spacing.large)
         }
         .background(AppTheme.background)
         .navigationTitle("Places")
@@ -36,7 +36,7 @@ struct TripPlacesView: View {
                 } label: {
                     Label("Add Place", systemImage: "plus")
                 }
-                .tint(AppTheme.error)
+                .tint(AppTheme.FeatureColor.places)
             }
         }
         .sheet(isPresented: $isShowingAddPlace) {
@@ -49,15 +49,10 @@ struct TripPlacesView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Places & Interests")
-                .font(.title2.weight(.semibold))
-
-            Text("Saved restaurants, shops, attractions, and ideas for this trip.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        WaniSectionHeader(
+            title: "Places & Interests",
+            subtitle: "Saved restaurants, shops, attractions, and ideas for this trip."
+        )
     }
 
     private func deletePlace(_ place: TripPlace) {
@@ -72,52 +67,47 @@ private struct TripPlaceCard: View {
     var delete: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Image(systemName: "mappin.and.ellipse")
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(AppTheme.error)
-                .frame(width: 44, height: 44)
-                .background(AppTheme.error.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        WaniCard {
+            HStack(alignment: .top, spacing: AppTheme.Spacing.medium + 2) {
+                WaniIconBadge(systemImage: "mappin.and.ellipse", tint: AppTheme.FeatureColor.places)
 
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(place.name)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.primary)
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.small) {
+                        Text(place.name)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.primary)
 
-                    Spacer(minLength: 8)
+                        Spacer(minLength: AppTheme.Spacing.small)
 
-                    if let category = place.displayCategory {
-                        Text(category)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(AppTheme.error)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(AppTheme.error.opacity(0.1))
-                            .clipShape(Capsule())
+                        if let category = place.displayCategory {
+                            Text(category)
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.FeatureColor.places)
+                                .padding(.horizontal, AppTheme.Spacing.small)
+                                .padding(.vertical, AppTheme.Spacing.xSmall)
+                                .background(AppTheme.FeatureColor.places.opacity(0.1))
+                                .clipShape(Capsule())
+                        }
+
+                        Button(role: .destructive, action: delete) {
+                            Image(systemName: "trash")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(width: AppTheme.IconSize.large, height: AppTheme.IconSize.large)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Delete \(place.name)")
                     }
 
-                    Button(role: .destructive, action: delete) {
-                        Image(systemName: "trash")
-                            .font(.subheadline.weight(.semibold))
+                    if let note = place.displayNote {
+                        Text(note)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Delete \(place.name)")
-                }
-
-                if let note = place.displayNote {
-                    Text(note)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

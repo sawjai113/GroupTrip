@@ -6,7 +6,7 @@ struct TripPlanningView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
                 header
 
                 calendarPlaceholder
@@ -17,7 +17,7 @@ struct TripPlanningView: View {
                         subtitle: "Plans, bookings, and daily schedule ideas for this trip will appear here."
                     )
                 } else {
-                    VStack(spacing: 12) {
+                    VStack(spacing: AppTheme.Spacing.medium) {
                         ForEach(items) { item in
                             TripPlanningItemCard(item: item) {
                                 toggleItem(item)
@@ -28,7 +28,7 @@ struct TripPlanningView: View {
                     }
                 }
             }
-            .padding(16)
+            .padding(AppTheme.Spacing.large)
         }
         .background(AppTheme.background)
         .navigationTitle("Itinerary")
@@ -40,7 +40,7 @@ struct TripPlanningView: View {
                 } label: {
                     Label("Add Item", systemImage: "plus")
                 }
-                .tint(AppTheme.warning)
+                .tint(AppTheme.FeatureColor.itinerary)
             }
         }
         .sheet(isPresented: $isShowingAddItem) {
@@ -53,44 +53,32 @@ struct TripPlanningView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Itinerary")
-                .font(.title2.weight(.semibold))
-
-            Text("Planning items, bookings, dates, and schedule notes for this trip.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        WaniSectionHeader(
+            title: "Itinerary",
+            subtitle: "Planning items, bookings, dates, and schedule notes for this trip."
+        )
     }
 
     private var calendarPlaceholder: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "calendar")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(AppTheme.warning)
-                    .frame(width: 44, height: 44)
-                    .background(AppTheme.warning.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        WaniCard(radius: AppTheme.Radius.xLarge) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.medium + 2) {
+                HStack(alignment: .top, spacing: AppTheme.Spacing.medium) {
+                    WaniIconBadge(systemImage: "calendar", tint: AppTheme.FeatureColor.itinerary)
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Calendar View")
-                        .font(.headline)
-                    Text("Placeholder for a future native, third-party, or hybrid calendar integration.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
+                        Text("Calendar View")
+                            .font(.headline)
+                        Text("Placeholder for a future native, third-party, or hybrid calendar integration.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer(minLength: 0)
                 }
 
-                Spacer(minLength: 0)
+                CalendarPreviewGrid()
             }
-
-            CalendarPreviewGrid()
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private func deleteItem(_ item: TripPlanningItem) {
@@ -119,14 +107,14 @@ private struct CalendarPreviewGrid: View {
                 Spacer()
                 Text("Not connected yet")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(AppTheme.warning)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(AppTheme.warning.opacity(0.12))
+                    .foregroundStyle(AppTheme.FeatureColor.itinerary)
+                    .padding(.horizontal, AppTheme.Spacing.small)
+                    .padding(.vertical, AppTheme.Spacing.xSmall)
+                    .background(AppTheme.FeatureColor.itinerary.opacity(0.12))
                     .clipShape(Capsule())
             }
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: AppTheme.Spacing.small) {
                 ForEach(weekdays, id: \.self) { weekday in
                     Text(weekday)
                         .font(.caption2.weight(.semibold))
@@ -139,8 +127,8 @@ private struct CalendarPreviewGrid: View {
                         .font(.caption.weight(highlightedDays.contains(day) ? .semibold : .regular))
                         .foregroundStyle(highlightedDays.contains(day) ? .white : .secondary)
                         .frame(maxWidth: .infinity, minHeight: 30)
-                        .background(highlightedDays.contains(day) ? AppTheme.warning : AppTheme.background)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .background(highlightedDays.contains(day) ? AppTheme.FeatureColor.itinerary : AppTheme.background)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.small, style: .continuous))
                 }
             }
         }
@@ -154,65 +142,64 @@ private struct TripPlanningItemCard: View {
     var toggle: () -> Void
     var delete: () -> Void
 
+    private var itemTint: Color {
+        item.isDone ? AppTheme.success : AppTheme.FeatureColor.itinerary
+    }
+
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            Button(action: toggle) {
-                Image(systemName: item.isDone ? "checkmark.circle.fill" : "circle")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(item.isDone ? AppTheme.success : AppTheme.warning)
-                    .frame(width: 44, height: 44)
-                    .background((item.isDone ? AppTheme.success : AppTheme.warning).opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(item.isDone ? "Mark \(item.title) as to do" : "Mark \(item.title) done")
+        WaniCard {
+            HStack(alignment: .top, spacing: AppTheme.Spacing.medium + 2) {
+                Button(action: toggle) {
+                    WaniIconBadge(systemImage: item.isDone ? "checkmark.circle.fill" : "circle", tint: itemTint)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(item.isDone ? "Mark \(item.title) as to do" : "Mark \(item.title) done")
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(item.title)
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(item.isDone ? .secondary : .primary)
-                        .strikethrough(item.isDone, color: .secondary)
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
+                    HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.small) {
+                        Text(item.title)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(item.isDone ? .secondary : .primary)
+                            .strikethrough(item.isDone, color: .secondary)
 
-                    Spacer(minLength: 8)
+                        Spacer(minLength: AppTheme.Spacing.small)
 
-                    statusBadge
+                        statusBadge
 
-                    Button(role: .destructive, action: delete) {
-                        Image(systemName: "trash")
-                            .font(.subheadline.weight(.semibold))
+                        Button(role: .destructive, action: delete) {
+                            Image(systemName: "trash")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(width: AppTheme.IconSize.large, height: AppTheme.IconSize.large)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Delete \(item.title)")
                     }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Delete \(item.title)")
-                }
 
-                if let note = item.displayNote {
-                    Text(note)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                    if let note = item.displayNote {
+                        Text(note)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
 
-                if let date = item.date {
-                    Label(Self.dateFormatter.string(from: date), systemImage: "calendar")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(.secondary)
+                    if let date = item.date {
+                        Label(Self.dateFormatter.string(from: date), systemImage: "calendar")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppTheme.paper)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
     private var statusBadge: some View {
         Text(item.isDone ? "Done" : "To do")
             .font(.caption.weight(.semibold))
-            .foregroundStyle(item.isDone ? AppTheme.success : AppTheme.warning)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background((item.isDone ? AppTheme.success : AppTheme.warning).opacity(0.1))
+            .foregroundStyle(itemTint)
+            .padding(.horizontal, AppTheme.Spacing.small)
+            .padding(.vertical, AppTheme.Spacing.xSmall)
+            .background(itemTint.opacity(0.1))
             .clipShape(Capsule())
     }
 
