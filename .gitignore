@@ -4,3 +4,9 @@ DerivedData/
 *.xcuserdatad/
 *.xcuserstate
 .DS_Store
+
+# Local Supabase/project secrets
+.env
+.env.*
+!.env.example
+.supabase/
