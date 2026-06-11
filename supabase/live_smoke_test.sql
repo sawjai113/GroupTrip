@@ -1,0 +1,214 @@
+-- Wani live Supabase RLS smoke test
+-- Safe to run against linked live Supabase project: all inserted rows are rolled back.
+-- This verifies authenticated users can create/read trip data, members can collaborate,
+-- non-members are blocked by RLS, anonymous table reads are blocked, invite lookup works,
+-- and expense participant integrity triggers fire.
+
+begin;
+
+-- Create deterministic fake auth users for FK checks. Transaction rollback removes them.
+insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
+values
+  ('00000000-0000-0000-0000-000000000101', 'authenticated', 'authenticated', 'wani-smoke-owner@example.invalid', '', now(), now(), now()),
+  ('00000000-0000-0000-0000-000000000102', 'authenticated', 'authenticated', 'wani-smoke-member@example.invalid', '', now(), now(), now()),
+  ('00000000-0000-0000-0000-000000000103', 'authenticated', 'authenticated', 'wani-smoke-stranger@example.invalid', '', now(), now(), now())
+on conflict (id) do nothing;
+
+set local role authenticated;
+set local "request.jwt.claim.role" = 'authenticated';
+set local "request.jwt.claim.sub" = '00000000-0000-0000-0000-000000000101';
+
+-- Owner can create a trip.
+insert into public.trips (id, name, destination, emoji, start_date, end_date, created_by)
+values (
+  '00000000-0000-0000-0000-000000001001',
+  'Wani Live Smoke Trip',
+  'Test City',
+  '🧪',
+  current_date,
+  current_date + 1,
+  auth.uid()
+);
+
+-- Trip creator can add their owner membership.
+insert into public.trip_members (id, trip_id, user_id, role, member_kind, display_name, created_by)
+values (
+  '00000000-0000-0000-0000-000000002001',
+  '00000000-0000-0000-0000-000000001001',
+  auth.uid(),
+  'owner',
+  'account',
+  'Smoke Owner',
+  auth.uid()
+);
+
+-- Owner helper functions work through RLS context.
+do $$
+begin
+  if not public.is_trip_member('00000000-0000-0000-0000-000000001001') then
+    raise exception 'owner should be recognized as trip member';
+  end if;
+  if not public.is_trip_owner('00000000-0000-0000-0000-000000001001') then
+    raise exception 'owner should be recognized as trip owner';
+  end if;
+end $$;
+
+-- Owner can add an account member and a guest access member.
+insert into public.trip_members (id, trip_id, user_id, role, member_kind, display_name, created_by)
+values (
+  '00000000-0000-0000-0000-000000002002',
+  '00000000-0000-0000-0000-000000001001',
+  '00000000-0000-0000-0000-000000000102',
+  'member',
+  'account',
+  'Smoke Member',
+  auth.uid()
+);
+
+insert into public.trip_members (id, trip_id, guest_member_id, role, member_kind, display_name, created_by)
+values (
+  '00000000-0000-0000-0000-000000002003',
+  '00000000-0000-0000-0000-000000001001',
+  '00000000-0000-0000-0000-000000000201',
+  'guest',
+  'guest',
+  'Smoke Guest',
+  auth.uid()
+);
+
+insert into public.trip_participants (id, trip_id, display_name, linked_member_id, linked_user_id, is_organizer, created_by)
+values
+  ('00000000-0000-0000-0000-000000003001', '00000000-0000-0000-0000-000000001001', 'Smoke Owner', '00000000-0000-0000-0000-000000002001', '00000000-0000-0000-0000-000000000101', true, auth.uid()),
+  ('00000000-0000-0000-0000-000000003002', '00000000-0000-0000-0000-000000001001', 'Smoke Member', '00000000-0000-0000-0000-000000002002', '00000000-0000-0000-0000-000000000102', false, auth.uid());
+
+insert into public.trip_places (id, trip_id, name, note, category, added_by)
+values ('00000000-0000-0000-0000-000000004001', '00000000-0000-0000-0000-000000001001', 'Smoke Place', 'created by smoke test', 'test', auth.uid());
+
+insert into public.trip_planning_items (id, trip_id, title, note, scheduled_date, added_by)
+values ('00000000-0000-0000-0000-000000005001', '00000000-0000-0000-0000-000000001001', 'Smoke Planning Item', 'created by smoke test', current_date, auth.uid());
+
+insert into public.trip_invites (id, trip_id, code, created_by, role, max_uses, expires_at, is_active)
+values ('00000000-0000-0000-0000-000000006001', '00000000-0000-0000-0000-000000001001', 'WANI-SMOKE-CODE', auth.uid(), 'guest', 3, now() + interval '1 hour', true);
+
+insert into public.trip_expenses (id, trip_id, title, paid_by_participant_id, amount, currency_code, incurred_on, created_by)
+values ('00000000-0000-0000-0000-000000007001', '00000000-0000-0000-0000-000000001001', 'Smoke Expense', '00000000-0000-0000-0000-000000003001', 42.50, 'USD', current_date, auth.uid());
+
+insert into public.trip_expense_splits (expense_id, participant_id, share_amount)
+values
+  ('00000000-0000-0000-0000-000000007001', '00000000-0000-0000-0000-000000003001', 21.25),
+  ('00000000-0000-0000-0000-000000007001', '00000000-0000-0000-0000-000000003002', 21.25);
+
+insert into public.trip_direct_payments (id, trip_id, title, from_participant_id, to_participant_id, amount, currency_code, paid_on, created_by)
+values ('00000000-0000-0000-0000-000000008001', '00000000-0000-0000-0000-000000001001', 'Smoke Settlement', '00000000-0000-0000-0000-000000003002', '00000000-0000-0000-0000-000000003001', 21.25, 'USD', current_date, auth.uid());
+
+-- Member can read and collaborate.
+set local "request.jwt.claim.sub" = '00000000-0000-0000-0000-000000000102';
+
+do $$
+declare
+  visible_trips integer;
+begin
+  select count(*) into visible_trips
+  from public.trips
+  where id = '00000000-0000-0000-0000-000000001001';
+
+  if visible_trips <> 1 then
+    raise exception 'member should be able to read shared trip, got % rows', visible_trips;
+  end if;
+
+  if not public.is_trip_member('00000000-0000-0000-0000-000000001001') then
+    raise exception 'member should be recognized as trip member';
+  end if;
+
+  if public.is_trip_owner('00000000-0000-0000-0000-000000001001') then
+    raise exception 'member should not be recognized as trip owner';
+  end if;
+end $$;
+
+insert into public.trip_places (id, trip_id, name, note, category, added_by)
+values ('00000000-0000-0000-0000-000000004002', '00000000-0000-0000-0000-000000001001', 'Member Smoke Place', 'created by member', 'test', auth.uid());
+
+-- Non-member should not see or write trip rows.
+set local "request.jwt.claim.sub" = '00000000-0000-0000-0000-000000000103';
+
+do $$
+declare
+  visible_trips integer;
+begin
+  select count(*) into visible_trips
+  from public.trips
+  where id = '00000000-0000-0000-0000-000000001001';
+
+  if visible_trips <> 0 then
+    raise exception 'stranger should not be able to read shared trip, got % rows', visible_trips;
+  end if;
+
+  begin
+    insert into public.trip_places (id, trip_id, name, note, category, added_by)
+    values ('00000000-0000-0000-0000-000000004003', '00000000-0000-0000-0000-000000001001', 'Forbidden Place', '', 'test', auth.uid());
+    raise exception 'stranger should not be able to insert place';
+  exception
+    when insufficient_privilege or check_violation then
+      null;
+  end;
+end $$;
+
+-- Anonymous users should not get table-level reads.
+reset role;
+set local role anon;
+set local "request.jwt.claim.role" = 'anon';
+set local "request.jwt.claim.sub" = '';
+
+do $$
+declare
+  visible_invites integer;
+  lookup_rows integer;
+begin
+  select count(*) into visible_invites
+  from public.trip_invites
+  where code = 'WANI-SMOKE-CODE';
+
+  if visible_invites <> 0 then
+    raise exception 'anon should not be able to table-read invites, got % rows', visible_invites;
+  end if;
+
+  select count(*) into lookup_rows
+  from public.lookup_active_trip_invite('WANI-SMOKE-CODE');
+
+  if lookup_rows <> 1 then
+    raise exception 'anon invite lookup function should return one row, got %', lookup_rows;
+  end if;
+end $$;
+
+-- Integrity trigger should reject expense paid by a participant from a different trip.
+reset role;
+set local role authenticated;
+set local "request.jwt.claim.role" = 'authenticated';
+set local "request.jwt.claim.sub" = '00000000-0000-0000-0000-000000000101';
+
+insert into public.trips (id, name, destination, emoji, start_date, end_date, created_by)
+values ('00000000-0000-0000-0000-000000001002', 'Wani Smoke Other Trip', 'Other City', '🧪', current_date, current_date + 1, auth.uid());
+
+insert into public.trip_members (id, trip_id, user_id, role, member_kind, display_name, created_by)
+values ('00000000-0000-0000-0000-000000002004', '00000000-0000-0000-0000-000000001002', auth.uid(), 'owner', 'account', 'Smoke Owner', auth.uid());
+
+insert into public.trip_participants (id, trip_id, display_name, is_organizer, created_by)
+values ('00000000-0000-0000-0000-000000003003', '00000000-0000-0000-0000-000000001002', 'Other Trip Participant', true, auth.uid());
+
+do $$
+begin
+  begin
+    insert into public.trip_expenses (id, trip_id, title, paid_by_participant_id, amount, currency_code, incurred_on, created_by)
+    values ('00000000-0000-0000-0000-000000007002', '00000000-0000-0000-0000-000000001001', 'Invalid Cross Trip Expense', '00000000-0000-0000-0000-000000003003', 10.00, 'USD', current_date, auth.uid());
+    raise exception 'cross-trip expense participant should have been rejected';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'paid_by_participant_id must belong to the expense trip' then
+        raise;
+      end if;
+  end;
+end $$;
+
+rollback;
+
+select 'Wani live Supabase RLS smoke test passed' as result;
