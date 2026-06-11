@@ -23,6 +23,7 @@ struct TripMember: Identifiable, Hashable {
 
     enum Role: Hashable {
         case owner
+        case member
         case guest
     }
 

@@ -1,6 +1,115 @@
 import XCTest
 @testable import GroupTripApp
 
+final class SupabaseDTOTests: XCTestCase {
+    func testTripDTOMapsSnakeCaseTripRowIntoTripPlan() throws {
+        let json = """
+        {
+          "id": "11111111-1111-1111-1111-111111111111",
+          "name": "Austin Weekend",
+          "destination": "Austin",
+          "emoji": "🤠",
+          "image_url": "https://example.com/austin.jpg",
+          "start_date": "2026-07-03",
+          "end_date": "2026-07-06"
+        }
+        """.data(using: .utf8)!
+
+        let dto = try JSONDecoder().decode(SupabaseTripDTO.self, from: json)
+        let trip = dto.tripPlan()
+
+        XCTAssertEqual(trip.id.uuidString, "11111111-1111-1111-1111-111111111111")
+        XCTAssertEqual(trip.viewModel.tripName, "Austin Weekend")
+        XCTAssertEqual(trip.destination, "Austin")
+        XCTAssertEqual(trip.emoji, "🤠")
+        XCTAssertEqual(trip.imageURL, "https://example.com/austin.jpg")
+        XCTAssertEqual(SupabaseDateFormatter.string(from: trip.startDate), "2026-07-03")
+        XCTAssertEqual(SupabaseDateFormatter.string(from: trip.endDate), "2026-07-06")
+    }
+
+    func testMemberDTOMapsAccountAndGuestMembers() throws {
+        let accountJSON = """
+        {
+          "id": "22222222-2222-2222-2222-222222222221",
+          "trip_id": "11111111-1111-1111-1111-111111111111",
+          "user_id": "33333333-3333-3333-3333-333333333333",
+          "guest_member_id": null,
+          "display_name": "Alex",
+          "role": "member",
+          "member_kind": "account"
+        }
+        """.data(using: .utf8)!
+        let guestJSON = """
+        {
+          "id": "22222222-2222-2222-2222-222222222222",
+          "trip_id": "11111111-1111-1111-1111-111111111111",
+          "user_id": null,
+          "guest_member_id": "44444444-4444-4444-4444-444444444444",
+          "display_name": "Sam",
+          "role": "guest",
+          "member_kind": "guest"
+        }
+        """.data(using: .utf8)!
+
+        let accountMember = try JSONDecoder().decode(SupabaseTripMemberDTO.self, from: accountJSON).tripMember
+        let guestMember = try JSONDecoder().decode(SupabaseTripMemberDTO.self, from: guestJSON).tripMember
+
+        XCTAssertEqual(accountMember.displayName, "Alex")
+        XCTAssertEqual(accountMember.role, .member)
+        XCTAssertEqual(accountMember.accountID?.uuidString, "33333333-3333-3333-3333-333333333333")
+        XCTAssertEqual(guestMember.displayName, "Sam")
+        XCTAssertEqual(guestMember.role, .guest)
+        XCTAssertNil(guestMember.accountID)
+    }
+
+    func testCollaborativeTripDTOAssemblesCalculatorPlacesAndPlanningItems() throws {
+        let tripDTO = SupabaseTripDTO(
+            id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            name: "Austin Weekend",
+            destination: "Austin",
+            emoji: "🤠",
+            imageURL: "https://example.com/austin.jpg",
+            startDate: "2026-07-03",
+            endDate: "2026-07-06"
+        )
+        let alexID = UUID(uuidString: "55555555-5555-5555-5555-555555555551")!
+        let samID = UUID(uuidString: "55555555-5555-5555-5555-555555555552")!
+        let expenseID = UUID(uuidString: "77777777-7777-7777-7777-777777777777")!
+
+        let trip = tripDTO.tripPlan(
+            participants: [
+                SupabaseTripParticipantDTO(id: alexID, tripID: tripDTO.id, displayName: "Alex", linkedMemberID: nil, linkedUserID: nil, isOrganizer: true),
+                SupabaseTripParticipantDTO(id: samID, tripID: tripDTO.id, displayName: "Sam", linkedMemberID: nil, linkedUserID: nil, isOrganizer: false)
+            ],
+            places: [
+                SupabaseTripPlaceDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666666")!, tripID: tripDTO.id, name: "Zilker Park", note: "Picnic", category: "Outdoors", googlePlaceID: "zilker", latitude: 30.2669, longitude: -97.7729)
+            ],
+            planningItems: [
+                SupabaseTripPlanningItemDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666667")!, tripID: tripDTO.id, title: "Book dinner", note: "Friday night", scheduledDate: "2026-07-03", isDone: false)
+            ],
+            expenses: [
+                SupabaseTripExpenseDTO(id: expenseID, tripID: tripDTO.id, title: "Hotel", paidByParticipantID: alexID, amount: 200, currencyCode: "USD", incurredOn: "2026-07-03")
+            ],
+            splits: [
+                SupabaseTripExpenseSplitDTO(expenseID: expenseID, participantID: alexID, shareAmount: 100),
+                SupabaseTripExpenseSplitDTO(expenseID: expenseID, participantID: samID, shareAmount: 100)
+            ],
+            directPayments: [
+                SupabaseTripDirectPaymentDTO(id: UUID(uuidString: "88888888-8888-8888-8888-888888888888")!, tripID: tripDTO.id, title: "Sam paid Alex", fromParticipantID: samID, toParticipantID: alexID, amount: 50, currencyCode: "USD", paidOn: "2026-07-04")
+            ]
+        )
+
+        XCTAssertEqual(trip.places.map(\.name), ["Zilker Park"])
+        XCTAssertEqual(trip.planningItems.map(\.title), ["Book dinner"])
+        XCTAssertEqual(trip.viewModel.calculator.participants.map(\.name), ["Alex", "Sam"])
+        XCTAssertEqual(trip.viewModel.calculator.expenses.first?.participants, Set([alexID, samID]))
+        XCTAssertEqual(trip.viewModel.calculator.payments.first?.amount, 50)
+        let balances = Dictionary(uniqueKeysWithValues: trip.viewModel.calculator.balances().map { ($0.participant.name, $0.net) })
+        XCTAssertEqual(balances["Alex"], 50)
+        XCTAssertEqual(balances["Sam"], -50)
+    }
+}
+
 final class TripCollaborationModelsTests: XCTestCase {
     func testTripMemberAndExpenseParticipantAreSeparateConcepts() {
         let memberID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
