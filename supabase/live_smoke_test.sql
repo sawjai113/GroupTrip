@@ -87,8 +87,12 @@ values ('00000000-0000-0000-0000-000000004001', '00000000-0000-0000-0000-0000000
 insert into public.trip_planning_items (id, trip_id, title, note, scheduled_date, added_by)
 values ('00000000-0000-0000-0000-000000005001', '00000000-0000-0000-0000-000000001001', 'Smoke Planning Item', 'created by smoke test', current_date, auth.uid());
 
-insert into public.trip_invites (id, trip_id, code, created_by, role, max_uses, expires_at, is_active)
-values ('00000000-0000-0000-0000-000000006001', '00000000-0000-0000-0000-000000001001', 'WANI-SMOKE-CODE', auth.uid(), 'guest', 3, now() + interval '1 hour', true);
+insert into public.trip_invites (id, trip_id, code, created_by, role, max_uses, use_count, expires_at, is_active)
+values
+  ('00000000-0000-0000-0000-000000006001', '00000000-0000-0000-0000-000000001001', 'WANI-SMOKE-CODE', auth.uid(), 'guest', 3, 0, now() + interval '1 hour', true),
+  ('00000000-0000-0000-0000-000000006002', '00000000-0000-0000-0000-000000001001', 'WANI-SMOKE-EXPIRED', auth.uid(), 'guest', 3, 0, now() - interval '1 hour', true),
+  ('00000000-0000-0000-0000-000000006003', '00000000-0000-0000-0000-000000001001', 'WANI-SMOKE-MAXED', auth.uid(), 'guest', 1, 1, now() + interval '1 hour', true),
+  ('00000000-0000-0000-0000-000000006004', '00000000-0000-0000-0000-000000001001', 'WANI-SMOKE-INACTIVE', auth.uid(), 'guest', 3, 0, now() + interval '1 hour', false);
 
 insert into public.trip_expenses (id, trip_id, title, paid_by_participant_id, amount, currency_code, incurred_on, created_by)
 values ('00000000-0000-0000-0000-000000007001', '00000000-0000-0000-0000-000000001001', 'Smoke Expense', '00000000-0000-0000-0000-000000003001', 42.50, 'USD', current_date, auth.uid());
@@ -127,6 +131,95 @@ end $$;
 
 insert into public.trip_places (id, trip_id, name, note, category, added_by)
 values ('00000000-0000-0000-0000-000000004002', '00000000-0000-0000-0000-000000001001', 'Member Smoke Place', 'created by member', 'test', auth.uid());
+
+-- Member-only hardening: non-owner members must not be able to escalate,
+-- delete trips, or manage trip memberships.
+do $$
+declare
+  owner_id constant uuid := '00000000-0000-0000-0000-000000000101';
+  member_id constant uuid := '00000000-0000-0000-0000-000000000102';
+  actual_created_by uuid;
+  affected_rows integer;
+begin
+  begin
+    update public.trips
+    set created_by = member_id
+    where id = '00000000-0000-0000-0000-000000001001';
+  exception
+    when insufficient_privilege or check_violation or raise_exception then
+      null;
+  end;
+
+  select created_by into actual_created_by
+  from public.trips
+  where id = '00000000-0000-0000-0000-000000001001';
+
+  if actual_created_by <> owner_id then
+    raise exception 'member should not be able to change trips.created_by; got %', actual_created_by;
+  end if;
+
+  delete from public.trips
+  where id = '00000000-0000-0000-0000-000000001001';
+  get diagnostics affected_rows = row_count;
+  if affected_rows <> 0 then
+    raise exception 'member should not be able to delete shared trip';
+  end if;
+
+  begin
+    insert into public.trip_members (id, trip_id, user_id, role, member_kind, display_name, created_by)
+    values ('00000000-0000-0000-0000-000000002901', '00000000-0000-0000-0000-000000001001', '00000000-0000-0000-0000-000000000103', 'member', 'account', 'Forbidden Member', member_id);
+    raise exception 'member should not be able to insert memberships';
+  exception
+    when insufficient_privilege or check_violation then
+      null;
+  end;
+
+  update public.trip_members
+  set role = 'owner'
+  where id = '00000000-0000-0000-0000-000000002002';
+  get diagnostics affected_rows = row_count;
+  if affected_rows <> 0 then
+    raise exception 'member should not be able to update memberships';
+  end if;
+
+  delete from public.trip_members
+  where id = '00000000-0000-0000-0000-000000002001';
+  get diagnostics affected_rows = row_count;
+  if affected_rows <> 0 then
+    raise exception 'member should not be able to delete memberships';
+  end if;
+end $$;
+
+-- Attribution hardening: members must not spoof another user's audit identity.
+do $$
+declare
+  operation_blocked boolean;
+begin
+  operation_blocked := false;
+  begin
+    insert into public.trip_participants (id, trip_id, display_name, is_organizer, created_by)
+    values ('00000000-0000-0000-0000-000000003901', '00000000-0000-0000-0000-000000001001', 'Spoofed Participant', false, '00000000-0000-0000-0000-000000000101');
+  exception
+    when insufficient_privilege or check_violation or raise_exception then
+      operation_blocked := true;
+  end;
+  if not operation_blocked then
+    raise exception 'member should not be able to spoof participant created_by';
+  end if;
+
+  operation_blocked := false;
+  begin
+    update public.trip_places
+    set added_by = '00000000-0000-0000-0000-000000000101'
+    where id = '00000000-0000-0000-0000-000000004002';
+  exception
+    when insufficient_privilege or check_violation or raise_exception then
+      operation_blocked := true;
+  end;
+  if not operation_blocked then
+    raise exception 'member should not be able to change place added_by';
+  end if;
+end $$;
 
 -- Non-member should not see or write trip rows.
 set local "request.jwt.claim.sub" = '00000000-0000-0000-0000-000000000103';
@@ -177,6 +270,30 @@ begin
 
   if lookup_rows <> 1 then
     raise exception 'anon invite lookup function should return one row, got %', lookup_rows;
+  end if;
+
+  select count(*) into lookup_rows
+  from public.lookup_active_trip_invite('WANI-SMOKE-EXPIRED');
+  if lookup_rows <> 0 then
+    raise exception 'expired invite lookup should return zero rows, got %', lookup_rows;
+  end if;
+
+  select count(*) into lookup_rows
+  from public.lookup_active_trip_invite('WANI-SMOKE-MAXED');
+  if lookup_rows <> 0 then
+    raise exception 'max-use invite lookup should return zero rows, got %', lookup_rows;
+  end if;
+
+  select count(*) into lookup_rows
+  from public.lookup_active_trip_invite('WANI-SMOKE-INACTIVE');
+  if lookup_rows <> 0 then
+    raise exception 'inactive invite lookup should return zero rows, got %', lookup_rows;
+  end if;
+
+  select count(*) into lookup_rows
+  from public.lookup_active_trip_invite('WANI-SMOKE-RANDOM');
+  if lookup_rows <> 0 then
+    raise exception 'random invite lookup should return zero rows, got %', lookup_rows;
   end if;
 end $$;
 

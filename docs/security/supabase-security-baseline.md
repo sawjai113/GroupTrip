@@ -7,9 +7,9 @@ Scope: Supabase schema/RLS, user-info/privacy implementation, client Supabase co
 
 The current Supabase baseline is in a good MVP state: all app tables declared in `supabase/schema.sql` have RLS enabled, table policies are scoped to the `authenticated` role, anonymous table reads are not intentionally opened, service-role credentials were not found in tracked app code, and membership checks are centralized in security-definer helpers with an explicit `search_path`.
 
-The main security issue is an authorization gap around mutable ownership/audit columns. In particular, `trip members can update trips` lets any trip member update the whole `trips` row, including `created_by`. Because trip deletion is allowed when `created_by = auth.uid()`, a non-owner member can likely update `created_by` to themselves and then delete the trip. This should be fixed before broader TestFlight use.
+The main security issue found in the baseline review was an authorization gap around mutable ownership/audit columns. In particular, `trip members can update trips` let any trip member update the whole `trips` row, including `created_by`. Because trip deletion is allowed when `created_by = auth.uid()`, a non-owner member could likely update `created_by` to themselves and then delete the trip. This has since been mitigated in `supabase/schema.sql` with attribution immutability guards and live negative RLS smoke tests.
 
-The next-largest risks are invite lookup/enumeration hardening, over-broad profile visibility, and incomplete negative smoke tests for ownership-only actions and spoof attempts.
+The next-largest remaining risks are invite code entropy/rate limiting, over-broad profile visibility, and future guardrails around owner recovery / last-owner deletion.
 
 ## Current strengths
 
@@ -47,7 +47,14 @@ None found in the reviewed files.
 
 #### H-1: Non-owner trip members can likely escalate to trip deletion by changing `trips.created_by`
 
-Evidence:
+Status: Mitigated after baseline review.
+
+Remediation implemented:
+- Added `assert_attribution_columns_current_user()` to ensure attribution/ownership columns match the authenticated user on insert and are immutable on update.
+- Added `trips_assert_created_by` so `trips.created_by` cannot be changed after trip creation.
+- Added live RLS smoke coverage proving a non-owner member cannot change `trips.created_by` and cannot delete the trip.
+
+Original evidence:
 - `trips` update policy:
   - `using (public.is_trip_member(id))`
   - `with check (public.is_trip_member(id))`
@@ -87,6 +94,10 @@ Recommended fix:
 - Set attribution columns server-side where possible, or require `created_by = auth.uid()` / `added_by = auth.uid()` in insert policies.
 - Add immutable-column triggers for `created_by`, `added_by`, and original ownership columns where they are intended as audit data.
 - For updates, either reject attribution-column changes or expose narrowly scoped RPCs.
+
+Status:
+- Partially mitigated after baseline review by `assert_attribution_columns_current_user()` triggers on trips, memberships, participants, invites, places, planning items, expenses, and direct payments.
+- Live smoke coverage now verifies participant `created_by` insert spoofing and place `added_by` update spoofing are rejected.
 
 Recommended smoke tests:
 - Member tries to insert participant with another user's `created_by`; expect rejection or server rewrite to auth user.
@@ -179,7 +190,14 @@ Recommended fix:
 
 #### L-3: Anonymous invite lookup function execute privileges should be made explicit
 
-Evidence:
+Status: Fixed after baseline review.
+
+Remediation implemented:
+- Added explicit `revoke all on function public.lookup_active_trip_invite(text) from public`.
+- Added explicit `grant execute on function public.lookup_active_trip_invite(text) to anon, authenticated`.
+- Added explicit authenticated grants for membership helper functions used by RLS policies.
+
+Original evidence:
 - The schema creates `lookup_active_trip_invite()` but does not explicitly `grant execute`/`revoke execute` for roles in this file.
 
 Impact:

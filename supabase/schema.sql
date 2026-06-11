@@ -22,9 +22,43 @@ create extension if not exists pgcrypto;
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   new.updated_at = now();
+  return new;
+end;
+$$;
+
+-- Guard owner/audit columns that should be written only by the current user
+-- at creation time and should never be rewritten afterward. This keeps RLS
+-- policy grants from accidentally making attribution columns mutable.
+create or replace function public.assert_attribution_columns_current_user()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  column_name text;
+  new_value text;
+  old_value text;
+  current_user_id text := auth.uid()::text;
+begin
+  foreach column_name in array tg_argv loop
+    new_value := to_jsonb(new) ->> column_name;
+
+    if tg_op = 'INSERT' then
+      if new_value is not null and (current_user_id is null or new_value <> current_user_id) then
+        raise exception '% must match the authenticated user', column_name;
+      end if;
+    elsif tg_op = 'UPDATE' then
+      old_value := to_jsonb(old) ->> column_name;
+      if new_value is distinct from old_value then
+        raise exception '% is immutable', column_name;
+      end if;
+    end if;
+  end loop;
+
   return new;
 end;
 $$;
@@ -65,6 +99,9 @@ begin
   );
 end;
 $$;
+
+grant execute on function public.is_trip_member(uuid) to authenticated;
+grant execute on function public.is_trip_owner(uuid) to authenticated;
 
 -- ============================================================
 -- PROFILES
@@ -158,6 +195,11 @@ drop trigger if exists trips_set_updated_at on public.trips;
 create trigger trips_set_updated_at
   before update on public.trips
   for each row execute function public.set_updated_at();
+
+drop trigger if exists trips_assert_created_by on public.trips;
+create trigger trips_assert_created_by
+  before insert or update on public.trips
+  for each row execute function public.assert_attribution_columns_current_user('created_by');
 
 drop policy if exists "trip members can read trips" on public.trips;
 create policy "trip members can read trips"
@@ -274,6 +316,11 @@ create trigger trip_members_set_updated_at
   before update on public.trip_members
   for each row execute function public.set_updated_at();
 
+drop trigger if exists trip_members_assert_created_by on public.trip_members;
+create trigger trip_members_assert_created_by
+  before insert or update on public.trip_members
+  for each row execute function public.assert_attribution_columns_current_user('created_by');
+
 drop policy if exists "trip members can read memberships" on public.trip_members;
 create policy "trip members can read memberships"
 on public.trip_members for select
@@ -348,6 +395,11 @@ create trigger trip_participants_set_updated_at
   before update on public.trip_participants
   for each row execute function public.set_updated_at();
 
+drop trigger if exists trip_participants_assert_created_by on public.trip_participants;
+create trigger trip_participants_assert_created_by
+  before insert or update on public.trip_participants
+  for each row execute function public.assert_attribution_columns_current_user('created_by');
+
 drop policy if exists "trip members can read participants" on public.trip_participants;
 create policy "trip members can read participants"
 on public.trip_participants for select
@@ -404,6 +456,11 @@ create trigger trip_invites_set_updated_at
   before update on public.trip_invites
   for each row execute function public.set_updated_at();
 
+drop trigger if exists trip_invites_assert_created_by on public.trip_invites;
+create trigger trip_invites_assert_created_by
+  before insert or update on public.trip_invites
+  for each row execute function public.assert_attribution_columns_current_user('created_by');
+
 drop policy if exists "trip members can read invites for their trips" on public.trip_invites;
 create policy "trip members can read invites for their trips"
 on public.trip_invites for select
@@ -454,6 +511,9 @@ as $$
   limit 1;
 $$;
 
+revoke all on function public.lookup_active_trip_invite(text) from public;
+grant execute on function public.lookup_active_trip_invite(text) to anon, authenticated;
+
 -- ============================================================
 -- TRIP PLACES
 -- ============================================================
@@ -483,6 +543,11 @@ drop trigger if exists trip_places_set_updated_at on public.trip_places;
 create trigger trip_places_set_updated_at
   before update on public.trip_places
   for each row execute function public.set_updated_at();
+
+drop trigger if exists trip_places_assert_added_by on public.trip_places;
+create trigger trip_places_assert_added_by
+  before insert or update on public.trip_places
+  for each row execute function public.assert_attribution_columns_current_user('added_by');
 
 drop policy if exists "trip members can read places" on public.trip_places;
 create policy "trip members can read places"
@@ -535,6 +600,11 @@ drop trigger if exists trip_planning_items_set_updated_at on public.trip_plannin
 create trigger trip_planning_items_set_updated_at
   before update on public.trip_planning_items
   for each row execute function public.set_updated_at();
+
+drop trigger if exists trip_planning_items_assert_added_by on public.trip_planning_items;
+create trigger trip_planning_items_assert_added_by
+  before insert or update on public.trip_planning_items
+  for each row execute function public.assert_attribution_columns_current_user('added_by');
 
 drop policy if exists "trip members can read planning items" on public.trip_planning_items;
 create policy "trip members can read planning items"
@@ -670,6 +740,11 @@ create trigger trip_expenses_set_updated_at
   before update on public.trip_expenses
   for each row execute function public.set_updated_at();
 
+drop trigger if exists trip_expenses_assert_created_by on public.trip_expenses;
+create trigger trip_expenses_assert_created_by
+  before insert or update on public.trip_expenses
+  for each row execute function public.assert_attribution_columns_current_user('created_by');
+
 drop trigger if exists trip_expenses_participant_trip_check on public.trip_expenses;
 create trigger trip_expenses_participant_trip_check
   before insert or update on public.trip_expenses
@@ -790,6 +865,11 @@ drop trigger if exists trip_direct_payments_set_updated_at on public.trip_direct
 create trigger trip_direct_payments_set_updated_at
   before update on public.trip_direct_payments
   for each row execute function public.set_updated_at();
+
+drop trigger if exists trip_direct_payments_assert_created_by on public.trip_direct_payments;
+create trigger trip_direct_payments_assert_created_by
+  before insert or update on public.trip_direct_payments
+  for each row execute function public.assert_attribution_columns_current_user('created_by');
 
 drop trigger if exists trip_direct_payments_participant_trip_check on public.trip_direct_payments;
 create trigger trip_direct_payments_participant_trip_check
