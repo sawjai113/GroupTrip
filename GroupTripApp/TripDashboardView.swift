@@ -1,15 +1,42 @@
 import SwiftUI
 
 struct TripDashboardView: View {
+    enum ModeBadge {
+        case demo
+        case cloud
+
+        var title: String {
+            switch self {
+            case .demo: return "Demo Mode"
+            case .cloud: return "Signed-in Mode"
+            }
+        }
+
+        var subtitle: String {
+            switch self {
+            case .demo: return "Sample data only"
+            case .cloud: return "Cloud-backed trips"
+            }
+        }
+
+        var tint: Color {
+            switch self {
+            case .demo: return AppTheme.warning
+            case .cloud: return AppTheme.success
+            }
+        }
+    }
+
     @StateObject var store: TripStore
     @State private var isShowingNewTrip = false
     @State private var pastTripsOpen = false
+    var modeBadge: ModeBadge?
     var signOut: (() -> Void)?
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                WaniHeader(signOut: signOut) {
+                WaniHeader(modeBadge: modeBadge, signOut: signOut) {
                     isShowingNewTrip = true
                 }
 
@@ -60,11 +87,12 @@ struct TripDashboardView: View {
 }
 
 struct WaniHeader: View {
+    var modeBadge: TripDashboardView.ModeBadge?
     var signOut: (() -> Void)?
     var createTrip: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
                 Image(systemName: "paperplane.fill")
                     .font(.title2)
@@ -81,7 +109,7 @@ struct WaniHeader: View {
                             .font(.headline)
                     }
                     .buttonStyle(.bordered)
-                    .accessibilityLabel("Sign out")
+                    .accessibilityLabel(modeBadge == .demo ? "Exit demo" : "Sign out")
                 }
 
                 Button(action: createTrip) {
@@ -92,9 +120,22 @@ struct WaniHeader: View {
                 .tint(AppTheme.primary)
             }
 
-            Text("Plan trips with friends")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            HStack(spacing: AppTheme.Spacing.small) {
+                Text("Plan trips with friends")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                if let modeBadge {
+                    Text(modeBadge.title)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, AppTheme.Spacing.small)
+                        .padding(.vertical, AppTheme.Spacing.xSmall)
+                        .background(modeBadge.tint)
+                        .clipShape(Capsule())
+                        .accessibilityLabel("\(modeBadge.title): \(modeBadge.subtitle)")
+                }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 14)

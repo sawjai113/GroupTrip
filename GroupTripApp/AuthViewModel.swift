@@ -1,11 +1,39 @@
 import Foundation
 import Supabase
 
+enum AppMode: Equatable {
+    case demo
+    case signedIn
+}
+
+final class AppSession: ObservableObject {
+    @Published private(set) var mode: AppMode?
+
+    var shouldUseDemoTripStore: Bool {
+        mode == .demo
+    }
+
+    var shouldUseCloudTripStore: Bool {
+        mode == .signedIn
+    }
+
+    func chooseDemoMode() {
+        mode = .demo
+    }
+
+    func chooseSignedInMode() {
+        mode = .signedIn
+    }
+
+    func returnToModePicker() {
+        mode = nil
+    }
+}
+
 @MainActor
 final class AuthViewModel: ObservableObject {
     @Published private(set) var isAuthenticated = false
     @Published private(set) var isLoading = true
-    @Published private(set) var isUsingTestMode = false
     @Published var authError: String?
     @Published var authMessage: String?
 
@@ -38,29 +66,14 @@ final class AuthViewModel: ObservableObject {
     }
 
     func signOut() async {
-        if isUsingTestMode {
-            isUsingTestMode = false
-            isAuthenticated = false
-            return
-        }
-
         await runAuthAction {
             try await client.auth.signOut()
         }
     }
 
-    func continueWithTestMode() {
-        authError = nil
-        authMessage = nil
-        isLoading = false
-        isUsingTestMode = true
-        isAuthenticated = true
-    }
-
     private func listenForAuthChanges() {
         Task {
             for await (_, session) in await client.auth.authStateChanges {
-                guard !isUsingTestMode else { continue }
                 isAuthenticated = session != nil
                 isLoading = false
             }

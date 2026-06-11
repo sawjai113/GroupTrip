@@ -110,6 +110,47 @@ final class SupabaseDTOTests: XCTestCase {
     }
 }
 
+final class AppSessionTests: XCTestCase {
+    func testStartsWithoutSelectedMode() {
+        let session = AppSession()
+
+        XCTAssertNil(session.mode)
+        XCTAssertFalse(session.shouldUseDemoTripStore)
+        XCTAssertFalse(session.shouldUseCloudTripStore)
+    }
+
+    func testChoosingDemoModeUsesOnlyDemoTripStore() {
+        let session = AppSession()
+
+        session.chooseDemoMode()
+
+        XCTAssertEqual(session.mode, .demo)
+        XCTAssertTrue(session.shouldUseDemoTripStore)
+        XCTAssertFalse(session.shouldUseCloudTripStore)
+    }
+
+    func testChoosingSignedInModeUsesOnlyCloudTripStore() {
+        let session = AppSession()
+
+        session.chooseSignedInMode()
+
+        XCTAssertEqual(session.mode, .signedIn)
+        XCTAssertFalse(session.shouldUseDemoTripStore)
+        XCTAssertTrue(session.shouldUseCloudTripStore)
+    }
+
+    func testReturningToModePickerClearsSelectedMode() {
+        let session = AppSession()
+        session.chooseDemoMode()
+
+        session.returnToModePicker()
+
+        XCTAssertNil(session.mode)
+        XCTAssertFalse(session.shouldUseDemoTripStore)
+        XCTAssertFalse(session.shouldUseCloudTripStore)
+    }
+}
+
 final class TripCollaborationModelsTests: XCTestCase {
     func testTripMemberAndExpenseParticipantAreSeparateConcepts() {
         let memberID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
