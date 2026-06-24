@@ -30,6 +30,90 @@ final class AppSession: ObservableObject {
     }
 }
 
+enum AuthSessionState: Equatable {
+    case signedIn(userID: UUID, email: String?)
+    case signedOut
+}
+
+protocol AuthServicing {
+    var sessionStates: AsyncStream<AuthSessionState> { get }
+
+    func sendMagicLink(email: String, displayName: String?) async throws
+    func signOut() async throws
+    func bootstrapProfile(userID: UUID, email: String?) async throws
+}
+
+struct SupabaseAuthService: AuthServicing {
+    private let client: SupabaseClient
+
+    init(client: SupabaseClient = SupabaseConfig.client) {
+        self.client = client
+    }
+
+    var sessionStates: AsyncStream<AuthSessionState> {
+        AsyncStream { continuation in
+            let task = Task {
+                for await (_, session) in client.auth.authStateChanges {
+                    if let user = session?.user {
+                        continuation.yield(.signedIn(userID: user.id, email: user.email))
+                    } else {
+                        continuation.yield(.signedOut)
+                    }
+                }
+            }
+
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+
+    func sendMagicLink(email: String, displayName: String?) async throws {
+        var data: [String: AnyJSON]?
+        if let displayName, !displayName.isEmpty {
+            data = ["display_name": .string(displayName)]
+        }
+
+        try await client.auth.signInWithOTP(
+            email: email,
+            shouldCreateUser: true,
+            data: data
+        )
+    }
+
+    func signOut() async throws {
+        try await client.auth.signOut()
+    }
+
+    func bootstrapProfile(userID: UUID, email: String?) async throws {
+        let profile = SupabaseProfileBootstrapDTO(
+            id: userID,
+            displayName: email.flatMap(Self.defaultDisplayName)
+        )
+
+        try await client
+            .from("profiles")
+            .upsert(profile, onConflict: "id", ignoreDuplicates: true)
+            .execute()
+    }
+
+    private static func defaultDisplayName(from email: String) -> String? {
+        let name = email.split(separator: "@").first.map(String.init)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return name?.isEmpty == false ? name : nil
+    }
+}
+
+struct SupabaseProfileBootstrapDTO: Codable, Hashable {
+    var id: UUID
+    var displayName: String?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case displayName = "display_name"
+    }
+}
+
 @MainActor
 final class AuthViewModel: ObservableObject {
     @Published private(set) var isAuthenticated = false
@@ -37,60 +121,77 @@ final class AuthViewModel: ObservableObject {
     @Published var authError: String?
     @Published var authMessage: String?
 
-    private let client: SupabaseClient
+    private let service: AuthServicing
 
-    init(client: SupabaseClient = SupabaseConfig.client) {
-        self.client = client
+    init(service: AuthServicing = SupabaseAuthService()) {
+        self.service = service
         listenForAuthChanges()
     }
 
-    func signIn(email: String, password: String) async {
-        await runAuthAction {
-            try await client.auth.signIn(email: email, password: password)
-        }
-    }
+    func requestMagicLink(email: String, displayName: String) async {
+        let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmedDisplayName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
 
-    func signUp(email: String, password: String) async {
-        isLoading = true
-        authError = nil
-        authMessage = nil
-
-        do {
-            try await client.auth.signUp(email: email, password: password)
-            authMessage = "Account created. Check your email to confirm your account, then sign in."
-        } catch {
-            authError = error.localizedDescription
+        guard Self.isValidEmail(trimmedEmail) else {
+            authError = "Enter a valid email address."
+            authMessage = nil
+            isLoading = false
+            return
         }
 
-        isLoading = false
+        await runAuthAction(successMessage: "Check your email for a Wani sign-in link.") {
+            try await service.sendMagicLink(
+                email: trimmedEmail,
+                displayName: trimmedDisplayName.isEmpty ? nil : trimmedDisplayName
+            )
+        }
     }
 
     func signOut() async {
         await runAuthAction {
-            try await client.auth.signOut()
+            try await service.signOut()
         }
     }
 
     private func listenForAuthChanges() {
-        Task {
-            for await (_, session) in await client.auth.authStateChanges {
-                isAuthenticated = session != nil
+        Task { [service] in
+            for await state in service.sessionStates {
+                switch state {
+                case let .signedIn(userID, email):
+                    do {
+                        try await service.bootstrapProfile(userID: userID, email: email)
+                        isAuthenticated = true
+                        authError = nil
+                    } catch {
+                        authError = error.localizedDescription
+                        isAuthenticated = false
+                    }
+                case .signedOut:
+                    isAuthenticated = false
+                }
                 isLoading = false
             }
         }
     }
 
-    private func runAuthAction(_ action: () async throws -> Void) async {
+    private func runAuthAction(successMessage: String? = nil, _ action: () async throws -> Void) async {
         isLoading = true
         authError = nil
         authMessage = nil
 
         do {
             try await action()
+            authMessage = successMessage
             isLoading = false
         } catch {
             authError = error.localizedDescription
             isLoading = false
         }
+    }
+
+    private static func isValidEmail(_ email: String) -> Bool {
+        let parts = email.split(separator: "@")
+        guard parts.count == 2 else { return false }
+        return parts[0].isEmpty == false && parts[1].contains(".")
     }
 }

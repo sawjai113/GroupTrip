@@ -110,6 +110,92 @@ final class SupabaseDTOTests: XCTestCase {
     }
 }
 
+@MainActor
+final class AuthViewModelTests: XCTestCase {
+    func testRequestMagicLinkRejectsInvalidEmailWithoutCallingService() async {
+        let service = FakeAuthService()
+        let viewModel = AuthViewModel(service: service)
+
+        await viewModel.requestMagicLink(email: "not-an-email", displayName: "Alex")
+
+        XCTAssertFalse(service.didSendMagicLink)
+        XCTAssertEqual(viewModel.authError, "Enter a valid email address.")
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
+    func testRequestMagicLinkSendsTrimmedEmailAndDisplayName() async {
+        let service = FakeAuthService()
+        let viewModel = AuthViewModel(service: service)
+
+        await viewModel.requestMagicLink(email: " alex@example.com ", displayName: " Alex ")
+
+        XCTAssertEqual(service.sentMagicLinkEmail, "alex@example.com")
+        XCTAssertEqual(service.sentMagicLinkDisplayName, "Alex")
+        XCTAssertEqual(viewModel.authMessage, "Check your email for a Wani sign-in link.")
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
+    func testSignedInSessionBootstrapsCurrentProfile() async throws {
+        let service = FakeAuthService()
+        let viewModel = AuthViewModel(service: service)
+        let userID = UUID(uuidString: "00000000-0000-0000-0000-00000000A001")!
+
+        service.send(.signedIn(userID: userID, email: "alex@example.com"))
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertTrue(viewModel.isAuthenticated)
+        XCTAssertEqual(service.bootstrappedProfileUserID, userID)
+        XCTAssertEqual(service.bootstrappedProfileEmail, "alex@example.com")
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
+    func testSignedOutSessionClearsAuthenticatedState() async throws {
+        let service = FakeAuthService()
+        let viewModel = AuthViewModel(service: service)
+
+        service.send(.signedIn(userID: UUID(), email: "alex@example.com"))
+        service.send(.signedOut)
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertFalse(viewModel.isAuthenticated)
+        XCTAssertFalse(viewModel.isLoading)
+    }
+}
+
+private final class FakeAuthService: AuthServicing {
+    private let continuation: AsyncStream<AuthSessionState>.Continuation
+    let sessionStates: AsyncStream<AuthSessionState>
+    var sentMagicLinkEmail: String?
+    var sentMagicLinkDisplayName: String?
+    var didSendMagicLink: Bool { sentMagicLinkEmail != nil }
+    var bootstrappedProfileUserID: UUID?
+    var bootstrappedProfileEmail: String?
+
+    init() {
+        var capturedContinuation: AsyncStream<AuthSessionState>.Continuation!
+        sessionStates = AsyncStream { continuation in
+            capturedContinuation = continuation
+        }
+        continuation = capturedContinuation
+    }
+
+    func send(_ state: AuthSessionState) {
+        continuation.yield(state)
+    }
+
+    func sendMagicLink(email: String, displayName: String?) async throws {
+        sentMagicLinkEmail = email
+        sentMagicLinkDisplayName = displayName
+    }
+
+    func signOut() async throws { }
+
+    func bootstrapProfile(userID: UUID, email: String?) async throws {
+        bootstrappedProfileUserID = userID
+        bootstrappedProfileEmail = email
+    }
+}
+
 final class AppSessionTests: XCTestCase {
     func testStartsWithoutSelectedMode() {
         let session = AppSession()

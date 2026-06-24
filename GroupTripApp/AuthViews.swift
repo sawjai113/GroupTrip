@@ -129,8 +129,7 @@ private struct LoginView: View {
     @ObservedObject var viewModel: AuthViewModel
     var exitToModePicker: () -> Void
     @State private var email = ""
-    @State private var password = ""
-    @State private var isCreatingAccount = false
+    @State private var displayName = ""
 
     var body: some View {
         NavigationStack {
@@ -145,9 +144,10 @@ private struct LoginView: View {
                     Text("Wani")
                         .font(.largeTitle.weight(.bold))
 
-                    Text("Sign in to save and sync trips.")
+                    Text("Send yourself a magic link to save and sync cloud trips.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
                 }
 
                 VStack(spacing: 12) {
@@ -160,8 +160,8 @@ private struct LoginView: View {
                         .background(AppTheme.paper)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-                    SecureField("Password", text: $password)
-                        .textContentType(isCreatingAccount ? .newPassword : .password)
+                    TextField("Display name", text: $displayName)
+                        .textContentType(.name)
                         .padding(12)
                         .background(AppTheme.paper)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -182,11 +182,7 @@ private struct LoginView: View {
 
                     Button {
                         Task {
-                            if isCreatingAccount {
-                                await viewModel.signUp(email: trimmedEmail, password: password)
-                            } else {
-                                await viewModel.signIn(email: trimmedEmail, password: password)
-                            }
+                            await viewModel.requestMagicLink(email: trimmedEmail, displayName: displayName)
                         }
                     } label: {
                         if viewModel.isLoading {
@@ -194,7 +190,7 @@ private struct LoginView: View {
                                 .tint(.white)
                                 .frame(maxWidth: .infinity)
                         } else {
-                            Text(isCreatingAccount ? "Create Account" : "Sign In")
+                            Text("Send Magic Link")
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
                         }
@@ -203,14 +199,10 @@ private struct LoginView: View {
                     .tint(AppTheme.primary)
                     .disabled(!canSubmit || viewModel.isLoading)
 
-                    Button {
-                        isCreatingAccount.toggle()
-                    } label: {
-                        Text(isCreatingAccount ? "Already have an account? Sign in" : "Need an account? Create one")
-                            .font(.subheadline.weight(.semibold))
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(AppTheme.primary)
+                    Text("No password needed. Supabase will email a secure sign-in link.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
 
                     Button(action: exitToModePicker) {
                         Text("Back to mode selection")
@@ -232,6 +224,6 @@ private struct LoginView: View {
     }
 
     private var canSubmit: Bool {
-        trimmedEmail.contains("@") && password.count >= 6
+        trimmedEmail.contains("@")
     }
 }
