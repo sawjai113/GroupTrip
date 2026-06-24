@@ -29,6 +29,7 @@ struct TripDashboardView: View {
 
     @StateObject var store: TripStore
     @State private var isShowingNewTrip = false
+    @State private var isShowingJoinInvite = false
     @State private var pastTripsOpen = false
     var modeBadge: ModeBadge?
     var signOut: (() -> Void)?
@@ -36,7 +37,7 @@ struct TripDashboardView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                WaniHeader(modeBadge: modeBadge, signOut: signOut) {
+                WaniHeader(modeBadge: modeBadge, signOut: signOut, joinTrip: modeBadge == .cloud ? { isShowingJoinInvite = true } : nil) {
                     isShowingNewTrip = true
                 }
 
@@ -74,6 +75,9 @@ struct TripDashboardView: View {
             .sheet(isPresented: $isShowingNewTrip) {
                 NewTripView(store: store)
             }
+            .sheet(isPresented: $isShowingJoinInvite) {
+                JoinTripInviteView(store: store)
+            }
             .task {
                 await store.loadTrips()
             }
@@ -89,6 +93,7 @@ struct TripDashboardView: View {
 struct WaniHeader: View {
     var modeBadge: TripDashboardView.ModeBadge?
     var signOut: (() -> Void)?
+    var joinTrip: (() -> Void)?
     var createTrip: () -> Void
 
     var body: some View {
@@ -110,6 +115,15 @@ struct WaniHeader: View {
                     }
                     .buttonStyle(.bordered)
                     .accessibilityLabel(modeBadge == .demo ? "Exit demo" : "Sign out")
+                }
+
+                if let joinTrip {
+                    Button(action: joinTrip) {
+                        Label("Join", systemImage: "link.badge.plus")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Join trip by invite code")
                 }
 
                 Button(action: createTrip) {
@@ -144,6 +158,113 @@ struct WaniHeader: View {
         .background(.regularMaterial)
         .overlay(alignment: .bottom) {
             Divider()
+        }
+    }
+}
+
+struct JoinTripInviteView: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var store: TripStore
+    @State private var inviteCode = ""
+    @State private var isLookingUp = false
+    @State private var isJoining = false
+
+    private var trimmedCode: String {
+        inviteCode.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
+                    WaniSectionHeader(
+                        title: "Join a Trip",
+                        subtitle: "Enter an invite code to preview the trip before joining."
+                    )
+
+                    WaniCard {
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                            TextField("Invite code", text: $inviteCode)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled()
+                                .textFieldStyle(.roundedBorder)
+
+                            Button {
+                                Task { await lookupInvite() }
+                            } label: {
+                                if isLookingUp {
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity)
+                                } else {
+                                    Label("Preview Invite", systemImage: "magnifyingglass")
+                                        .frame(maxWidth: .infinity)
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(AppTheme.primary)
+                            .disabled(trimmedCode.isEmpty || isLookingUp)
+                        }
+                    }
+
+                    if let preview = store.invitePreview {
+                        WaniCard {
+                            VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                                VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
+                                    Text("Ready to join")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(AppTheme.success)
+                                    Text(preview.tripName)
+                                        .font(.title3.weight(.semibold))
+                                    Text("You'll join as a \(preview.role.rawValue).")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Button {
+                                    Task { await acceptInvite() }
+                                } label: {
+                                    if isJoining {
+                                        ProgressView()
+                                            .frame(maxWidth: .infinity)
+                                    } else {
+                                        Label("Join Trip", systemImage: "person.badge.plus")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(AppTheme.success)
+                                .disabled(isJoining)
+                            }
+                        }
+                    }
+                }
+                .padding(AppTheme.Spacing.large)
+            }
+            .background(AppTheme.background)
+            .navigationTitle("Invite Code")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    private func lookupInvite() async {
+        isLookingUp = true
+        await store.lookupInvite(code: inviteCode)
+        isLookingUp = false
+    }
+
+    @MainActor
+    private func acceptInvite() async {
+        isJoining = true
+        await store.acceptInvite(code: inviteCode)
+        isJoining = false
+
+        if store.syncError == nil {
+            dismiss()
         }
     }
 }

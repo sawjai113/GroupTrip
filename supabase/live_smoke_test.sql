@@ -246,6 +246,57 @@ begin
   end;
 end $$;
 
+-- A signed-in non-member can accept an active invite exactly once.
+do $$
+declare
+  joined_rows integer;
+  invite_uses integer;
+begin
+  perform public.accept_trip_invite('WANI-SMOKE-CODE');
+
+  select count(*) into joined_rows
+  from public.trip_members
+  where trip_id = '00000000-0000-0000-0000-000000001001'
+    and user_id = '00000000-0000-0000-0000-000000000103'
+    and role = 'guest'
+    and member_kind = 'account';
+
+  if joined_rows <> 1 then
+    raise exception 'invite accept should add one guest membership, got %', joined_rows;
+  end if;
+
+  select use_count into invite_uses
+  from public.trip_invites
+  where id = '00000000-0000-0000-0000-000000006001';
+
+  if invite_uses <> 1 then
+    raise exception 'invite accept should increment use_count once, got %', invite_uses;
+  end if;
+
+  perform public.accept_trip_invite('WANI-SMOKE-CODE');
+
+  select count(*) into joined_rows
+  from public.trip_members
+  where trip_id = '00000000-0000-0000-0000-000000001001'
+    and user_id = '00000000-0000-0000-0000-000000000103';
+
+  select use_count into invite_uses
+  from public.trip_invites
+  where id = '00000000-0000-0000-0000-000000006001';
+
+  if joined_rows <> 1 or invite_uses <> 1 then
+    raise exception 'repeat invite accept should be idempotent; members %, uses %', joined_rows, invite_uses;
+  end if;
+
+  begin
+    perform public.accept_trip_invite('WANI-SMOKE-MAXED');
+    raise exception 'maxed invite should not be accepted';
+  exception
+    when invalid_parameter_value then
+      null;
+  end;
+end $$;
+
 -- Anonymous users should not get table-level reads.
 reset role;
 set local role anon;
@@ -295,6 +346,14 @@ begin
   if lookup_rows <> 0 then
     raise exception 'random invite lookup should return zero rows, got %', lookup_rows;
   end if;
+
+  begin
+    perform public.accept_trip_invite('WANI-SMOKE-CODE');
+    raise exception 'anon should not be able to accept invites';
+  exception
+    when insufficient_privilege or invalid_authorization_specification then
+      null;
+  end;
 end $$;
 
 -- Integrity trigger should reject expense paid by a participant from a different trip.

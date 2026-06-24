@@ -8,6 +8,8 @@ final class TripStore: ObservableObject {
     @Published var invitePreview: TripInvitePreview?
     private let service: (any TripSyncServicing)?
 
+    var supportsCloudSync: Bool { service != nil }
+
     init(trips: [TripPlan], service: (any TripSyncServicing)? = nil) {
         self.trips = trips
         self.service = service
@@ -198,6 +200,22 @@ final class TripStore: ObservableObject {
             syncError = nil
         } catch {
             invitePreview = nil
+            syncError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func acceptInvite(code: String) async {
+        guard let service else { return }
+        let normalizedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !normalizedCode.isEmpty else { return }
+
+        do {
+            try await service.acceptInvite(code: normalizedCode)
+            trips = try await service.loadTrips()
+            invitePreview = nil
+            syncError = nil
+        } catch {
             syncError = error.localizedDescription
         }
     }

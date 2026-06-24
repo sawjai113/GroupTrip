@@ -6,6 +6,7 @@ protocol TripSyncServicing {
     func createTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async throws -> TripPlan
     func createInvite(for tripID: UUID, role: TripInvite.Role) async throws -> TripInvite
     func lookupInvite(code: String) async throws -> TripInvitePreview?
+    func acceptInvite(code: String) async throws
 }
 
 struct SupabaseTripService: TripSyncServicing {
@@ -92,6 +93,13 @@ struct SupabaseTripService: TripSyncServicing {
             .value
 
         return rows.first?.invitePreview
+    }
+
+    func acceptInvite(code: String) async throws {
+        let params = SupabaseInviteLookupParams(inviteCode: code)
+        try await client
+            .rpc("accept_trip_invite", params: params)
+            .execute()
     }
 
     private static func makeInviteCode() -> String {

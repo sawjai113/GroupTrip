@@ -290,6 +290,42 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertNil(store.syncError)
     }
 
+    func testCloudStoreAcceptsInviteThenReloadsTrips() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B005")!
+        let joinedTrip = makeTrip(id: tripID, name: "Austin Weekend")
+        service.tripsToLoad = [joinedTrip]
+        let store = TripStore(service: service)
+        store.invitePreview = TripInvitePreview(
+            inviteID: UUID(uuidString: "00000000-0000-0000-0000-00000000C003")!,
+            tripID: tripID,
+            tripName: "Austin Weekend",
+            role: .guest,
+            expiresAt: nil
+        )
+
+        await store.acceptInvite(code: " wani2027 ")
+
+        XCTAssertEqual(service.acceptedInviteCode, "WANI2027")
+        XCTAssertTrue(service.didLoadTrips)
+        XCTAssertEqual(store.trips.map(\.id), [tripID])
+        XCTAssertNil(store.invitePreview)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsInviteAcceptFailureWithoutReloadingTrips() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let store = TripStore(service: service)
+
+        await store.acceptInvite(code: "WANI2027")
+
+        XCTAssertEqual(service.acceptedInviteCode, "WANI2027")
+        XCTAssertFalse(service.didLoadTrips)
+        XCTAssertTrue(store.trips.isEmpty)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
     private func makeTrip(id: UUID, name: String) -> TripPlan {
         TripPlan(
             id: id,
@@ -326,6 +362,7 @@ private final class FakeTripSyncService: TripSyncServicing {
     var createdTripRequest: CreateTripRequest?
     var createdInviteRequest: CreateInviteRequest?
     var lookedUpInviteCode: String?
+    var acceptedInviteCode: String?
     var createError: Error?
 
     func loadTrips() async throws -> [TripPlan] {
@@ -349,6 +386,11 @@ private final class FakeTripSyncService: TripSyncServicing {
         if let createError { throw createError }
         lookedUpInviteCode = code
         return invitePreviewToLookup
+    }
+
+    func acceptInvite(code: String) async throws {
+        acceptedInviteCode = code
+        if let createError { throw createError }
     }
 }
 

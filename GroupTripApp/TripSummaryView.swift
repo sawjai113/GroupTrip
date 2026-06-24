@@ -77,6 +77,12 @@ struct TripSummaryView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
 
+                        if store.supportsCloudSync {
+                            InvitePeopleCard(tripID: tripID, createdInvite: store.createdInvite) {
+                                Task { await store.createInvite(for: tripID) }
+                            }
+                        }
+
                     }
 
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
@@ -144,6 +150,48 @@ struct TripSummaryView: View {
         }
 
         return "All settled up"
+    }
+}
+
+private struct InvitePeopleCard: View {
+    let tripID: TripPlan.ID
+    let createdInvite: TripInvite?
+    var createInvite: () -> Void
+
+    private var inviteForTrip: TripInvite? {
+        guard createdInvite?.tripID == tripID else { return nil }
+        return createdInvite
+    }
+
+    var body: some View {
+        WaniCard(padding: AppTheme.Spacing.medium, radius: AppTheme.Radius.medium) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
+                HStack(spacing: AppTheme.Spacing.small) {
+                    WaniIconBadge(systemImage: "person.badge.plus", tint: AppTheme.success, size: AppTheme.IconSize.medium)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Invite People")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Create a code friends can use to join this trip.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                if let inviteForTrip {
+                    Text(inviteForTrip.code)
+                        .font(.title3.monospaced().weight(.semibold))
+                        .padding(.vertical, AppTheme.Spacing.xSmall)
+                        .accessibilityLabel("Invite code \(inviteForTrip.code)")
+                }
+
+                Button(inviteForTrip == nil ? "Create Invite Code" : "Create Another Code", action: createInvite)
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.success)
+            }
+        }
     }
 }
 

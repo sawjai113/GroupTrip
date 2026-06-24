@@ -514,6 +514,53 @@ $$;
 revoke all on function public.lookup_active_trip_invite(text) from public;
 grant execute on function public.lookup_active_trip_invite(text) to anon, authenticated;
 
+-- Accepting an invite is intentionally handled through a narrow function so
+-- a signed-in user can join without opening broad membership INSERT policies.
+create or replace function public.accept_trip_invite(invite_code text)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_user_id uuid := auth.uid();
+  active_invite record;
+  inserted_count integer := 0;
+begin
+  if current_user_id is null then
+    raise exception 'authentication required' using errcode = '28000';
+  end if;
+
+  select i.id, i.trip_id, i.role
+  into active_invite
+  from public.trip_invites i
+  where i.code = invite_code
+    and i.is_active = true
+    and (i.expires_at is null or i.expires_at > now())
+    and (i.max_uses is null or i.use_count < i.max_uses)
+  for update;
+
+  if not found then
+    raise exception 'invite is invalid or expired' using errcode = '22023';
+  end if;
+
+  insert into public.trip_members (trip_id, user_id, role, member_kind, created_by)
+  values (active_invite.trip_id, current_user_id, active_invite.role, 'account', current_user_id)
+  on conflict (trip_id, user_id) where user_id is not null do nothing;
+
+  get diagnostics inserted_count = row_count;
+
+  if inserted_count > 0 then
+    update public.trip_invites
+    set use_count = use_count + 1
+    where id = active_invite.id;
+  end if;
+end;
+$$;
+
+revoke all on function public.accept_trip_invite(text) from public;
+grant execute on function public.accept_trip_invite(text) to authenticated;
+
 -- ============================================================
 -- TRIP PLACES
 -- ============================================================
