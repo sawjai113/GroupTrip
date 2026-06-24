@@ -1,7 +1,12 @@
 import Foundation
 import Supabase
 
-struct SupabaseTripService {
+protocol TripSyncServicing {
+    func loadTrips() async throws -> [TripPlan]
+    func createTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async throws -> TripPlan
+}
+
+struct SupabaseTripService: TripSyncServicing {
     private let client: SupabaseClient
 
     init(client: SupabaseClient = SupabaseConfig.client) {

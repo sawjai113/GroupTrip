@@ -196,6 +196,113 @@ private final class FakeAuthService: AuthServicing {
     }
 }
 
+@MainActor
+final class TripStoreCloudSyncTests: XCTestCase {
+    func testCloudStoreLoadsTripsFromInjectedService() async throws {
+        let service = FakeTripSyncService()
+        let remoteTrip = makeTrip(id: UUID(uuidString: "00000000-0000-0000-0000-00000000B001")!, name: "Austin Weekend")
+        service.tripsToLoad = [remoteTrip]
+        let store = TripStore(service: service)
+
+        await store.loadTrips()
+
+        XCTAssertTrue(service.didLoadTrips)
+        XCTAssertEqual(store.trips.map(\.id), [remoteTrip.id])
+        XCTAssertFalse(store.isLoading)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreCreatesRemoteTripWithTrimmedValuesAndAppendsReturnedTrip() async throws {
+        let service = FakeTripSyncService()
+        let createdTrip = makeTrip(id: UUID(uuidString: "00000000-0000-0000-0000-00000000B002")!, name: "Kyoto Spring")
+        service.tripToCreate = createdTrip
+        let store = TripStore(service: service)
+        let startDate = SupabaseDateFormatter.date(from: "2027-03-24")!
+        let endDate = SupabaseDateFormatter.date(from: "2027-04-04")!
+
+        await store.addRemoteTrip(
+            name: " Kyoto Spring ",
+            destination: " Kyoto ",
+            emoji: " 🌸 ",
+            imageURL: " https://example.com/kyoto.jpg ",
+            startDate: startDate,
+            endDate: endDate
+        )
+
+        XCTAssertEqual(service.createdTripRequest?.name, "Kyoto Spring")
+        XCTAssertEqual(service.createdTripRequest?.destination, "Kyoto")
+        XCTAssertEqual(service.createdTripRequest?.emoji, "🌸")
+        XCTAssertEqual(service.createdTripRequest?.imageURL, "https://example.com/kyoto.jpg")
+        XCTAssertEqual(store.trips.map(\.id), [createdTrip.id])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsCreateFailureWithoutAppendingLocalTrip() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let store = TripStore(service: service)
+        let date = SupabaseDateFormatter.date(from: "2027-03-24")!
+
+        await store.addRemoteTrip(
+            name: "Kyoto Spring",
+            destination: "Kyoto",
+            emoji: "🌸",
+            imageURL: "https://example.com/kyoto.jpg",
+            startDate: date,
+            endDate: date
+        )
+
+        XCTAssertTrue(store.trips.isEmpty)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
+    private func makeTrip(id: UUID, name: String) -> TripPlan {
+        TripPlan(
+            id: id,
+            destination: "Austin",
+            emoji: "🤠",
+            imageURL: "https://example.com/austin.jpg",
+            startDate: SupabaseDateFormatter.date(from: "2026-07-03")!,
+            endDate: SupabaseDateFormatter.date(from: "2026-07-06")!,
+            viewModel: TripCalculatorViewModel.empty(named: name)
+        )
+    }
+}
+
+private final class FakeTripSyncService: TripSyncServicing {
+    struct CreateTripRequest: Equatable {
+        var name: String
+        var destination: String
+        var emoji: String
+        var imageURL: String
+        var startDate: Date
+        var endDate: Date
+    }
+
+    var tripsToLoad: [TripPlan] = []
+    var tripToCreate: TripPlan?
+    var didLoadTrips = false
+    var createdTripRequest: CreateTripRequest?
+    var createError: Error?
+
+    func loadTrips() async throws -> [TripPlan] {
+        didLoadTrips = true
+        return tripsToLoad
+    }
+
+    func createTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async throws -> TripPlan {
+        if let createError { throw createError }
+        createdTripRequest = CreateTripRequest(name: name, destination: destination, emoji: emoji, imageURL: imageURL, startDate: startDate, endDate: endDate)
+        return tripToCreate ?? TripPlan(destination: destination, emoji: emoji, imageURL: imageURL, startDate: startDate, endDate: endDate, viewModel: TripCalculatorViewModel.empty(named: name))
+    }
+}
+
+private enum TestError: LocalizedError {
+    case intentional
+
+    var errorDescription: String? { "Intentional failure" }
+}
+
 final class AppSessionTests: XCTestCase {
     func testStartsWithoutSelectedMode() {
         let session = AppSession()

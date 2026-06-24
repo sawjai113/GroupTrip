@@ -4,14 +4,14 @@ final class TripStore: ObservableObject {
     @Published var trips: [TripPlan]
     @Published var isLoading = false
     @Published var syncError: String?
-    private let service: SupabaseTripService?
+    private let service: (any TripSyncServicing)?
 
-    init(trips: [TripPlan], service: SupabaseTripService? = nil) {
+    init(trips: [TripPlan], service: (any TripSyncServicing)? = nil) {
         self.trips = trips
         self.service = service
     }
 
-    convenience init(service: SupabaseTripService) {
+    convenience init(service: any TripSyncServicing) {
         self.init(trips: [], service: service)
     }
 
