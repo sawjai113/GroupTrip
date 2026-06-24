@@ -4,6 +4,8 @@ import Supabase
 protocol TripSyncServicing {
     func loadTrips() async throws -> [TripPlan]
     func createTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async throws -> TripPlan
+    func createInvite(for tripID: UUID, role: TripInvite.Role) async throws -> TripInvite
+    func lookupInvite(code: String) async throws -> TripInvitePreview?
 }
 
 struct SupabaseTripService: TripSyncServicing {
@@ -59,6 +61,66 @@ struct SupabaseTripService: TripSyncServicing {
 
         return remoteTrip.tripPlan()
     }
+
+    func createInvite(for tripID: UUID, role: TripInvite.Role = .guest) async throws -> TripInvite {
+        let session = try await client.auth.session
+        let invite = SupabaseTripInviteDTO(
+            id: UUID(),
+            tripID: tripID,
+            code: Self.makeInviteCode(),
+            createdBy: session.user.id,
+            role: role.rawValue,
+            maxUses: nil,
+            useCount: 0,
+            expiresAt: nil,
+            isActive: true
+        )
+
+        try await client
+            .from("trip_invites")
+            .insert(invite)
+            .execute()
+
+        return invite.tripInvite
+    }
+
+    func lookupInvite(code: String) async throws -> TripInvitePreview? {
+        let params = SupabaseInviteLookupParams(inviteCode: code)
+        let rows: [SupabaseInviteLookupDTO] = try await client
+            .rpc("lookup_active_trip_invite", params: params)
+            .execute()
+            .value
+
+        return rows.first?.invitePreview
+    }
+
+    private static func makeInviteCode() -> String {
+        let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+        return String((0..<8).map { _ in alphabet.randomElement() ?? "W" })
+    }
+}
+
+struct TripInvite: Equatable, Identifiable {
+    enum Role: String, Codable, Equatable {
+        case member
+        case guest
+    }
+
+    var id = UUID()
+    var tripID: UUID
+    var code: String
+    var role: Role
+    var expiresAt: Date?
+}
+
+struct TripInvitePreview: Equatable, Identifiable {
+    var inviteID: UUID
+    var tripID: UUID
+    var tripName: String
+    var role: TripInvite.Role
+    var expiresAt: Date?
+
+    var id: UUID { inviteID }
 }
 
 enum SupabaseDateFormatter {
@@ -78,6 +140,25 @@ enum SupabaseDateFormatter {
 
     static func string(from date: Date) -> String {
         formatter.string(from: date)
+    }
+}
+
+enum SupabaseDateTimeFormatter {
+    private static let formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static let fallbackFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    static func date(from string: String?) -> Date? {
+        guard let string else { return nil }
+        return formatter.date(from: string) ?? fallbackFormatter.date(from: string)
     }
 }
 
@@ -138,6 +219,74 @@ struct SupabaseTripDTO: Codable, Hashable {
             ),
             places: places.map(\.tripPlace),
             planningItems: planningItems.map(\.tripPlanningItem)
+        )
+    }
+}
+
+struct SupabaseTripInviteDTO: Codable, Hashable {
+    var id: UUID
+    var tripID: UUID
+    var code: String
+    var createdBy: UUID
+    var role: String
+    var maxUses: Int?
+    var useCount: Int
+    var expiresAt: String?
+    var isActive: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case tripID = "trip_id"
+        case code
+        case createdBy = "created_by"
+        case role
+        case maxUses = "max_uses"
+        case useCount = "use_count"
+        case expiresAt = "expires_at"
+        case isActive = "is_active"
+    }
+
+    var tripInvite: TripInvite {
+        TripInvite(
+            id: id,
+            tripID: tripID,
+            code: code,
+            role: TripInvite.Role(rawValue: role) ?? .guest,
+            expiresAt: SupabaseDateTimeFormatter.date(from: expiresAt)
+        )
+    }
+}
+
+struct SupabaseInviteLookupParams: Encodable {
+    var inviteCode: String
+
+    enum CodingKeys: String, CodingKey {
+        case inviteCode = "invite_code"
+    }
+}
+
+struct SupabaseInviteLookupDTO: Codable, Hashable {
+    var inviteID: UUID
+    var tripID: UUID
+    var tripName: String
+    var role: String
+    var expiresAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case inviteID = "invite_id"
+        case tripID = "trip_id"
+        case tripName = "trip_name"
+        case role
+        case expiresAt = "expires_at"
+    }
+
+    var invitePreview: TripInvitePreview {
+        TripInvitePreview(
+            inviteID: inviteID,
+            tripID: tripID,
+            tripName: tripName,
+            role: TripInvite.Role(rawValue: role) ?? .guest,
+            expiresAt: SupabaseDateTimeFormatter.date(from: expiresAt)
         )
     }
 }

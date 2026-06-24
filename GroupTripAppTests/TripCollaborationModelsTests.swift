@@ -256,6 +256,40 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
 
+    func testCloudStoreCreatesGuestInviteForTrip() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B003")!
+        let invite = TripInvite(id: UUID(uuidString: "00000000-0000-0000-0000-00000000C001")!, tripID: tripID, code: "WANI2027", role: .guest)
+        service.inviteToCreate = invite
+        let store = TripStore(service: service)
+
+        await store.createInvite(for: tripID)
+
+        XCTAssertEqual(service.createdInviteRequest?.tripID, tripID)
+        XCTAssertEqual(service.createdInviteRequest?.role, .guest)
+        XCTAssertEqual(store.createdInvite, invite)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreLooksUpTrimmedUppercaseInviteCode() async throws {
+        let service = FakeTripSyncService()
+        let preview = TripInvitePreview(
+            inviteID: UUID(uuidString: "00000000-0000-0000-0000-00000000C002")!,
+            tripID: UUID(uuidString: "00000000-0000-0000-0000-00000000B004")!,
+            tripName: "Austin Weekend",
+            role: .guest,
+            expiresAt: nil
+        )
+        service.invitePreviewToLookup = preview
+        let store = TripStore(service: service)
+
+        await store.lookupInvite(code: " wani2027 ")
+
+        XCTAssertEqual(service.lookedUpInviteCode, "WANI2027")
+        XCTAssertEqual(store.invitePreview, preview)
+        XCTAssertNil(store.syncError)
+    }
+
     private func makeTrip(id: UUID, name: String) -> TripPlan {
         TripPlan(
             id: id,
@@ -279,10 +313,19 @@ private final class FakeTripSyncService: TripSyncServicing {
         var endDate: Date
     }
 
+    struct CreateInviteRequest: Equatable {
+        var tripID: UUID
+        var role: TripInvite.Role
+    }
+
     var tripsToLoad: [TripPlan] = []
     var tripToCreate: TripPlan?
+    var inviteToCreate: TripInvite?
+    var invitePreviewToLookup: TripInvitePreview?
     var didLoadTrips = false
     var createdTripRequest: CreateTripRequest?
+    var createdInviteRequest: CreateInviteRequest?
+    var lookedUpInviteCode: String?
     var createError: Error?
 
     func loadTrips() async throws -> [TripPlan] {
@@ -294,6 +337,18 @@ private final class FakeTripSyncService: TripSyncServicing {
         if let createError { throw createError }
         createdTripRequest = CreateTripRequest(name: name, destination: destination, emoji: emoji, imageURL: imageURL, startDate: startDate, endDate: endDate)
         return tripToCreate ?? TripPlan(destination: destination, emoji: emoji, imageURL: imageURL, startDate: startDate, endDate: endDate, viewModel: TripCalculatorViewModel.empty(named: name))
+    }
+
+    func createInvite(for tripID: UUID, role: TripInvite.Role) async throws -> TripInvite {
+        if let createError { throw createError }
+        createdInviteRequest = CreateInviteRequest(tripID: tripID, role: role)
+        return inviteToCreate ?? TripInvite(tripID: tripID, code: "WANI2027", role: role)
+    }
+
+    func lookupInvite(code: String) async throws -> TripInvitePreview? {
+        if let createError { throw createError }
+        lookedUpInviteCode = code
+        return invitePreviewToLookup
     }
 }
 

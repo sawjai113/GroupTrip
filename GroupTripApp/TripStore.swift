@@ -4,6 +4,8 @@ final class TripStore: ObservableObject {
     @Published var trips: [TripPlan]
     @Published var isLoading = false
     @Published var syncError: String?
+    @Published var createdInvite: TripInvite?
+    @Published var invitePreview: TripInvitePreview?
     private let service: (any TripSyncServicing)?
 
     init(trips: [TripPlan], service: (any TripSyncServicing)? = nil) {
@@ -166,6 +168,36 @@ final class TripStore: ObservableObject {
             )
             trips.append(trip)
         } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func createInvite(for tripID: TripPlan.ID, role: TripInvite.Role = .guest) async {
+        guard let service else { return }
+
+        do {
+            createdInvite = try await service.createInvite(for: tripID, role: role)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func lookupInvite(code: String) async {
+        guard let service else { return }
+        let normalizedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        guard !normalizedCode.isEmpty else {
+            invitePreview = nil
+            return
+        }
+
+        do {
+            invitePreview = try await service.lookupInvite(code: normalizedCode)
+            syncError = nil
+        } catch {
+            invitePreview = nil
             syncError = error.localizedDescription
         }
     }
