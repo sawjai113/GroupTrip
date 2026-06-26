@@ -39,6 +39,7 @@ protocol AuthServicing {
     var sessionStates: AsyncStream<AuthSessionState> { get }
 
     func sendMagicLink(email: String, displayName: String?) async throws
+    func signInWithGoogle() async throws
     func signOut() async throws
     func bootstrapProfile(userID: UUID, email: String?) async throws
 }
@@ -79,6 +80,10 @@ struct SupabaseAuthService: AuthServicing {
             shouldCreateUser: true,
             data: data
         )
+    }
+
+    func signInWithGoogle() async throws {
+        try await client.auth.signInWithOAuth(provider: .google) { _ in }
     }
 
     func signOut() async throws {
@@ -144,6 +149,12 @@ final class AuthViewModel: ObservableObject {
                 email: trimmedEmail,
                 displayName: trimmedDisplayName.isEmpty ? nil : trimmedDisplayName
             )
+        }
+    }
+
+    func signInWithGoogle() async {
+        await runAuthAction {
+            try await service.signInWithGoogle()
         }
     }
 

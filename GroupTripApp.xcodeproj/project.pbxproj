@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 77;
+	objectVersion = 71;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -12,8 +12,6 @@
 		7B0000012C00000000000003 /* TripExpenseCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000013 /* TripExpenseCalculator.swift */; };
 		7B0000012C00000000000004 /* TripCalculatorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000014 /* TripCalculatorViewModel.swift */; };
 		7B0000012C00000000000006 /* TripExpenseCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000016 /* TripExpenseCalculatorTests.swift */; };
-		7B0000012C0000000000008B /* TripCollaborationModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C0000000000008C /* TripCollaborationModelsTests.swift */; };
-		7B0000012C0000000000008D /* TripCollaborationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C0000000000008E /* TripCollaborationModels.swift */; };
 		7B0000012C00000000000060 /* SupabaseConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000064 /* SupabaseConfig.swift */; };
 		7B0000012C00000000000061 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000065 /* AuthViewModel.swift */; };
 		7B0000012C00000000000062 /* AuthViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000066 /* AuthViews.swift */; };
@@ -30,6 +28,8 @@
 		7B0000012C00000000000078 /* SharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000088 /* SharedViews.swift */; };
 		7B0000012C00000000000079 /* TripPlacesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000089 /* TripPlacesView.swift */; };
 		7B0000012C0000000000007A /* TripPlanningView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C0000000000008A /* TripPlanningView.swift */; };
+		7B0000012C0000000000008B /* TripCollaborationModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C0000000000008C /* TripCollaborationModelsTests.swift */; };
+		7B0000012C0000000000008D /* TripCollaborationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C0000000000008E /* TripCollaborationModels.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -50,8 +50,6 @@
 		7B0000012C00000000000013 /* TripExpenseCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripExpenseCalculator.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000014 /* TripCalculatorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCalculatorViewModel.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000016 /* TripExpenseCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripExpenseCalculatorTests.swift; sourceTree = "<group>"; };
-		7B0000012C0000000000008C /* TripCollaborationModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCollaborationModelsTests.swift; sourceTree = "<group>"; };
-		7B0000012C0000000000008E /* TripCollaborationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCollaborationModels.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000064 /* SupabaseConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseConfig.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000065 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000066 /* AuthViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViews.swift; sourceTree = "<group>"; };
@@ -67,6 +65,8 @@
 		7B0000012C00000000000088 /* SharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedViews.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000089 /* TripPlacesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPlacesView.swift; sourceTree = "<group>"; };
 		7B0000012C0000000000008A /* TripPlanningView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripPlanningView.swift; sourceTree = "<group>"; };
+		7B0000012C0000000000008C /* TripCollaborationModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCollaborationModelsTests.swift; sourceTree = "<group>"; };
+		7B0000012C0000000000008E /* TripCollaborationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripCollaborationModels.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -215,7 +215,6 @@
 			packageReferences = (
 				7B0000012C00000000000069 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
-			preferredProjectObjectVersion = 77;
 			productRefGroup = 7B0000012C00000000000026 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -416,6 +415,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Wani;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleTypeRole = Editor;\n    CFBundleURLName = \"com.sawjai.GroupTripApp.google\";\n    CFBundleURLSchemes = (\n        \"698662305037-53om03eo495ihep40hajtarku2bjgktp\"\n    );\n}";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -441,6 +441,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Wani;
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleTypeRole = Editor;\n    CFBundleURLName = \"com.sawjai.GroupTripApp.google\";\n    CFBundleURLSchemes = (\n        \"698662305037-53om03eo495ihep40hajtarku2bjgktp\"\n    );\n}";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

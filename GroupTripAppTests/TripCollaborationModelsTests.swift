@@ -190,6 +190,8 @@ private final class FakeAuthService: AuthServicing {
 
     func signOut() async throws { }
 
+    func signInWithGoogle() async throws { }
+
     func bootstrapProfile(userID: UUID, email: String?) async throws {
         bootstrappedProfileUserID = userID
         bootstrappedProfileEmail = email

@@ -144,13 +144,53 @@ private struct LoginView: View {
                     Text("Wani")
                         .font(.largeTitle.weight(.bold))
 
-                    Text("Send yourself a magic link to save and sync cloud trips.")
+                    Text("Sign in with Google or use a magic link to save and sync cloud trips.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
 
                 VStack(spacing: 12) {
+                    if let authError = viewModel.authError {
+                        Text(authError)
+                            .font(.footnote)
+                            .foregroundStyle(AppTheme.error)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if let authMessage = viewModel.authMessage {
+                        Text(authMessage)
+                            .font(.footnote)
+                            .foregroundStyle(AppTheme.success)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    Button {
+                        Task { await viewModel.signInWithGoogle() }
+                    } label: {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .tint(.white)
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Label("Continue with Google", systemImage: "g.circle.fill")
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.primary)
+                    .disabled(viewModel.isLoading)
+
+                    VStack(spacing: 0) {
+                        Divider()
+                            .padding(.vertical, 8)
+
+                        Text("Or sign in with a magic link:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     TextField("Email", text: $email)
                         .textContentType(.emailAddress)
                         .keyboardType(.emailAddress)
@@ -165,20 +205,6 @@ private struct LoginView: View {
                         .padding(12)
                         .background(AppTheme.paper)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-                    if let authError = viewModel.authError {
-                        Text(authError)
-                            .font(.footnote)
-                            .foregroundStyle(AppTheme.error)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    if let authMessage = viewModel.authMessage {
-                        Text(authMessage)
-                            .font(.footnote)
-                            .foregroundStyle(AppTheme.success)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
 
                     Button {
                         Task {
@@ -196,7 +222,7 @@ private struct LoginView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primary)
+                    .tint(AppTheme.warning)
                     .disabled(!canSubmit || viewModel.isLoading)
 
                     Text("No password needed. Supabase will email a secure sign-in link.")
