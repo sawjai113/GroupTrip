@@ -83,7 +83,10 @@ struct SupabaseAuthService: AuthServicing {
     }
 
     func signInWithGoogle() async throws {
-        try await client.auth.signInWithOAuth(provider: .google) { _ in }
+        try await client.auth.signInWithOAuth(
+            provider: .google,
+            redirectTo: SupabaseConfig.googleOAuthRedirectURL
+        ) { _ in }
     }
 
     func signOut() async throws {

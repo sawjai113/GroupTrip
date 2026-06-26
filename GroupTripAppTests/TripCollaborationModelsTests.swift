@@ -2,6 +2,13 @@ import XCTest
 @testable import GroupTripApp
 
 final class SupabaseDTOTests: XCTestCase {
+    func testGoogleOAuthRedirectURLUsesAnIOSCallbackScheme() throws {
+        let redirectURL = try XCTUnwrap(SupabaseConfig.googleOAuthRedirectURL)
+
+        XCTAssertEqual(redirectURL.scheme, "com.googleusercontent.apps.698662305037-53om03eo495ihep40hajtarku2bjgktp")
+        XCTAssertEqual(redirectURL.host, "auth-callback")
+    }
+
     func testTripDTOMapsSnakeCaseTripRowIntoTripPlan() throws {
         let json = """
         {
