@@ -98,6 +98,46 @@ final class TripStore: ObservableObject {
         }
     }
 
+    @MainActor
+    func savePlace(_ place: TripPlace, to tripID: TripPlan.ID) async {
+        let trimmedPlace = TripPlace(
+            id: place.id,
+            name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            category: place.category.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        guard !trimmedPlace.name.isEmpty else { return }
+
+        guard let service else {
+            addPlace(trimmedPlace, to: tripID)
+            return
+        }
+
+        do {
+            let savedPlace = try await service.createPlace(trimmedPlace, in: tripID)
+            addPlace(savedPlace, to: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func removePlace(_ placeID: TripPlace.ID, from tripID: TripPlan.ID) async {
+        guard let service else {
+            deletePlace(placeID, from: tripID)
+            return
+        }
+
+        do {
+            try await service.deletePlace(placeID, from: tripID)
+            deletePlace(placeID, from: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
     func setPlanningItems(_ items: [TripPlanningItem], for tripID: TripPlan.ID) {
         updateTrip(withID: tripID) { trip in
             trip.planningItems = items

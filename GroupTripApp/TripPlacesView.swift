@@ -2,7 +2,22 @@ import SwiftUI
 
 struct TripPlacesView: View {
     @Binding var places: [TripPlace]
+    var savePlace: (TripPlace) async -> Void
+    var deletePlace: (TripPlace.ID) async -> Void
+    var usesExternalPersistence: Bool
     @State private var isShowingAddPlace = false
+
+    init(
+        places: Binding<[TripPlace]>,
+        savePlace: @escaping (TripPlace) async -> Void = { _ in },
+        deletePlace: @escaping (TripPlace.ID) async -> Void = { _ in },
+        usesExternalPersistence: Bool = false
+    ) {
+        _places = places
+        self.savePlace = savePlace
+        self.deletePlace = deletePlace
+        self.usesExternalPersistence = usesExternalPersistence
+    }
 
     var body: some View {
         ScrollView {
@@ -18,7 +33,7 @@ struct TripPlacesView: View {
                     VStack(spacing: AppTheme.Spacing.medium) {
                         ForEach(places) { place in
                             TripPlaceCard(place: place) {
-                                deletePlace(place)
+                                Task { await removePlace(place) }
                             }
                         }
                     }
@@ -41,9 +56,7 @@ struct TripPlacesView: View {
         }
         .sheet(isPresented: $isShowingAddPlace) {
             AddTripPlaceView { place in
-                withAnimation(.snappy) {
-                    places.append(place)
-                }
+                Task { await addPlace(place) }
             }
         }
     }
@@ -55,9 +68,23 @@ struct TripPlacesView: View {
         )
     }
 
-    private func deletePlace(_ place: TripPlace) {
-        withAnimation(.snappy) {
-            places.removeAll { $0.id == place.id }
+    private func addPlace(_ place: TripPlace) async {
+        if usesExternalPersistence {
+            await savePlace(place)
+        } else {
+            withAnimation(.snappy) {
+                places.append(place)
+            }
+        }
+    }
+
+    private func removePlace(_ place: TripPlace) async {
+        if usesExternalPersistence {
+            await deletePlace(place.id)
+        } else {
+            withAnimation(.snappy) {
+                places.removeAll { $0.id == place.id }
+            }
         }
     }
 }

@@ -4,6 +4,8 @@ import Supabase
 protocol TripSyncServicing {
     func loadTrips() async throws -> [TripPlan]
     func createTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async throws -> TripPlan
+    func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace
+    func deletePlace(_ placeID: UUID, from tripID: UUID) async throws
     func createInvite(for tripID: UUID, role: TripInvite.Role) async throws -> TripInvite
     func lookupInvite(code: String) async throws -> TripInvitePreview?
     func acceptInvite(code: String) async throws
@@ -160,6 +162,34 @@ struct SupabaseTripService: TripSyncServicing {
             .execute()
 
         return remoteTrip.tripPlan()
+    }
+
+    func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace {
+        let trimmedPlace = TripPlace(
+            id: place.id,
+            name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            category: place.category.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        guard !trimmedPlace.name.isEmpty else { return trimmedPlace }
+
+        let row = SupabaseTripPlaceDTO(tripID: tripID, place: trimmedPlace)
+
+        try await client
+            .from("trip_places")
+            .insert(row)
+            .execute()
+
+        return trimmedPlace
+    }
+
+    func deletePlace(_ placeID: UUID, from tripID: UUID) async throws {
+        try await client
+            .from("trip_places")
+            .delete()
+            .eq("id", value: placeID)
+            .eq("trip_id", value: tripID)
+            .execute()
     }
 
     func createInvite(for tripID: UUID, role: TripInvite.Role = .guest) async throws -> TripInvite {
@@ -480,6 +510,36 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
         case googlePlaceID = "google_place_id"
         case latitude
         case longitude
+    }
+
+    init(
+        id: UUID,
+        tripID: UUID,
+        name: String,
+        note: String,
+        category: String,
+        googlePlaceID: String? = nil,
+        latitude: Double? = nil,
+        longitude: Double? = nil
+    ) {
+        self.id = id
+        self.tripID = tripID
+        self.name = name
+        self.note = note
+        self.category = category
+        self.googlePlaceID = googlePlaceID
+        self.latitude = latitude
+        self.longitude = longitude
+    }
+
+    init(tripID: UUID, place: TripPlace) {
+        self.init(
+            id: place.id,
+            tripID: tripID,
+            name: place.name,
+            note: place.note,
+            category: place.category
+        )
     }
 
     var tripPlace: TripPlace {

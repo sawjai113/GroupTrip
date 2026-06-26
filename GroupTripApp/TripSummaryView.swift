@@ -108,7 +108,16 @@ struct TripSummaryView: View {
                         .buttonStyle(.plain)
 
                         NavigationLink {
-                            TripPlacesView(places: placesBinding)
+                            TripPlacesView(
+                                places: placesBinding,
+                                savePlace: { place in
+                                    await store.savePlace(place, to: tripID)
+                                },
+                                deletePlace: { placeID in
+                                    await store.removePlace(placeID, from: tripID)
+                                },
+                                usesExternalPersistence: store.supportsCloudSync
+                            )
                         } label: {
                             PlacesPreviewCard(places: trip.places)
                         }
