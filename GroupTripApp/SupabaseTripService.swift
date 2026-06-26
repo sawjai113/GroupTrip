@@ -17,14 +17,113 @@ struct SupabaseTripService: TripSyncServicing {
     }
 
     func loadTrips() async throws -> [TripPlan] {
-        let rows: [SupabaseTripDTO] = try await client
+        let tripRows: [SupabaseTripDTO] = try await client
             .from("trips")
             .select()
             .order("start_date", ascending: true)
             .execute()
             .value
 
-        return rows.map { $0.tripPlan() }
+        let tripIDs = tripRows.map(\.id)
+        guard !tripIDs.isEmpty else { return [] }
+        let tripIDFilters = tripIDs.map { $0 as any PostgrestFilterValue }
+
+        let participants: [SupabaseTripParticipantDTO] = try await client
+            .from("trip_participants")
+            .select()
+            .in("trip_id", values: tripIDFilters)
+            .execute()
+            .value
+
+        let places: [SupabaseTripPlaceDTO] = try await client
+            .from("trip_places")
+            .select()
+            .in("trip_id", values: tripIDFilters)
+            .order("created_at", ascending: true)
+            .execute()
+            .value
+
+        let planningItems: [SupabaseTripPlanningItemDTO] = try await client
+            .from("trip_planning_items")
+            .select()
+            .in("trip_id", values: tripIDFilters)
+            .order("scheduled_date", ascending: true)
+            .order("created_at", ascending: true)
+            .execute()
+            .value
+
+        let expenses: [SupabaseTripExpenseDTO] = try await client
+            .from("trip_expenses")
+            .select()
+            .in("trip_id", values: tripIDFilters)
+            .order("incurred_on", ascending: true)
+            .order("created_at", ascending: true)
+            .execute()
+            .value
+
+        let expenseIDs = expenses.map(\.id)
+        let splits: [SupabaseTripExpenseSplitDTO]
+        if expenseIDs.isEmpty {
+            splits = []
+        } else {
+            let expenseIDFilters = expenseIDs.map { $0 as any PostgrestFilterValue }
+            splits = try await client
+                .from("trip_expense_splits")
+                .select()
+                .in("expense_id", values: expenseIDFilters)
+                .execute()
+                .value
+        }
+
+        let directPayments: [SupabaseTripDirectPaymentDTO] = try await client
+            .from("trip_direct_payments")
+            .select()
+            .in("trip_id", values: tripIDFilters)
+            .order("paid_on", ascending: true)
+            .order("created_at", ascending: true)
+            .execute()
+            .value
+
+        return Self.assembleTrips(
+            trips: tripRows,
+            participants: participants,
+            places: places,
+            planningItems: planningItems,
+            expenses: expenses,
+            splits: splits,
+            directPayments: directPayments
+        )
+    }
+
+    static func assembleTrips(
+        trips: [SupabaseTripDTO],
+        participants: [SupabaseTripParticipantDTO],
+        places: [SupabaseTripPlaceDTO],
+        planningItems: [SupabaseTripPlanningItemDTO],
+        expenses: [SupabaseTripExpenseDTO],
+        splits: [SupabaseTripExpenseSplitDTO],
+        directPayments: [SupabaseTripDirectPaymentDTO]
+    ) -> [TripPlan] {
+        let participantsByTripID = Dictionary(grouping: participants, by: \.tripID)
+        let placesByTripID = Dictionary(grouping: places, by: \.tripID)
+        let planningItemsByTripID = Dictionary(grouping: planningItems, by: \.tripID)
+        let expensesByTripID = Dictionary(grouping: expenses, by: \.tripID)
+        let directPaymentsByTripID = Dictionary(grouping: directPayments, by: \.tripID)
+        let expenseIDsByTripID = expensesByTripID.mapValues { Set($0.map(\.id)) }
+
+        return trips.map { trip in
+            let tripExpenseIDs = expenseIDsByTripID[trip.id, default: []]
+            let tripSplits = splits.filter { tripExpenseIDs.contains($0.expenseID) }
+
+            return trip.tripPlan(
+                participants: participantsByTripID[trip.id, default: []],
+                places: placesByTripID[trip.id, default: []],
+                planningItems: planningItemsByTripID[trip.id, default: []],
+                expenses: expensesByTripID[trip.id, default: []],
+                splits: tripSplits,
+                directPayments: directPaymentsByTripID[trip.id, default: []]
+            )
+        }
     }
 
     func createTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async throws -> TripPlan {

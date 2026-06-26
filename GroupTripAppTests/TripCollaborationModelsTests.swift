@@ -69,6 +69,61 @@ final class SupabaseDTOTests: XCTestCase {
         XCTAssertNil(guestMember.accountID)
     }
 
+    func testAssemblesLoadedCloudTripsWithOnlyTheirRelatedRows() throws {
+        let austinTripID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let kyotoTripID = UUID(uuidString: "11111111-1111-1111-1111-111111111112")!
+        let unrelatedTripID = UUID(uuidString: "11111111-1111-1111-1111-111111111113")!
+        let alexID = UUID(uuidString: "55555555-5555-5555-5555-555555555551")!
+        let samID = UUID(uuidString: "55555555-5555-5555-5555-555555555552")!
+        let expenseID = UUID(uuidString: "77777777-7777-7777-7777-777777777777")!
+        let unrelatedExpenseID = UUID(uuidString: "77777777-7777-7777-7777-777777777778")!
+
+        let trips = SupabaseTripService.assembleTrips(
+            trips: [
+                SupabaseTripDTO(id: austinTripID, name: "Austin Weekend", destination: "Austin", emoji: "🤠", imageURL: "https://example.com/austin.jpg", startDate: "2026-07-03", endDate: "2026-07-06"),
+                SupabaseTripDTO(id: kyotoTripID, name: "Kyoto Spring", destination: "Kyoto", emoji: "🌸", imageURL: "https://example.com/kyoto.jpg", startDate: "2027-03-24", endDate: "2027-04-04")
+            ],
+            participants: [
+                SupabaseTripParticipantDTO(id: alexID, tripID: austinTripID, displayName: "Alex", linkedMemberID: nil, linkedUserID: nil, isOrganizer: true),
+                SupabaseTripParticipantDTO(id: samID, tripID: austinTripID, displayName: "Sam", linkedMemberID: nil, linkedUserID: nil, isOrganizer: false),
+                SupabaseTripParticipantDTO(id: UUID(uuidString: "55555555-5555-5555-5555-555555555553")!, tripID: unrelatedTripID, displayName: "Unrelated", linkedMemberID: nil, linkedUserID: nil, isOrganizer: false)
+            ],
+            places: [
+                SupabaseTripPlaceDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666661")!, tripID: austinTripID, name: "Zilker Park", note: "Picnic", category: "Outdoors", googlePlaceID: nil, latitude: nil, longitude: nil),
+                SupabaseTripPlaceDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666662")!, tripID: unrelatedTripID, name: "Unrelated Place", note: "", category: "", googlePlaceID: nil, latitude: nil, longitude: nil)
+            ],
+            planningItems: [
+                SupabaseTripPlanningItemDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666663")!, tripID: austinTripID, title: "Book dinner", note: "Friday", scheduledDate: "2026-07-03", isDone: false)
+            ],
+            expenses: [
+                SupabaseTripExpenseDTO(id: expenseID, tripID: austinTripID, title: "Hotel", paidByParticipantID: alexID, amount: 200, currencyCode: "USD", incurredOn: "2026-07-03"),
+                SupabaseTripExpenseDTO(id: unrelatedExpenseID, tripID: unrelatedTripID, title: "Unrelated", paidByParticipantID: alexID, amount: 999, currencyCode: "USD", incurredOn: nil)
+            ],
+            splits: [
+                SupabaseTripExpenseSplitDTO(expenseID: expenseID, participantID: alexID, shareAmount: 100),
+                SupabaseTripExpenseSplitDTO(expenseID: expenseID, participantID: samID, shareAmount: 100),
+                SupabaseTripExpenseSplitDTO(expenseID: unrelatedExpenseID, participantID: alexID, shareAmount: 999)
+            ],
+            directPayments: [
+                SupabaseTripDirectPaymentDTO(id: UUID(uuidString: "88888888-8888-8888-8888-888888888888")!, tripID: austinTripID, title: "Sam paid Alex", fromParticipantID: samID, toParticipantID: alexID, amount: 50, currencyCode: "USD", paidOn: "2026-07-04")
+            ]
+        )
+
+        let austin = try XCTUnwrap(trips.first { $0.id == austinTripID })
+        let kyoto = try XCTUnwrap(trips.first { $0.id == kyotoTripID })
+
+        XCTAssertEqual(austin.places.map(\.name), ["Zilker Park"])
+        XCTAssertEqual(austin.planningItems.map(\.title), ["Book dinner"])
+        XCTAssertEqual(austin.viewModel.calculator.participants.map(\.name), ["Alex", "Sam"])
+        XCTAssertEqual(austin.viewModel.calculator.expenses.map(\.title), ["Hotel"])
+        XCTAssertEqual(austin.viewModel.calculator.expenses.first?.participants, Set([alexID, samID]))
+        XCTAssertEqual(austin.viewModel.calculator.payments.map(\.amount), [50])
+        XCTAssertTrue(kyoto.places.isEmpty)
+        XCTAssertTrue(kyoto.planningItems.isEmpty)
+        XCTAssertTrue(kyoto.viewModel.calculator.participants.isEmpty)
+        XCTAssertTrue(kyoto.viewModel.calculator.expenses.isEmpty)
+    }
+
     func testCollaborativeTripDTOAssemblesCalculatorPlacesAndPlanningItems() throws {
         let tripDTO = SupabaseTripDTO(
             id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
