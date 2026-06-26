@@ -131,7 +131,7 @@ final class AuthViewModelTests: XCTestCase {
 
         XCTAssertEqual(service.sentMagicLinkEmail, "alex@example.com")
         XCTAssertEqual(service.sentMagicLinkDisplayName, "Alex")
-        XCTAssertEqual(viewModel.authMessage, "Check your email for a Wani sign-in link.")
+        XCTAssertEqual(viewModel.authMessage, "Check your email for a Wanderaid sign-in link.")
         XCTAssertFalse(viewModel.isLoading)
     }
 

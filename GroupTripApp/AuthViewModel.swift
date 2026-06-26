@@ -144,7 +144,7 @@ final class AuthViewModel: ObservableObject {
             return
         }
 
-        await runAuthAction(successMessage: "Check your email for a Wani sign-in link.") {
+        await runAuthAction(successMessage: "Check your email for a Wanderaid sign-in link.") {
             try await service.sendMagicLink(
                 email: trimmedEmail,
                 displayName: trimmedDisplayName.isEmpty ? nil : trimmedDisplayName

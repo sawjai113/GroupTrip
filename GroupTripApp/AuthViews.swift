@@ -56,7 +56,7 @@ private struct ModeSelectionView: View {
                         .font(.system(size: 56))
                         .foregroundStyle(AppTheme.primary)
 
-                    Text("Wani")
+                    Text("Wanderaid")
                         .font(.largeTitle.weight(.bold))
 
                     Text("Choose how you want to plan right now.")
@@ -68,7 +68,7 @@ private struct ModeSelectionView: View {
                 VStack(spacing: AppTheme.Spacing.medium) {
                     ModeChoiceCard(
                         title: "Try Demo",
-                        subtitle: "Explore Wani with sample trips. Nothing here syncs to Supabase.",
+                        subtitle: "Explore Wanderaid with sample trips. Nothing here syncs to Supabase.",
                         systemImage: "sparkles",
                         tint: AppTheme.warning,
                         action: chooseDemoMode
@@ -141,7 +141,7 @@ private struct LoginView: View {
                         .font(.system(size: 52))
                         .foregroundStyle(AppTheme.primary)
 
-                    Text("Wani")
+                    Text("Wanderaid")
                         .font(.largeTitle.weight(.bold))
 
                     Text("Sign in with Google or use a magic link to save and sync cloud trips.")

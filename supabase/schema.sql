@@ -1,5 +1,5 @@
 -- ============================================================
--- Wani — Supabase Schema
+-- Wanderaid — Supabase Schema
 -- ============================================================
 -- Single source of truth for the Milestone 2 collaborative MVP
 -- database shape. Run in the Supabase SQL editor to bootstrap or

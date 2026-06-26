@@ -1,4 +1,4 @@
--- Wani live Supabase RLS smoke test
+-- Wanderaid live Supabase RLS smoke test
 -- Safe to run against linked live Supabase project: all inserted rows are rolled back.
 -- This verifies authenticated users can create/read trip data, members can collaborate,
 -- non-members are blocked by RLS, anonymous table reads are blocked, invite lookup works,
@@ -22,7 +22,7 @@ set local "request.jwt.claim.sub" = '00000000-0000-0000-0000-000000000101';
 insert into public.trips (id, name, destination, emoji, start_date, end_date, created_by)
 values (
   '00000000-0000-0000-0000-000000001001',
-  'Wani Live Smoke Trip',
+  'Wanderaid Live Smoke Trip',
   'Test City',
   '🧪',
   current_date,
@@ -363,7 +363,7 @@ set local "request.jwt.claim.role" = 'authenticated';
 set local "request.jwt.claim.sub" = '00000000-0000-0000-0000-000000000101';
 
 insert into public.trips (id, name, destination, emoji, start_date, end_date, created_by)
-values ('00000000-0000-0000-0000-000000001002', 'Wani Smoke Other Trip', 'Other City', '🧪', current_date, current_date + 1, auth.uid());
+values ('00000000-0000-0000-0000-000000001002', 'Wanderaid Smoke Other Trip','Other City', '🧪', current_date, current_date + 1, auth.uid());
 
 insert into public.trip_members (id, trip_id, user_id, role, member_kind, display_name, created_by)
 values ('00000000-0000-0000-0000-000000002004', '00000000-0000-0000-0000-000000001002', auth.uid(), 'owner', 'account', 'Smoke Owner', auth.uid());
@@ -387,4 +387,4 @@ end $$;
 
 rollback;
 
-select 'Wani live Supabase RLS smoke test passed' as result;
+select 'Wanderaid live Supabase RLS smoke test passed' as result;

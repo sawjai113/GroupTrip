@@ -103,7 +103,7 @@ struct WaniHeader: View {
                     .font(.title2)
                     .foregroundStyle(AppTheme.primary)
 
-                Text("Wani")
+                Text("Wanderaid")
                     .font(.title2.weight(.semibold))
 
                 Spacer()
