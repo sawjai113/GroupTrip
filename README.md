@@ -28,6 +28,10 @@ Latest verification:
 
 Wani uses test-driven development as the default for behavior changes, bug fixes, and refactors. See `docs/development/tdd-practice.md`.
 
+### Backlog
+
+Quick TODOs, tester feedback, and rough product notes are tracked in `docs/todo-feedback.md` before they graduate into detailed plans or GitHub issues.
+
 ### Build
 
 ```sh
