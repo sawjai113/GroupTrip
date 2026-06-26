@@ -525,6 +525,8 @@ as $$
 declare
   current_user_id uuid := auth.uid();
   active_invite record;
+  joined_member_id uuid;
+  joined_display_name text;
   inserted_count integer := 0;
 begin
   if current_user_id is null then
@@ -549,6 +551,49 @@ begin
   on conflict (trip_id, user_id) where user_id is not null do nothing;
 
   get diagnostics inserted_count = row_count;
+
+  select tm.id
+  into joined_member_id
+  from public.trip_members tm
+  where tm.trip_id = active_invite.trip_id
+    and tm.user_id = current_user_id
+  limit 1;
+
+  select coalesce(
+    nullif(trim(p.display_name), ''),
+    nullif(split_part(u.email, '@', 1), ''),
+    'Traveler'
+  )
+  into joined_display_name
+  from auth.users u
+  left join public.profiles p on p.id = u.id
+  where u.id = current_user_id;
+
+  insert into public.trip_participants (
+    trip_id,
+    display_name,
+    linked_member_id,
+    linked_user_id,
+    is_organizer,
+    created_by
+  )
+  select
+    active_invite.trip_id,
+    coalesce(joined_display_name, 'Traveler'),
+    joined_member_id,
+    current_user_id,
+    false,
+    current_user_id
+  where joined_member_id is not null
+    and not exists (
+      select 1
+      from public.trip_participants tp
+      where tp.trip_id = active_invite.trip_id
+        and (
+          tp.linked_member_id = joined_member_id
+          or tp.linked_user_id = current_user_id
+        )
+    );
 
   if inserted_count > 0 then
     update public.trip_invites

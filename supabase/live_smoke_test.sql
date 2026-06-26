@@ -250,6 +250,7 @@ end $$;
 do $$
 declare
   joined_rows integer;
+  joined_participant_rows integer;
   invite_uses integer;
 begin
   perform public.accept_trip_invite('WANI-SMOKE-CODE');
@@ -263,6 +264,18 @@ begin
 
   if joined_rows <> 1 then
     raise exception 'invite accept should add one guest membership, got %', joined_rows;
+  end if;
+
+  select count(*) into joined_participant_rows
+  from public.trip_participants tp
+  join public.trip_members tm on tm.id = tp.linked_member_id
+  where tp.trip_id = '00000000-0000-0000-0000-000000001001'
+    and tp.linked_user_id = '00000000-0000-0000-0000-000000000103'
+    and tm.user_id = '00000000-0000-0000-0000-000000000103'
+    and tp.display_name = 'wani-smoke-stranger';
+
+  if joined_participant_rows <> 1 then
+    raise exception 'invite accept should add one linked participant, got %', joined_participant_rows;
   end if;
 
   select use_count into invite_uses
