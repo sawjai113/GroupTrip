@@ -169,7 +169,99 @@ Feedback notes:
 
 ## Later
 
-### 9. Sign in with Apple
+### 9. Dashboard overflow menu for primary actions
+
+Status: Later
+Area: Dashboard, Navigation, UX
+
+Feedback:
+
+- Move the `New Trip`, `Join Trip`, and `Logout` buttons into a dropdown/overflow menu in the upper right.
+- Goal is to free horizontal space so the app name in the top left does not wrap onto two lines.
+- Preserve quick discoverability for the main trip actions despite moving them out of the main button row.
+
+Acceptance notes:
+
+- App title stays on one line on common iPhone widths.
+- Upper-right menu clearly exposes New Trip, Join Trip, and Logout.
+- Logout remains visually/destructively distinguished enough to avoid accidental taps.
+- VoiceOver labels and tap targets are preserved.
+
+### 10. Past trip swipe-to-delete with confirmation
+
+Status: Later
+Area: Dashboard, Trips, Data safety
+
+Feedback:
+
+- Add swipe-to-delete for past trips.
+- Require a confirmation step before the trip is actually deleted.
+
+Acceptance notes:
+
+- Swipe action is available only where deletion is appropriate, starting with past trips.
+- Confirmation copy clearly names the trip being deleted.
+- Deletion does not happen if the user cancels.
+- Cloud-backed deletion must respect Supabase permissions and should not orphan related data.
+- Consider soft-delete/archive semantics before permanent deletion for shared trips.
+
+### 11. Leave current/future trip
+
+Status: Later
+Area: Dashboard, Trips, Membership, Supabase
+
+Feedback:
+
+- Add the ability for a user to leave a current or future trip.
+
+Acceptance notes:
+
+- Leaving a trip removes the user’s membership/access but should not delete the trip for everyone.
+- Clarify organizer/owner behavior: the last owner should not be able to leave without transferring ownership or deleting/archiving the trip.
+- Historical participant/expense identity should remain intact after a member leaves.
+- Show a confirmation before leaving.
+- Reload the dashboard after leaving so the trip disappears from the user’s active list.
+
+### 12. More intuitive trip date range picker
+
+Status: Later
+Area: Create Trip, Dates, UX
+
+Feedback:
+
+- In the create new trip page, the start and end date picker should be linked.
+- Tapping a second date should automatically use that as the end date.
+- Clicking multiple dates should adjust the start date and end date intuitively.
+
+Acceptance notes:
+
+- First date tap selects the start date.
+- Second date tap selects the end date when it is after the start date.
+- Tapping an earlier date adjusts the start date rather than creating an invalid range.
+- Tapping a date inside or outside an existing range has predictable behavior that feels like common travel/hotel date pickers.
+- The selected range is visually clear.
+- Behavior should be covered by tests at the date-range selection logic level before SwiftUI polish.
+
+### 13. Cover image upload from device photos
+
+Status: Later
+Area: Create/Edit Trip, Media, Supabase Storage, UX
+
+Feedback:
+
+- Allow the user to upload pictures for the trip cover image from their device.
+
+Acceptance notes:
+
+- User can pick an image from their photo library.
+- App requests the minimum needed photo permissions.
+- Image is resized/compressed before upload to avoid huge storage costs.
+- Cloud trips store a durable cover image URL/path.
+- Demo/local trips can either use local-only images or keep sample/static images until cloud behavior is proven.
+- Add loading/error states for upload failures.
+- Avoid committing any user images or generated media fixtures to the repo.
+
+### 14. Sign in with Apple
 
 Status: Blocked
 Area: Auth
@@ -182,7 +274,7 @@ Notes:
 - Add as a parallel auth provider after Google + invite flow is stable.
 - Should not block Milestone 2 collaboration learning.
 
-### 10. Realtime collaboration
+### 15. Realtime collaboration
 
 Status: Later
 Area: Supabase realtime, Sync
@@ -192,7 +284,7 @@ Current direction:
 - Keep refresh/relaunch-based sync first.
 - Add realtime only after table model, RLS, and basic collaboration behavior are stable.
 
-### 11. Google Maps deep integration
+### 16. Google Maps deep integration
 
 Status: Later
 Area: Places, Integrations
@@ -202,7 +294,7 @@ Current direction:
 - Manual place entry is enough for now.
 - Later: Google Places search, map previews, external Maps handoff, saved place metadata.
 
-### 12. Google Calendar integration
+### 17. Google Calendar integration
 
 Status: Later
 Area: Dates, Integrations
@@ -212,7 +304,7 @@ Current direction:
 - Keep basic trip dates and planning dates first.
 - Later: calendar export/sync once trip-planning behavior is proven.
 
-### 13. Push notifications/reminders
+### 18. Push notifications/reminders
 
 Status: Later
 Area: Platform, Notifications
