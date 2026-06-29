@@ -9,6 +9,8 @@ protocol TripSyncServicing {
     func createPlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem
     func updatePlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem
     func deletePlanningItem(_ itemID: UUID, from tripID: UUID) async throws
+    func createExpense(_ expense: ExpenseItem, in tripID: UUID) async throws -> ExpenseItem
+    func deleteExpense(_ expenseID: UUID, from tripID: UUID) async throws
     func createInvite(for tripID: UUID, role: TripInvite.Role) async throws -> TripInvite
     func lookupInvite(code: String) async throws -> TripInvitePreview?
     func acceptInvite(code: String) async throws
@@ -232,6 +234,49 @@ struct SupabaseTripService: TripSyncServicing {
             .eq("id", value: itemID)
             .eq("trip_id", value: tripID)
             .execute()
+    }
+
+    func createExpense(_ expense: ExpenseItem, in tripID: UUID) async throws -> ExpenseItem {
+        let trimmedExpense = Self.trimmedExpense(expense)
+        guard !trimmedExpense.title.isEmpty, trimmedExpense.amount > 0, !trimmedExpense.participants.isEmpty else {
+            return trimmedExpense
+        }
+
+        try await client
+            .from("trip_expenses")
+            .insert(SupabaseTripExpenseDTO(tripID: tripID, expense: trimmedExpense))
+            .execute()
+
+        let shareAmount = trimmedExpense.amount / Decimal(trimmedExpense.participants.count)
+        let splitRows = trimmedExpense.participants.map {
+            SupabaseTripExpenseSplitDTO(expenseID: trimmedExpense.id, participantID: $0, shareAmount: shareAmount)
+        }
+
+        try await client
+            .from("trip_expense_splits")
+            .insert(splitRows)
+            .execute()
+
+        return trimmedExpense
+    }
+
+    func deleteExpense(_ expenseID: UUID, from tripID: UUID) async throws {
+        try await client
+            .from("trip_expenses")
+            .delete()
+            .eq("id", value: expenseID)
+            .eq("trip_id", value: tripID)
+            .execute()
+    }
+
+    private static func trimmedExpense(_ expense: ExpenseItem) -> ExpenseItem {
+        ExpenseItem(
+            id: expense.id,
+            title: expense.title.trimmingCharacters(in: .whitespacesAndNewlines),
+            paidBy: expense.paidBy,
+            amount: expense.amount,
+            participants: expense.participants
+        )
     }
 
     private static func trimmedPlanningItem(_ item: TripPlanningItem) -> TripPlanningItem {
@@ -671,6 +716,36 @@ struct SupabaseTripExpenseDTO: Codable, Hashable {
         case amount
         case currencyCode = "currency_code"
         case incurredOn = "incurred_on"
+    }
+
+    init(
+        id: UUID,
+        tripID: UUID,
+        title: String,
+        paidByParticipantID: UUID,
+        amount: Decimal,
+        currencyCode: String,
+        incurredOn: String?
+    ) {
+        self.id = id
+        self.tripID = tripID
+        self.title = title
+        self.paidByParticipantID = paidByParticipantID
+        self.amount = amount
+        self.currencyCode = currencyCode
+        self.incurredOn = incurredOn
+    }
+
+    init(tripID: UUID, expense: ExpenseItem) {
+        self.init(
+            id: expense.id,
+            tripID: tripID,
+            title: expense.title,
+            paidByParticipantID: expense.paidBy,
+            amount: expense.amount,
+            currencyCode: "USD",
+            incurredOn: nil
+        )
     }
 }
 

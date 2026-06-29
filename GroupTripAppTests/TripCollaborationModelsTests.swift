@@ -491,6 +491,90 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
 
+    func testCloudStorePersistsAddedExpenseAndUpdatesLocalTrip() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B013")!
+        let alexID = UUID(uuidString: "00000000-0000-0000-0000-00000000F001")!
+        let samID = UUID(uuidString: "00000000-0000-0000-0000-00000000F002")!
+        let savedExpense = ExpenseItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-00000000F003")!,
+            title: "Hotel deposit",
+            paidBy: alexID,
+            amount: 240,
+            participants: Set([alexID, samID])
+        )
+        service.expenseToCreate = savedExpense
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [Participant(id: alexID, name: "Alex"), Participant(id: samID, name: "Sam")]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.saveExpense(
+            title: " Hotel deposit ",
+            paidBy: alexID,
+            amount: 240,
+            participants: Set([alexID, samID]),
+            to: tripID
+        )
+
+        XCTAssertEqual(service.createdExpenseRequest?.tripID, tripID)
+        XCTAssertEqual(service.createdExpenseRequest?.expense.title, "Hotel deposit")
+        XCTAssertEqual(service.createdExpenseRequest?.expense.paidBy, alexID)
+        XCTAssertEqual(service.createdExpenseRequest?.expense.amount, 240)
+        XCTAssertEqual(service.createdExpenseRequest?.expense.participants, Set([alexID, samID]))
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.expenses, [savedExpense])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsExpenseCreateFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B014")!
+        let alexID = UUID(uuidString: "00000000-0000-0000-0000-00000000F004")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [Participant(id: alexID, name: "Alex")]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.saveExpense(title: "Hotel", paidBy: alexID, amount: 100, participants: [alexID], to: tripID)
+
+        XCTAssertTrue(store.trips.first?.viewModel.calculator.expenses.isEmpty == true)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
+    func testCloudStoreDeletesExpenseRemotelyBeforeUpdatingLocalTrip() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B015")!
+        let alexID = UUID(uuidString: "00000000-0000-0000-0000-00000000F005")!
+        let expenseID = UUID(uuidString: "00000000-0000-0000-0000-00000000F006")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [Participant(id: alexID, name: "Alex")]
+        trip.viewModel.calculator.expenses = [ExpenseItem(id: expenseID, title: "Hotel", paidBy: alexID, amount: 100, participants: [alexID])]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.removeExpense(expenseID, from: tripID)
+
+        XCTAssertEqual(service.deletedExpenseRequest?.tripID, tripID)
+        XCTAssertEqual(service.deletedExpenseRequest?.expenseID, expenseID)
+        XCTAssertTrue(store.trips.first?.viewModel.calculator.expenses.isEmpty == true)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsExpenseDeleteFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B016")!
+        let alexID = UUID(uuidString: "00000000-0000-0000-0000-00000000F007")!
+        let expenseID = UUID(uuidString: "00000000-0000-0000-0000-00000000F008")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [Participant(id: alexID, name: "Alex")]
+        trip.viewModel.calculator.expenses = [ExpenseItem(id: expenseID, title: "Hotel", paidBy: alexID, amount: 100, participants: [alexID])]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.removeExpense(expenseID, from: tripID)
+
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.expenses.map(\.id), [expenseID])
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
     func testCloudStoreCreatesGuestInviteForTrip() async throws {
         let service = FakeTripSyncService()
         let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B003")!
@@ -614,10 +698,21 @@ private final class FakeTripSyncService: TripSyncServicing {
         var itemID: UUID
     }
 
+    struct CreateExpenseRequest: Equatable {
+        var tripID: UUID
+        var expense: ExpenseItem
+    }
+
+    struct DeleteExpenseRequest: Equatable {
+        var tripID: UUID
+        var expenseID: UUID
+    }
+
     var tripsToLoad: [TripPlan] = []
     var tripToCreate: TripPlan?
     var placeToCreate: TripPlace?
     var planningItemToCreate: TripPlanningItem?
+    var expenseToCreate: ExpenseItem?
     var inviteToCreate: TripInvite?
     var invitePreviewToLookup: TripInvitePreview?
     var didLoadTrips = false
@@ -627,6 +722,8 @@ private final class FakeTripSyncService: TripSyncServicing {
     var createdPlanningItemRequest: CreatePlanningItemRequest?
     var updatedPlanningItemRequest: UpdatePlanningItemRequest?
     var deletedPlanningItemRequest: DeletePlanningItemRequest?
+    var createdExpenseRequest: CreateExpenseRequest?
+    var deletedExpenseRequest: DeleteExpenseRequest?
     var createdInviteRequest: CreateInviteRequest?
     var lookedUpInviteCode: String?
     var acceptedInviteCode: String?
@@ -668,6 +765,17 @@ private final class FakeTripSyncService: TripSyncServicing {
 
     func deletePlanningItem(_ itemID: UUID, from tripID: UUID) async throws {
         deletedPlanningItemRequest = DeletePlanningItemRequest(tripID: tripID, itemID: itemID)
+        if let createError { throw createError }
+    }
+
+    func createExpense(_ expense: ExpenseItem, in tripID: UUID) async throws -> ExpenseItem {
+        if let createError { throw createError }
+        createdExpenseRequest = CreateExpenseRequest(tripID: tripID, expense: expense)
+        return expenseToCreate ?? expense
+    }
+
+    func deleteExpense(_ expenseID: UUID, from tripID: UUID) async throws {
+        deletedExpenseRequest = DeleteExpenseRequest(tripID: tripID, expenseID: expenseID)
         if let createError { throw createError }
     }
 

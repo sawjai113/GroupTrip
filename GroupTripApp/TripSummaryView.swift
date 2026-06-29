@@ -136,7 +136,18 @@ struct TripSummaryView: View {
                         .buttonStyle(.plain)
 
                         NavigationLink {
-                            ExpenseTrackerView(tripName: viewModel.tripName, destination: trip.destination, viewModel: viewModel)
+                            ExpenseTrackerView(
+                                tripName: viewModel.tripName,
+                                destination: trip.destination,
+                                viewModel: viewModel,
+                                saveExpense: { title, paidBy, amount, participants in
+                                    await store.saveExpense(title: title, paidBy: paidBy, amount: amount, participants: participants, to: tripID)
+                                },
+                                deleteExpense: { expenseID in
+                                    await store.removeExpense(expenseID, from: tripID)
+                                },
+                                usesExternalPersistence: store.supportsCloudSync
+                            )
                         } label: {
                             ExpenseSnapshotCard(
                                 totalExpenses: viewModel.calculator.totalExpenses,

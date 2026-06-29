@@ -4,6 +4,9 @@ struct ExpenseTrackerView: View {
     let tripName: String
     let destination: String
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var saveExpense: (String, Participant.ID, Decimal, Set<Participant.ID>) async -> Void = { _, _, _, _ in }
+    var deleteExpense: (ExpenseItem.ID) async -> Void = { _ in }
+    var usesExternalPersistence: Bool = false
     @State private var selectedTab: ExpenseTab = .expenses
     @State private var activeSheet: ActiveSheet?
 
@@ -24,7 +27,11 @@ struct ExpenseTrackerView: View {
 
                     switch selectedTab {
                     case .expenses:
-                        ExpenseTabView(viewModel: viewModel) {
+                        ExpenseTabView(
+                            viewModel: viewModel,
+                            usesExternalPersistence: usesExternalPersistence,
+                            deleteExpenseRemotely: deleteExpense
+                        ) {
                             activeSheet = .expense
                         } addPeople: {
                             activeSheet = .person
@@ -47,7 +54,11 @@ struct ExpenseTrackerView: View {
             case .person:
                 AddPersonView(viewModel: viewModel)
             case .expense:
-                AddExpenseView(viewModel: viewModel)
+                AddExpenseView(
+                    viewModel: viewModel,
+                    saveExpense: saveExpense,
+                    usesExternalPersistence: usesExternalPersistence
+                )
             case .payment:
                 AddPaymentView(viewModel: viewModel)
             }
@@ -150,8 +161,11 @@ struct CompactMetric: View {
 
 struct ExpenseTabView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var usesExternalPersistence: Bool = false
+    var deleteExpenseRemotely: (ExpenseItem.ID) async -> Void = { _ in }
     var addExpense: () -> Void
     var addPeople: () -> Void
+    @State private var expensePendingDeletion: ExpenseItem?
 
     private var hasParticipants: Bool {
         !viewModel.calculator.participants.isEmpty
@@ -193,14 +207,39 @@ struct ExpenseTabView: View {
                 VStack(spacing: 12) {
                     ForEach(viewModel.calculator.expenses) { expense in
                         ExpenseCard(expense: expense, paidBy: viewModel.participantName(for: expense.paidBy)) {
-                            if let index = viewModel.calculator.expenses.firstIndex(where: { $0.id == expense.id }) {
-                                viewModel.deleteExpenses(at: IndexSet(integer: index))
-                            }
+                            expensePendingDeletion = expense
                         }
                     }
                 }
             }
         }
+        .confirmationDialog(
+            "Delete this expense?",
+            isPresented: Binding(
+                get: { expensePendingDeletion != nil },
+                set: { isPresented in
+                    if !isPresented { expensePendingDeletion = nil }
+                }
+            ),
+            titleVisibility: .visible,
+            presenting: expensePendingDeletion
+        ) { expense in
+            Button("Delete Expense", role: .destructive) {
+                deleteExpense(expense)
+            }
+            Button("Cancel", role: .cancel) { expensePendingDeletion = nil }
+        } message: { expense in
+            Text("This removes \(expense.title) from this trip. Shared cloud trips will remove it for everyone.")
+        }
+    }
+
+    private func deleteExpense(_ expense: ExpenseItem) {
+        if usesExternalPersistence {
+            Task { await deleteExpenseRemotely(expense.id) }
+        } else if let index = viewModel.calculator.expenses.firstIndex(where: { $0.id == expense.id }) {
+            viewModel.deleteExpenses(at: IndexSet(integer: index))
+        }
+        expensePendingDeletion = nil
     }
 }
 

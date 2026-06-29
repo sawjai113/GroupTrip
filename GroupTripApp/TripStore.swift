@@ -239,6 +239,53 @@ final class TripStore: ObservableObject {
     }
 
     @MainActor
+    func saveExpense(title: String, paidBy: Participant.ID, amount: Decimal, participants: Set<Participant.ID>, to tripID: TripPlan.ID) async {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty, amount > 0, !participants.isEmpty else { return }
+
+        let expense = ExpenseItem(title: trimmedTitle, paidBy: paidBy, amount: amount, participants: participants)
+
+        guard let service else {
+            addExpense(expense, to: tripID)
+            return
+        }
+
+        do {
+            let savedExpense = try await service.createExpense(expense, in: tripID)
+            addExpense(savedExpense, to: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func removeExpense(_ expenseID: ExpenseItem.ID, from tripID: TripPlan.ID) async {
+        guard let service else {
+            deleteExpense(expenseID, from: tripID)
+            return
+        }
+
+        do {
+            try await service.deleteExpense(expenseID, from: tripID)
+            deleteExpense(expenseID, from: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    private func addExpense(_ expense: ExpenseItem, to tripID: TripPlan.ID) {
+        objectWillChange.send()
+        trips.first { $0.id == tripID }?.viewModel.calculator.expenses.insert(expense, at: 0)
+    }
+
+    private func deleteExpense(_ expenseID: ExpenseItem.ID, from tripID: TripPlan.ID) {
+        objectWillChange.send()
+        trips.first { $0.id == tripID }?.viewModel.calculator.expenses.removeAll { $0.id == expenseID }
+    }
+
+    @MainActor
     func loadTrips() async {
         guard let service else { return }
 
