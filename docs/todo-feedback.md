@@ -301,7 +301,25 @@ Acceptance notes:
 - Custom values should be saved with the place the same way typed categories work today.
 - Suggested category list should be easy to adjust as we learn common trip use cases.
 
-### 16. Sign in with Apple
+### 16. Wanderaid password login setup after OAuth signup
+
+Status: Later
+Area: Auth, Account setup, UX
+
+Feedback:
+
+- After a user signs up or signs in with Google, and eventually Apple, ask whether they want to create a Wanderaid username/email and password login too.
+- This gives users a normal Wanderaid email/username + password fallback in addition to OAuth.
+
+Acceptance notes:
+
+- OAuth login remains the fastest path and should not be blocked by password setup.
+- The app should clearly explain that adding a Wanderaid password lets the same account be accessed without Google/Apple later.
+- Avoid creating duplicate accounts when the same email is already attached to an OAuth identity.
+- Account linking behavior should be tested before launch, especially Google/Apple plus password for the same email.
+- Password setup should follow Supabase auth best practices and avoid exposing credentials in logs, files, or chat.
+
+### 17. Sign in with Apple
 
 Status: Blocked
 Area: Auth
@@ -314,7 +332,7 @@ Notes:
 - Add as a parallel auth provider after Google + invite flow is stable.
 - Should not block Milestone 2 collaboration learning.
 
-### 17. Planning/itinerary date ranges
+### 18. Planning/itinerary date ranges
 
 Status: Later
 Area: Planning, Itinerary, Dates, UX
@@ -332,7 +350,7 @@ Acceptance notes:
 - Cloud persistence and reload preserve both single-date and range-based items.
 - Future participant/location association should be considered so the app can answer who is staying/located where during overlapping date ranges.
 
-### 18. Realtime collaboration
+### 19. Realtime collaboration
 
 Status: Later
 Area: Supabase realtime, Sync
@@ -342,7 +360,7 @@ Current direction:
 - Keep refresh/relaunch-based sync first.
 - Add realtime only after table model, RLS, and basic collaboration behavior are stable.
 
-### 19. Google Maps deep integration
+### 20. Google Maps deep integration
 
 Status: Later
 Area: Places, Integrations
@@ -352,7 +370,7 @@ Current direction:
 - Manual place entry is enough for now.
 - Later: Google Places search, map previews, external Maps handoff, saved place metadata.
 
-### 20. Google Calendar integration
+### 21. Google Calendar integration
 
 Status: Later
 Area: Dates, Integrations
@@ -362,7 +380,7 @@ Current direction:
 - Keep basic trip dates and planning dates first.
 - Later: calendar export/sync once trip-planning behavior is proven.
 
-### 21. Push notifications/reminders
+### 22. Push notifications/reminders
 
 Status: Later
 Area: Platform, Notifications
