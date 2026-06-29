@@ -314,7 +314,25 @@ Notes:
 - Add as a parallel auth provider after Google + invite flow is stable.
 - Should not block Milestone 2 collaboration learning.
 
-### 17. Realtime collaboration
+### 17. Planning/itinerary date ranges
+
+Status: Later
+Area: Planning, Itinerary, Dates, UX
+
+Feedback:
+
+- Itinerary/planning items should support date ranges, not only single dates.
+- This should allow items like hotel stays, multi-day activities, and “who is in what area at what time.”
+
+Acceptance notes:
+
+- A planning item can represent either a single date or a start/end date range.
+- Date range display is clear in list/card views.
+- The add/edit planning item flow supports selecting a range without making single-date items cumbersome.
+- Cloud persistence and reload preserve both single-date and range-based items.
+- Future participant/location association should be considered so the app can answer who is staying/located where during overlapping date ranges.
+
+### 18. Realtime collaboration
 
 Status: Later
 Area: Supabase realtime, Sync
@@ -324,7 +342,7 @@ Current direction:
 - Keep refresh/relaunch-based sync first.
 - Add realtime only after table model, RLS, and basic collaboration behavior are stable.
 
-### 18. Google Maps deep integration
+### 19. Google Maps deep integration
 
 Status: Later
 Area: Places, Integrations
@@ -334,7 +352,7 @@ Current direction:
 - Manual place entry is enough for now.
 - Later: Google Places search, map previews, external Maps handoff, saved place metadata.
 
-### 19. Google Calendar integration
+### 20. Google Calendar integration
 
 Status: Later
 Area: Dates, Integrations
@@ -344,7 +362,7 @@ Current direction:
 - Keep basic trip dates and planning dates first.
 - Later: calendar export/sync once trip-planning behavior is proven.
 
-### 20. Push notifications/reminders
+### 21. Push notifications/reminders
 
 Status: Later
 Area: Platform, Notifications
