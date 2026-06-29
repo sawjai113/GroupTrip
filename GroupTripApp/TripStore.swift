@@ -286,6 +286,32 @@ final class TripStore: ObservableObject {
     }
 
     @MainActor
+    func saveDirectPayment(title: String, from: Participant.ID, to: Participant.ID, amount: Decimal, in tripID: TripPlan.ID) async {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty, from != to, amount > 0 else { return }
+
+        let payment = DirectPayment(title: trimmedTitle, from: from, to: to, amount: amount)
+
+        guard let service else {
+            addDirectPayment(payment, to: tripID)
+            return
+        }
+
+        do {
+            let savedPayment = try await service.createDirectPayment(payment, in: tripID)
+            addDirectPayment(savedPayment, to: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    private func addDirectPayment(_ payment: DirectPayment, to tripID: TripPlan.ID) {
+        objectWillChange.send()
+        trips.first { $0.id == tripID }?.viewModel.calculator.payments.insert(payment, at: 0)
+    }
+
+    @MainActor
     func loadTrips() async {
         guard let service else { return }
 

@@ -6,6 +6,7 @@ struct ExpenseTrackerView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
     var saveExpense: (String, Participant.ID, Decimal, Set<Participant.ID>) async -> Void = { _, _, _, _ in }
     var deleteExpense: (ExpenseItem.ID) async -> Void = { _ in }
+    var saveDirectPayment: (String, Participant.ID, Participant.ID, Decimal) async -> Void = { _, _, _, _ in }
     var usesExternalPersistence: Bool = false
     @State private var selectedTab: ExpenseTab = .expenses
     @State private var activeSheet: ActiveSheet?
@@ -37,7 +38,11 @@ struct ExpenseTrackerView: View {
                             activeSheet = .person
                         }
                     case .balances:
-                        BalancesTabView(viewModel: viewModel)
+                        BalancesTabView(
+                            viewModel: viewModel,
+                            saveDirectPayment: saveDirectPayment,
+                            usesExternalPersistence: usesExternalPersistence
+                        )
                     case .people:
                         PeopleTabView(viewModel: viewModel) {
                             activeSheet = .person
@@ -288,6 +293,8 @@ struct ExpenseCard: View {
 
 struct BalancesTabView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var saveDirectPayment: (String, Participant.ID, Participant.ID, Decimal) async -> Void = { _, _, _, _ in }
+    var usesExternalPersistence: Bool = false
     @State private var activeSheet: ActiveSheet?
 
     var body: some View {
@@ -319,7 +326,11 @@ struct BalancesTabView: View {
             )
         }
         .sheet(item: $activeSheet) { _ in
-            AddPaymentView(viewModel: viewModel)
+            AddPaymentView(
+                viewModel: viewModel,
+                saveDirectPayment: saveDirectPayment,
+                usesExternalPersistence: usesExternalPersistence
+            )
         }
     }
 }

@@ -146,6 +146,9 @@ struct TripSummaryView: View {
                                 deleteExpense: { expenseID in
                                     await store.removeExpense(expenseID, from: tripID)
                                 },
+                                saveDirectPayment: { title, from, to, amount in
+                                    await store.saveDirectPayment(title: title, from: from, to: to, amount: amount, in: tripID)
+                                },
                                 usesExternalPersistence: store.supportsCloudSync
                             )
                         } label: {

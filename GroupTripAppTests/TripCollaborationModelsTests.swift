@@ -575,6 +575,50 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
 
+    func testCloudStorePersistsAddedDirectPaymentAndUpdatesBalances() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B017")!
+        let alexID = UUID(uuidString: "00000000-0000-0000-0000-00000000F009")!
+        let samID = UUID(uuidString: "00000000-0000-0000-0000-00000000F010")!
+        let savedPayment = DirectPayment(
+            id: UUID(uuidString: "00000000-0000-0000-0000-00000000F011")!,
+            title: "Sam paid Alex",
+            from: samID,
+            to: alexID,
+            amount: 60
+        )
+        service.paymentToCreate = savedPayment
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [Participant(id: alexID, name: "Alex"), Participant(id: samID, name: "Sam")]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.saveDirectPayment(title: " Sam paid Alex ", from: samID, to: alexID, amount: 60, in: tripID)
+
+        XCTAssertEqual(service.createdPaymentRequest?.tripID, tripID)
+        XCTAssertEqual(service.createdPaymentRequest?.payment.title, "Sam paid Alex")
+        XCTAssertEqual(service.createdPaymentRequest?.payment.from, samID)
+        XCTAssertEqual(service.createdPaymentRequest?.payment.to, alexID)
+        XCTAssertEqual(service.createdPaymentRequest?.payment.amount, 60)
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.payments, [savedPayment])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsDirectPaymentCreateFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B018")!
+        let alexID = UUID(uuidString: "00000000-0000-0000-0000-00000000F012")!
+        let samID = UUID(uuidString: "00000000-0000-0000-0000-00000000F013")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [Participant(id: alexID, name: "Alex"), Participant(id: samID, name: "Sam")]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.saveDirectPayment(title: "Sam paid Alex", from: samID, to: alexID, amount: 60, in: tripID)
+
+        XCTAssertTrue(store.trips.first?.viewModel.calculator.payments.isEmpty == true)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
     func testCloudStoreCreatesGuestInviteForTrip() async throws {
         let service = FakeTripSyncService()
         let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B003")!
@@ -708,11 +752,17 @@ private final class FakeTripSyncService: TripSyncServicing {
         var expenseID: UUID
     }
 
+    struct CreateDirectPaymentRequest: Equatable {
+        var tripID: UUID
+        var payment: DirectPayment
+    }
+
     var tripsToLoad: [TripPlan] = []
     var tripToCreate: TripPlan?
     var placeToCreate: TripPlace?
     var planningItemToCreate: TripPlanningItem?
     var expenseToCreate: ExpenseItem?
+    var paymentToCreate: DirectPayment?
     var inviteToCreate: TripInvite?
     var invitePreviewToLookup: TripInvitePreview?
     var didLoadTrips = false
@@ -724,6 +774,7 @@ private final class FakeTripSyncService: TripSyncServicing {
     var deletedPlanningItemRequest: DeletePlanningItemRequest?
     var createdExpenseRequest: CreateExpenseRequest?
     var deletedExpenseRequest: DeleteExpenseRequest?
+    var createdPaymentRequest: CreateDirectPaymentRequest?
     var createdInviteRequest: CreateInviteRequest?
     var lookedUpInviteCode: String?
     var acceptedInviteCode: String?
@@ -777,6 +828,12 @@ private final class FakeTripSyncService: TripSyncServicing {
     func deleteExpense(_ expenseID: UUID, from tripID: UUID) async throws {
         deletedExpenseRequest = DeleteExpenseRequest(tripID: tripID, expenseID: expenseID)
         if let createError { throw createError }
+    }
+
+    func createDirectPayment(_ payment: DirectPayment, in tripID: UUID) async throws -> DirectPayment {
+        if let createError { throw createError }
+        createdPaymentRequest = CreateDirectPaymentRequest(tripID: tripID, payment: payment)
+        return paymentToCreate ?? payment
     }
 
     func createInvite(for tripID: UUID, role: TripInvite.Role) async throws -> TripInvite {

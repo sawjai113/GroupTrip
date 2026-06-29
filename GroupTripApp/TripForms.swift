@@ -256,6 +256,8 @@ struct AddExpenseView: View {
 struct AddPaymentView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var saveDirectPayment: (String, Participant.ID, Participant.ID, Decimal) async -> Void = { _, _, _, _ in }
+    var usesExternalPersistence: Bool = false
     @State private var title = ""
     @State private var amount = ""
     @State private var from: Participant.ID?
@@ -295,13 +297,22 @@ struct AddPaymentView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        viewModel.addPayment(
-                            title: title,
-                            from: fromBinding.wrappedValue,
-                            to: toBinding.wrappedValue,
-                            amount: parsedAmount
-                        )
-                        dismiss()
+                        let fromID = fromBinding.wrappedValue
+                        let toID = toBinding.wrappedValue
+                        if usesExternalPersistence {
+                            Task {
+                                await saveDirectPayment(title, fromID, toID, parsedAmount)
+                                dismiss()
+                            }
+                        } else {
+                            viewModel.addPayment(
+                                title: title,
+                                from: fromID,
+                                to: toID,
+                                amount: parsedAmount
+                            )
+                            dismiss()
+                        }
                     }
                     .disabled(!canSave)
                 }

@@ -11,6 +11,7 @@ protocol TripSyncServicing {
     func deletePlanningItem(_ itemID: UUID, from tripID: UUID) async throws
     func createExpense(_ expense: ExpenseItem, in tripID: UUID) async throws -> ExpenseItem
     func deleteExpense(_ expenseID: UUID, from tripID: UUID) async throws
+    func createDirectPayment(_ payment: DirectPayment, in tripID: UUID) async throws -> DirectPayment
     func createInvite(for tripID: UUID, role: TripInvite.Role) async throws -> TripInvite
     func lookupInvite(code: String) async throws -> TripInvitePreview?
     func acceptInvite(code: String) async throws
@@ -267,6 +268,30 @@ struct SupabaseTripService: TripSyncServicing {
             .eq("id", value: expenseID)
             .eq("trip_id", value: tripID)
             .execute()
+    }
+
+    func createDirectPayment(_ payment: DirectPayment, in tripID: UUID) async throws -> DirectPayment {
+        let trimmedPayment = Self.trimmedPayment(payment)
+        guard !trimmedPayment.title.isEmpty, trimmedPayment.from != trimmedPayment.to, trimmedPayment.amount > 0 else {
+            return trimmedPayment
+        }
+
+        try await client
+            .from("trip_direct_payments")
+            .insert(SupabaseTripDirectPaymentDTO(tripID: tripID, payment: trimmedPayment))
+            .execute()
+
+        return trimmedPayment
+    }
+
+    private static func trimmedPayment(_ payment: DirectPayment) -> DirectPayment {
+        DirectPayment(
+            id: payment.id,
+            title: payment.title.trimmingCharacters(in: .whitespacesAndNewlines),
+            from: payment.from,
+            to: payment.to,
+            amount: payment.amount
+        )
     }
 
     private static func trimmedExpense(_ expense: ExpenseItem) -> ExpenseItem {
@@ -780,6 +805,39 @@ struct SupabaseTripDirectPaymentDTO: Codable, Hashable {
         case amount
         case currencyCode = "currency_code"
         case paidOn = "paid_on"
+    }
+
+    init(
+        id: UUID,
+        tripID: UUID,
+        title: String,
+        fromParticipantID: UUID,
+        toParticipantID: UUID,
+        amount: Decimal,
+        currencyCode: String,
+        paidOn: String?
+    ) {
+        self.id = id
+        self.tripID = tripID
+        self.title = title
+        self.fromParticipantID = fromParticipantID
+        self.toParticipantID = toParticipantID
+        self.amount = amount
+        self.currencyCode = currencyCode
+        self.paidOn = paidOn
+    }
+
+    init(tripID: UUID, payment: DirectPayment) {
+        self.init(
+            id: payment.id,
+            tripID: tripID,
+            title: payment.title,
+            fromParticipantID: payment.from,
+            toParticipantID: payment.to,
+            amount: payment.amount,
+            currencyCode: "USD",
+            paidOn: nil
+        )
     }
 
     var directPayment: DirectPayment {
