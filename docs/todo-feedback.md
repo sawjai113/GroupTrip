@@ -6,6 +6,8 @@ This is the lightweight git-tracked backlog for feedback, rough TODOs, and manua
 
 Use this file for quick capture. When an item becomes ready to build, move it into `docs/plans/` or a GitHub issue with acceptance criteria.
 
+Safety rule: any future action that deletes, removes, revokes, logs out, leaves, or otherwise destroys/access-removes something must include a confirmation step before it completes.
+
 ## Status Key
 
 - `Now`: next practical work
@@ -263,7 +265,43 @@ Acceptance notes:
 - Add loading/error states for upload failures.
 - Avoid committing any user images or generated media fixtures to the repo.
 
-### 14. Sign in with Apple
+### 14. Confirmations for logout and destructive/removal actions
+
+Status: Later
+Area: Data safety, Auth, Dashboard, Trips, Membership, UX
+
+Feedback:
+
+- Add confirmation dialogs before logout and deletions.
+- Treat this as the default rule for all future destructive/removal flows: deleting, removing, revoking, leaving, archiving, or signing/logging out should require confirmation before completing.
+
+Acceptance notes:
+
+- Logout asks for confirmation before ending the current session.
+- Delete/remove actions clearly name what will be removed and whether the action affects only the current user or everyone on the trip.
+- Canceling the confirmation leaves state unchanged.
+- Confirmation copy distinguishes local/demo-only changes from cloud/shared changes.
+- VoiceOver labels and destructive button roles are clear.
+
+### 15. One-tap common place categories with custom option
+
+Status: Later
+Area: Places, Create Place, UX
+
+Feedback:
+
+- When creating a new place, show common category/tag chips so users can select a category in one tap instead of typing it every time.
+- Include a custom field for custom tags/categories.
+
+Acceptance notes:
+
+- Common category suggestions are visible in the add-place flow.
+- Tapping a suggestion fills/selects the category immediately.
+- Users can still type a custom category/tag when none of the suggestions fit.
+- Custom values should be saved with the place the same way typed categories work today.
+- Suggested category list should be easy to adjust as we learn common trip use cases.
+
+### 16. Sign in with Apple
 
 Status: Blocked
 Area: Auth
@@ -276,7 +314,7 @@ Notes:
 - Add as a parallel auth provider after Google + invite flow is stable.
 - Should not block Milestone 2 collaboration learning.
 
-### 15. Realtime collaboration
+### 17. Realtime collaboration
 
 Status: Later
 Area: Supabase realtime, Sync
@@ -286,7 +324,7 @@ Current direction:
 - Keep refresh/relaunch-based sync first.
 - Add realtime only after table model, RLS, and basic collaboration behavior are stable.
 
-### 16. Google Maps deep integration
+### 18. Google Maps deep integration
 
 Status: Later
 Area: Places, Integrations
@@ -296,7 +334,7 @@ Current direction:
 - Manual place entry is enough for now.
 - Later: Google Places search, map previews, external Maps handoff, saved place metadata.
 
-### 17. Google Calendar integration
+### 19. Google Calendar integration
 
 Status: Later
 Area: Dates, Integrations
@@ -306,7 +344,7 @@ Current direction:
 - Keep basic trip dates and planning dates first.
 - Later: calendar export/sync once trip-planning behavior is proven.
 
-### 18. Push notifications/reminders
+### 20. Push notifications/reminders
 
 Status: Later
 Area: Platform, Notifications
