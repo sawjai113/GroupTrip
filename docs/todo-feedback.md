@@ -1,6 +1,6 @@
 # Wani TODO / Feedback Backlog
 
-Last updated: 2026-06-26
+Last updated: 2026-06-29
 
 This is the lightweight git-tracked backlog for feedback, rough TODOs, and manual testing notes before they are promoted into detailed implementation plans or GitHub issues.
 
@@ -54,7 +54,8 @@ Current direction:
 
 Feedback notes:
 
-- TBD
+- Add a guest join path where someone can enter an invite code and display name without creating/signing into a Google account.
+- Make clear whether the user is joining as an account member or temporary guest collaborator.
 
 ### 3. Invite sharing affordance polish
 
@@ -90,6 +91,7 @@ Checklist:
 Feedback notes:
 
 - Google login works after adding the app callback URL to Supabase redirect settings.
+- Google login should force an account chooser / ephemeral browser session so QA can switch between two test accounts.
 
 ---
 

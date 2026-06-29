@@ -9,6 +9,15 @@ final class SupabaseDTOTests: XCTestCase {
         XCTAssertEqual(redirectURL.host, "auth-callback")
     }
 
+    func testGoogleOAuthRequestsAccountSelectionForManualMultiUserTesting() {
+        XCTAssertTrue(
+            SupabaseConfig.googleOAuthQueryParams.contains { name, value in
+                name == "prompt" && value == "select_account"
+            }
+        )
+        XCTAssertTrue(SupabaseConfig.googleOAuthPrefersEphemeralWebSession)
+    }
+
     func testTripDTOMapsSnakeCaseTripRowIntoTripPlan() throws {
         let json = """
         {
