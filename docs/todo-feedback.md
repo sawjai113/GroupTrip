@@ -69,7 +69,7 @@ Current direction:
 
 Feedback notes:
 
-- TBD
+- Add a dedicated copy button for the invite code so users do not have to manually select/copy the text.
 
 ### 4. Signed-in auth smoke checklist
 
