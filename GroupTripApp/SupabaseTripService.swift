@@ -6,6 +6,9 @@ protocol TripSyncServicing {
     func createTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async throws -> TripPlan
     func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace
     func deletePlace(_ placeID: UUID, from tripID: UUID) async throws
+    func createPlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem
+    func updatePlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem
+    func deletePlanningItem(_ itemID: UUID, from tripID: UUID) async throws
     func createInvite(for tripID: UUID, role: TripInvite.Role) async throws -> TripInvite
     func lookupInvite(code: String) async throws -> TripInvitePreview?
     func acceptInvite(code: String) async throws
@@ -190,6 +193,55 @@ struct SupabaseTripService: TripSyncServicing {
             .eq("id", value: placeID)
             .eq("trip_id", value: tripID)
             .execute()
+    }
+
+    func createPlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem {
+        let trimmedItem = Self.trimmedPlanningItem(item)
+        guard !trimmedItem.title.isEmpty else { return trimmedItem }
+
+        let row = SupabaseTripPlanningItemDTO(tripID: tripID, item: trimmedItem)
+
+        try await client
+            .from("trip_planning_items")
+            .insert(row)
+            .execute()
+
+        return trimmedItem
+    }
+
+    func updatePlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem {
+        let trimmedItem = Self.trimmedPlanningItem(item)
+        guard !trimmedItem.title.isEmpty else { return trimmedItem }
+
+        let row = SupabaseTripPlanningItemDTO(tripID: tripID, item: trimmedItem)
+
+        try await client
+            .from("trip_planning_items")
+            .update(row)
+            .eq("id", value: trimmedItem.id)
+            .eq("trip_id", value: tripID)
+            .execute()
+
+        return trimmedItem
+    }
+
+    func deletePlanningItem(_ itemID: UUID, from tripID: UUID) async throws {
+        try await client
+            .from("trip_planning_items")
+            .delete()
+            .eq("id", value: itemID)
+            .eq("trip_id", value: tripID)
+            .execute()
+    }
+
+    private static func trimmedPlanningItem(_ item: TripPlanningItem) -> TripPlanningItem {
+        TripPlanningItem(
+            id: item.id,
+            title: item.title.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: item.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            date: item.date,
+            isDone: item.isDone
+        )
     }
 
     func createInvite(for tripID: UUID, role: TripInvite.Role = .guest) async throws -> TripInvite {
@@ -562,6 +614,33 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
         case note
         case scheduledDate = "scheduled_date"
         case isDone = "is_done"
+    }
+
+    init(
+        id: UUID,
+        tripID: UUID,
+        title: String,
+        note: String,
+        scheduledDate: String?,
+        isDone: Bool
+    ) {
+        self.id = id
+        self.tripID = tripID
+        self.title = title
+        self.note = note
+        self.scheduledDate = scheduledDate
+        self.isDone = isDone
+    }
+
+    init(tripID: UUID, item: TripPlanningItem) {
+        self.init(
+            id: item.id,
+            tripID: tripID,
+            title: item.title,
+            note: item.note,
+            scheduledDate: item.date.map(SupabaseDateFormatter.string(from:)),
+            isDone: item.isDone
+        )
     }
 
     var tripPlanningItem: TripPlanningItem {

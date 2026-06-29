@@ -163,6 +163,74 @@ final class TripStore: ObservableObject {
         }
     }
 
+    func replacePlanningItem(_ item: TripPlanningItem, in tripID: TripPlan.ID) {
+        updateTrip(withID: tripID) { trip in
+            guard let itemIndex = trip.planningItems.firstIndex(where: { $0.id == item.id }) else { return }
+            trip.planningItems[itemIndex] = item
+        }
+    }
+
+    @MainActor
+    func savePlanningItem(_ item: TripPlanningItem, to tripID: TripPlan.ID) async {
+        let trimmedItem = TripPlanningItem(
+            id: item.id,
+            title: item.title.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: item.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            date: item.date,
+            isDone: item.isDone
+        )
+        guard !trimmedItem.title.isEmpty else { return }
+
+        guard let service else {
+            addPlanningItem(trimmedItem, to: tripID)
+            return
+        }
+
+        do {
+            let savedItem = try await service.createPlanningItem(trimmedItem, in: tripID)
+            addPlanningItem(savedItem, to: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func togglePlanningItemRemotely(_ itemID: TripPlanningItem.ID, for tripID: TripPlan.ID) async {
+        guard let item = trips.first(where: { $0.id == tripID })?.planningItems.first(where: { $0.id == itemID }) else { return }
+        var updatedItem = item
+        updatedItem.isDone.toggle()
+
+        guard let service else {
+            togglePlanningItem(itemID, for: tripID)
+            return
+        }
+
+        do {
+            let savedItem = try await service.updatePlanningItem(updatedItem, in: tripID)
+            replacePlanningItem(savedItem, in: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func removePlanningItem(_ itemID: TripPlanningItem.ID, from tripID: TripPlan.ID) async {
+        guard let service else {
+            deletePlanningItem(itemID, from: tripID)
+            return
+        }
+
+        do {
+            try await service.deletePlanningItem(itemID, from: tripID)
+            deletePlanningItem(itemID, from: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
     private func updateTrip(withID tripID: TripPlan.ID, mutate: (inout TripPlan) -> Void) {
         guard let index = trips.firstIndex(where: { $0.id == tripID }) else { return }
         var updatedTrips = trips

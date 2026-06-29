@@ -101,7 +101,19 @@ struct TripSummaryView: View {
                         .buttonStyle(.plain)
 
                         NavigationLink {
-                            TripPlanningView(items: planningItemsBinding)
+                            TripPlanningView(
+                                items: planningItemsBinding,
+                                saveItem: { item in
+                                    await store.savePlanningItem(item, to: tripID)
+                                },
+                                toggleItem: { itemID in
+                                    await store.togglePlanningItemRemotely(itemID, for: tripID)
+                                },
+                                deleteItem: { itemID in
+                                    await store.removePlanningItem(itemID, from: tripID)
+                                },
+                                usesExternalPersistence: store.supportsCloudSync
+                            )
                         } label: {
                             PlanningPreviewCard(items: trip.planningItems)
                         }

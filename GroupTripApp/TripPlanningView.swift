@@ -2,7 +2,25 @@ import SwiftUI
 
 struct TripPlanningView: View {
     @Binding var items: [TripPlanningItem]
+    var saveItem: (TripPlanningItem) async -> Void
+    var toggleItemRemotely: (TripPlanningItem.ID) async -> Void
+    var deleteItemRemotely: (TripPlanningItem.ID) async -> Void
+    var usesExternalPersistence: Bool
     @State private var isShowingAddItem = false
+
+    init(
+        items: Binding<[TripPlanningItem]>,
+        saveItem: @escaping (TripPlanningItem) async -> Void = { _ in },
+        toggleItem: @escaping (TripPlanningItem.ID) async -> Void = { _ in },
+        deleteItem: @escaping (TripPlanningItem.ID) async -> Void = { _ in },
+        usesExternalPersistence: Bool = false
+    ) {
+        _items = items
+        self.saveItem = saveItem
+        self.toggleItemRemotely = toggleItem
+        self.deleteItemRemotely = deleteItem
+        self.usesExternalPersistence = usesExternalPersistence
+    }
 
     var body: some View {
         ScrollView {
@@ -20,9 +38,9 @@ struct TripPlanningView: View {
                     VStack(spacing: AppTheme.Spacing.medium) {
                         ForEach(items) { item in
                             TripPlanningItemCard(item: item) {
-                                toggleItem(item)
+                                Task { await toggleItem(item) }
                             } delete: {
-                                deleteItem(item)
+                                Task { await deleteItem(item) }
                             }
                         }
                     }
@@ -45,9 +63,7 @@ struct TripPlanningView: View {
         }
         .sheet(isPresented: $isShowingAddItem) {
             AddTripPlanningItemView { item in
-                withAnimation(.snappy) {
-                    items.append(item)
-                }
+                Task { await addItem(item) }
             }
         }
     }
@@ -81,16 +97,34 @@ struct TripPlanningView: View {
         }
     }
 
-    private func deleteItem(_ item: TripPlanningItem) {
-        withAnimation(.snappy) {
-            items.removeAll { $0.id == item.id }
+    private func addItem(_ item: TripPlanningItem) async {
+        if usesExternalPersistence {
+            await saveItem(item)
+        } else {
+            withAnimation(.snappy) {
+                items.append(item)
+            }
         }
     }
 
-    private func toggleItem(_ item: TripPlanningItem) {
-        withAnimation(.snappy) {
-            guard let itemIndex = items.firstIndex(where: { $0.id == item.id }) else { return }
-            items[itemIndex].isDone.toggle()
+    private func deleteItem(_ item: TripPlanningItem) async {
+        if usesExternalPersistence {
+            await deleteItemRemotely(item.id)
+        } else {
+            withAnimation(.snappy) {
+                items.removeAll { $0.id == item.id }
+            }
+        }
+    }
+
+    private func toggleItem(_ item: TripPlanningItem) async {
+        if usesExternalPersistence {
+            await toggleItemRemotely(item.id)
+        } else {
+            withAnimation(.snappy) {
+                guard let itemIndex = items.firstIndex(where: { $0.id == item.id }) else { return }
+                items[itemIndex].isDone.toggle()
+            }
         }
     }
 }

@@ -389,6 +389,108 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
 
+    func testCloudStorePersistsAddedPlanningItemAndUpdatesLocalTrip() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B007")!
+        let savedItem = TripPlanningItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-00000000E001")!,
+            title: "Book dinner",
+            note: "Friday night",
+            date: SupabaseDateFormatter.date(from: "2026-07-03"),
+            isDone: false
+        )
+        service.planningItemToCreate = savedItem
+        let store = TripStore(trips: [makeTrip(id: tripID, name: "Austin Weekend")], service: service)
+
+        await store.savePlanningItem(
+            TripPlanningItem(title: " Book dinner ", note: " Friday night ", date: savedItem.date),
+            to: tripID
+        )
+
+        XCTAssertEqual(service.createdPlanningItemRequest?.tripID, tripID)
+        XCTAssertEqual(service.createdPlanningItemRequest?.item.title, "Book dinner")
+        XCTAssertEqual(service.createdPlanningItemRequest?.item.note, "Friday night")
+        XCTAssertEqual(service.createdPlanningItemRequest?.item.date, savedItem.date)
+        XCTAssertEqual(store.trips.first?.planningItems, [savedItem])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsPlanningItemCreateFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B008")!
+        let store = TripStore(trips: [makeTrip(id: tripID, name: "Austin Weekend")], service: service)
+
+        await store.savePlanningItem(TripPlanningItem(title: "Book dinner"), to: tripID)
+
+        XCTAssertTrue(store.trips.first?.planningItems.isEmpty == true)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
+    func testCloudStoreTogglesPlanningItemRemotelyBeforeUpdatingLocalTrip() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B009")!
+        let itemID = UUID(uuidString: "00000000-0000-0000-0000-00000000E002")!
+        let item = TripPlanningItem(id: itemID, title: "Book dinner", isDone: false)
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.planningItems = [item]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.togglePlanningItemRemotely(itemID, for: tripID)
+
+        XCTAssertEqual(service.updatedPlanningItemRequest?.tripID, tripID)
+        XCTAssertEqual(service.updatedPlanningItemRequest?.item.id, itemID)
+        XCTAssertEqual(service.updatedPlanningItemRequest?.item.isDone, true)
+        XCTAssertEqual(store.trips.first?.planningItems.first?.isDone, true)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsPlanningItemToggleFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B010")!
+        let itemID = UUID(uuidString: "00000000-0000-0000-0000-00000000E003")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.planningItems = [TripPlanningItem(id: itemID, title: "Book dinner", isDone: false)]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.togglePlanningItemRemotely(itemID, for: tripID)
+
+        XCTAssertEqual(store.trips.first?.planningItems.first?.isDone, false)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
+    func testCloudStoreDeletesPlanningItemRemotelyBeforeUpdatingLocalTrip() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B011")!
+        let itemID = UUID(uuidString: "00000000-0000-0000-0000-00000000E004")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.planningItems = [TripPlanningItem(id: itemID, title: "Book dinner")]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.removePlanningItem(itemID, from: tripID)
+
+        XCTAssertEqual(service.deletedPlanningItemRequest?.tripID, tripID)
+        XCTAssertEqual(service.deletedPlanningItemRequest?.itemID, itemID)
+        XCTAssertTrue(store.trips.first?.planningItems.isEmpty == true)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsPlanningItemDeleteFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B012")!
+        let itemID = UUID(uuidString: "00000000-0000-0000-0000-00000000E005")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.planningItems = [TripPlanningItem(id: itemID, title: "Book dinner")]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.removePlanningItem(itemID, from: tripID)
+
+        XCTAssertEqual(store.trips.first?.planningItems.map(\.id), [itemID])
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
     func testCloudStoreCreatesGuestInviteForTrip() async throws {
         let service = FakeTripSyncService()
         let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B003")!
@@ -497,15 +599,34 @@ private final class FakeTripSyncService: TripSyncServicing {
         var placeID: UUID
     }
 
+    struct CreatePlanningItemRequest: Equatable {
+        var tripID: UUID
+        var item: TripPlanningItem
+    }
+
+    struct UpdatePlanningItemRequest: Equatable {
+        var tripID: UUID
+        var item: TripPlanningItem
+    }
+
+    struct DeletePlanningItemRequest: Equatable {
+        var tripID: UUID
+        var itemID: UUID
+    }
+
     var tripsToLoad: [TripPlan] = []
     var tripToCreate: TripPlan?
     var placeToCreate: TripPlace?
+    var planningItemToCreate: TripPlanningItem?
     var inviteToCreate: TripInvite?
     var invitePreviewToLookup: TripInvitePreview?
     var didLoadTrips = false
     var createdTripRequest: CreateTripRequest?
     var createdPlaceRequest: CreatePlaceRequest?
     var deletedPlaceRequest: DeletePlaceRequest?
+    var createdPlanningItemRequest: CreatePlanningItemRequest?
+    var updatedPlanningItemRequest: UpdatePlanningItemRequest?
+    var deletedPlanningItemRequest: DeletePlanningItemRequest?
     var createdInviteRequest: CreateInviteRequest?
     var lookedUpInviteCode: String?
     var acceptedInviteCode: String?
@@ -530,6 +651,23 @@ private final class FakeTripSyncService: TripSyncServicing {
 
     func deletePlace(_ placeID: UUID, from tripID: UUID) async throws {
         deletedPlaceRequest = DeletePlaceRequest(tripID: tripID, placeID: placeID)
+        if let createError { throw createError }
+    }
+
+    func createPlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem {
+        if let createError { throw createError }
+        createdPlanningItemRequest = CreatePlanningItemRequest(tripID: tripID, item: item)
+        return planningItemToCreate ?? item
+    }
+
+    func updatePlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem {
+        updatedPlanningItemRequest = UpdatePlanningItemRequest(tripID: tripID, item: item)
+        if let createError { throw createError }
+        return item
+    }
+
+    func deletePlanningItem(_ itemID: UUID, from tripID: UUID) async throws {
+        deletedPlanningItemRequest = DeletePlanningItemRequest(tripID: tripID, itemID: itemID)
         if let createError { throw createError }
     }
 
