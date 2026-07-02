@@ -28,6 +28,11 @@ final class AppSession: ObservableObject {
     func returnToModePicker() {
         mode = nil
     }
+
+    func restoreSignedInModeIfAuthenticated(_ isAuthenticated: Bool) {
+        guard isAuthenticated, mode == nil else { return }
+        mode = .signedIn
+    }
 }
 
 enum AuthSessionState: Equatable {

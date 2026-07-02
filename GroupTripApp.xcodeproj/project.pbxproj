@@ -420,16 +420,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 45H8UD36A7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Wanderaid;
-				INFOPLIST_KEY_CFBundleURLTypes = "{
-    CFBundleTypeRole = Editor;
-    CFBundleURLName = \"com.sawjai.GroupTripApp.google\";
-    CFBundleURLSchemes = (
-        \"com.googleusercontent.apps.698662305037-53om03eo495ihep40hajtarku2bjgktp\"
-    );
-}";
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleTypeRole = Editor;\n    CFBundleURLName = \"com.sawjai.GroupTripApp.google\";\n    CFBundleURLSchemes = (\n        \"com.googleusercontent.apps.698662305037-53om03eo495ihep40hajtarku2bjgktp\"\n    );\n}";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -453,16 +448,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = 45H8UD36A7;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Wanderaid;
-				INFOPLIST_KEY_CFBundleURLTypes = "{
-    CFBundleTypeRole = Editor;
-    CFBundleURLName = \"com.sawjai.GroupTripApp.google\";
-    CFBundleURLSchemes = (
-        \"com.googleusercontent.apps.698662305037-53om03eo495ihep40hajtarku2bjgktp\"
-    );
-}";
+				INFOPLIST_KEY_CFBundleURLTypes = "{\n    CFBundleTypeRole = Editor;\n    CFBundleURLName = \"com.sawjai.GroupTripApp.google\";\n    CFBundleURLSchemes = (\n        \"com.googleusercontent.apps.698662305037-53om03eo495ihep40hajtarku2bjgktp\"\n    );\n}";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

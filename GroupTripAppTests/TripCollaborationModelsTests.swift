@@ -917,6 +917,25 @@ final class AppSessionTests: XCTestCase {
         XCTAssertFalse(session.shouldUseDemoTripStore)
         XCTAssertFalse(session.shouldUseCloudTripStore)
     }
+
+    func testRestoredAuthenticatedSessionSelectsSignedInModeFromModePicker() {
+        let session = AppSession()
+
+        session.restoreSignedInModeIfAuthenticated(true)
+
+        XCTAssertEqual(session.mode, .signedIn)
+        XCTAssertTrue(session.shouldUseCloudTripStore)
+    }
+
+    func testRestoredAuthenticatedSessionDoesNotOverrideDemoMode() {
+        let session = AppSession()
+        session.chooseDemoMode()
+
+        session.restoreSignedInModeIfAuthenticated(true)
+
+        XCTAssertEqual(session.mode, .demo)
+        XCTAssertTrue(session.shouldUseDemoTripStore)
+    }
 }
 
 final class TripCollaborationModelsTests: XCTestCase {

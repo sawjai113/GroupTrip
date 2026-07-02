@@ -13,10 +13,16 @@ struct AuthGateView: View {
         Group {
             switch appSession.mode {
             case nil:
-                ModeSelectionView(
-                    chooseDemoMode: appSession.chooseDemoMode,
-                    chooseSignedInMode: appSession.chooseSignedInMode
-                )
+                if authViewModel.isLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(AppTheme.background)
+                } else {
+                    ModeSelectionView(
+                        chooseDemoMode: appSession.chooseDemoMode,
+                        chooseSignedInMode: appSession.chooseSignedInMode
+                    )
+                }
             case .demo:
                 TripDashboardView(store: demoTripStore, modeBadge: .demo) {
                     appSession.returnToModePicker()
@@ -24,6 +30,12 @@ struct AuthGateView: View {
             case .signedIn:
                 signedInModeView
             }
+        }
+        .onAppear {
+            appSession.restoreSignedInModeIfAuthenticated(authViewModel.isAuthenticated)
+        }
+        .onChange(of: authViewModel.isAuthenticated) { _, isAuthenticated in
+            appSession.restoreSignedInModeIfAuthenticated(isAuthenticated)
         }
     }
 
