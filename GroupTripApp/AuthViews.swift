@@ -1,4 +1,7 @@
 import SwiftUI
+import AuthenticationServices
+import CryptoKit
+import Security
 
 struct AuthGateView: View {
     @StateObject private var appSession = AppSession()
@@ -130,6 +133,7 @@ private struct LoginView: View {
     var exitToModePicker: () -> Void
     @State private var email = ""
     @State private var displayName = ""
+    @State private var currentAppleSignInNonce: String?
 
     var body: some View {
         NavigationStack {
@@ -144,7 +148,7 @@ private struct LoginView: View {
                     Text("Wanderaid")
                         .font(.largeTitle.weight(.bold))
 
-                    Text("Sign in with Google or use a magic link to save and sync cloud trips.")
+                    Text("Sign in with Google or Apple, or use a magic link to save and sync cloud trips.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -180,6 +184,19 @@ private struct LoginView: View {
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(AppTheme.primary)
+                    .disabled(viewModel.isLoading)
+
+                    SignInWithAppleButton(.continue) { request in
+                        let nonce = Self.randomNonceString()
+                        currentAppleSignInNonce = nonce
+                        request.requestedScopes = [.fullName, .email]
+                        request.nonce = Self.sha256(nonce)
+                    } onCompletion: { result in
+                        handleAppleSignInCompletion(result)
+                    }
+                    .signInWithAppleButtonStyle(.black)
+                    .frame(height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .disabled(viewModel.isLoading)
 
                     VStack(spacing: 0) {
@@ -251,5 +268,58 @@ private struct LoginView: View {
 
     private var canSubmit: Bool {
         trimmedEmail.contains("@")
+    }
+
+    private func handleAppleSignInCompletion(_ result: Result<ASAuthorization, Error>) {
+        switch result {
+        case let .success(authorization):
+            guard
+                let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                let identityToken = credential.identityToken,
+                let idToken = String(data: identityToken, encoding: .utf8)
+            else {
+                viewModel.authError = "Apple sign-in did not return a usable identity token."
+                return
+            }
+
+            let nonce = currentAppleSignInNonce
+            currentAppleSignInNonce = nil
+            Task {
+                await viewModel.signInWithApple(idToken: idToken, nonce: nonce)
+            }
+        case let .failure(error):
+            currentAppleSignInNonce = nil
+            viewModel.authError = error.localizedDescription
+        }
+    }
+
+    private static func randomNonceString(length: Int = 32) -> String {
+        precondition(length > 0)
+        let charset = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+        var result = ""
+        var remainingLength = length
+
+        while remainingLength > 0 {
+            var randoms = [UInt8](repeating: 0, count: 16)
+            let status = SecRandomCopyBytes(kSecRandomDefault, randoms.count, &randoms)
+            guard status == errSecSuccess else {
+                fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(status)")
+            }
+
+            for random in randoms where remainingLength > 0 {
+                if random < charset.count {
+                    result.append(charset[Int(random)])
+                    remainingLength -= 1
+                }
+            }
+        }
+
+        return result
+    }
+
+    private static func sha256(_ input: String) -> String {
+        let inputData = Data(input.utf8)
+        let hashedData = SHA256.hash(data: inputData)
+        return hashedData.map { String(format: "%02x", $0) }.joined()
     }
 }

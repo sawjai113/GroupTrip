@@ -206,6 +206,17 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isLoading)
     }
 
+    func testSignInWithApplePassesIDTokenAndNonceToService() async {
+        let service = FakeAuthService()
+        let viewModel = AuthViewModel(service: service)
+
+        await viewModel.signInWithApple(idToken: "apple-id-token", nonce: "raw-nonce")
+
+        XCTAssertEqual(service.appleIDToken, "apple-id-token")
+        XCTAssertEqual(service.appleNonce, "raw-nonce")
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
     func testSignedInSessionBootstrapsCurrentProfile() async throws {
         let service = FakeAuthService()
         let viewModel = AuthViewModel(service: service)
@@ -239,6 +250,8 @@ private final class FakeAuthService: AuthServicing {
     var sentMagicLinkEmail: String?
     var sentMagicLinkDisplayName: String?
     var didSendMagicLink: Bool { sentMagicLinkEmail != nil }
+    var appleIDToken: String?
+    var appleNonce: String?
     var bootstrappedProfileUserID: UUID?
     var bootstrappedProfileEmail: String?
 
@@ -262,6 +275,11 @@ private final class FakeAuthService: AuthServicing {
     func signOut() async throws { }
 
     func signInWithGoogle() async throws { }
+
+    func signInWithApple(idToken: String, nonce: String?) async throws {
+        appleIDToken = idToken
+        appleNonce = nonce
+    }
 
     func bootstrapProfile(userID: UUID, email: String?) async throws {
         bootstrappedProfileUserID = userID

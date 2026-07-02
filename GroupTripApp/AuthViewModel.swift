@@ -40,6 +40,7 @@ protocol AuthServicing {
 
     func sendMagicLink(email: String, displayName: String?) async throws
     func signInWithGoogle() async throws
+    func signInWithApple(idToken: String, nonce: String?) async throws
     func signOut() async throws
     func bootstrapProfile(userID: UUID, email: String?) async throws
 }
@@ -90,6 +91,16 @@ struct SupabaseAuthService: AuthServicing {
         ) { session in
             session.prefersEphemeralWebBrowserSession = SupabaseConfig.googleOAuthPrefersEphemeralWebSession
         }
+    }
+
+    func signInWithApple(idToken: String, nonce: String?) async throws {
+        try await client.auth.signInWithIdToken(
+            credentials: OpenIDConnectCredentials(
+                provider: .apple,
+                idToken: idToken,
+                nonce: nonce
+            )
+        )
     }
 
     func signOut() async throws {
@@ -161,6 +172,12 @@ final class AuthViewModel: ObservableObject {
     func signInWithGoogle() async {
         await runAuthAction {
             try await service.signInWithGoogle()
+        }
+    }
+
+    func signInWithApple(idToken: String, nonce: String?) async {
+        await runAuthAction {
+            try await service.signInWithApple(idToken: idToken, nonce: nonce)
         }
     }
 
