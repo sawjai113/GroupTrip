@@ -1,6 +1,6 @@
-# Wani TODO / Feedback Backlog
+# Wanderaid TODO / Feedback Backlog
 
-Last updated: 2026-06-29
+Last updated: 2026-07-01
 
 This is the lightweight git-tracked backlog for feedback, rough TODOs, and manual testing notes before they are promoted into detailed implementation plans or GitHub issues.
 
@@ -20,27 +20,24 @@ Safety rule: any future action that deletes, removes, revokes, logs out, leaves,
 
 ## Now
 
-### 1. Signed-in collaboration smoke test
+### 1. Invite sharing affordance polish
 
 Status: Now
-Area: Auth, Supabase, Invites, Cloud trips
+Area: Trip detail, Invites, UX
 
-Goal: Prove the core collaborative promise with two signed-in Google accounts or two sessions/devices.
+Current direction:
 
-Checklist:
+- Make it easy for an organizer/member to find or generate an invite code from the trip context.
+- Add a dedicated copy button for the invite code so users do not have to manually select/copy text.
+- Consider a simple share action later, after the copy flow is solid.
+- Ensure invite state is understandable: created, copied, expired/invalid, accepted.
 
-- User A signs in with Google.
-- User A creates or opens a cloud-backed trip.
-- User A creates/copies an invite code.
-- User B signs in with Google.
-- User B enters the invite code.
-- User B sees the joined trip in the signed-in dashboard.
-- Both users can relaunch the app and still see the cloud trip.
-- Note any confusing copy, loading state, failure message, or missing affordance.
+Acceptance notes:
 
-Feedback notes:
-
-- TBD
+- Invite code has an obvious copy action.
+- Successful copy gives visible feedback.
+- Failure state is understandable.
+- VoiceOver label describes what is being copied.
 
 ### 2. Join Trip entry point polish
 
@@ -59,24 +56,71 @@ Feedback notes:
 - Add a guest join path where someone can enter an invite code and display name without creating/signing into a Google account.
 - Make clear whether the user is joining as an account member or temporary guest collaborator.
 
-### 3. Invite sharing affordance polish
+### 3. Confirmations for logout and destructive/removal actions
 
 Status: Now
-Area: Trip detail, Invites, UX
+Area: Data safety, Auth, Dashboard, Trips, Membership, UX
 
-Current direction:
+Feedback:
 
-- Make it easy for an organizer/member to find or generate an invite code from the trip context.
-- Consider a simple copy/share action before any fancy native share sheet work.
-- Ensure invite state is understandable: created, copied, expired/invalid, accepted.
+- Add confirmation dialogs before logout and deletions.
+- Treat this as the default rule for all future destructive/removal flows: deleting, removing, revoking, leaving, archiving, or signing/logging out should require confirmation before completing.
+
+Acceptance notes:
+
+- Logout asks for confirmation before ending the current session.
+- Delete/remove actions clearly name what will be removed and whether the action affects only the current user or everyone on the trip.
+- Canceling the confirmation leaves state unchanged.
+- Confirmation copy distinguishes local/demo-only changes from cloud/shared changes.
+- VoiceOver labels and destructive button roles are clear.
+
+### 4. Loading and empty states review
+
+Status: Now
+Area: UX, QA
+
+Review signed-in/cloud screens for:
+
+- Empty dashboard with no trips.
+- Loading cloud trips.
+- Failed cloud load.
+- Failed trip create.
+- Failed invite lookup/accept.
+- Offline or network timeout behavior.
 
 Feedback notes:
 
-- Add a dedicated copy button for the invite code so users do not have to manually select/copy the text.
+- TBD
 
-### 4. Signed-in auth smoke checklist
+---
 
-Status: Now
+## Regression Checklists
+
+### Signed-in collaboration smoke test
+
+Status: Regression checklist
+Area: Auth, Supabase, Invites, Cloud trips
+
+Goal: Re-run before TestFlight or after invite/auth/sync changes to prove the core collaborative promise with two signed-in Google accounts or two sessions/devices.
+
+Checklist:
+
+- User A signs in with Google.
+- User A creates or opens a cloud-backed trip.
+- User A creates/copies an invite code.
+- User B signs in with Google.
+- User B enters the invite code.
+- User B sees the joined trip in the signed-in dashboard.
+- Both users can relaunch the app and still see the cloud trip.
+- Note any confusing copy, loading state, failure message, or missing affordance.
+
+Feedback notes:
+
+- Core two-user collaboration smoke passed on 2026-06-29. Keep as a regression checklist.
+
+### Signed-in auth smoke checklist
+
+Status: Regression checklist
 Area: Auth, QA
 
 Checklist:
@@ -135,39 +179,21 @@ Feedback notes:
 
 - TBD
 
-### 7. Loading and empty states review
+### 7. README/status cleanup after Google auth
 
-Status: Next
-Area: UX, QA
-
-Review signed-in/cloud screens for:
-
-- Empty dashboard with no trips.
-- Loading cloud trips.
-- Failed cloud load.
-- Failed trip create.
-- Failed invite lookup/accept.
-- Offline or network timeout behavior.
-
-Feedback notes:
-
-- TBD
-
-### 8. README/status cleanup after Google auth
-
-Status: Next
+Status: Done
 Area: Documentation
 
-Update top-level docs so they reflect the current state:
+Resolution:
 
-- App is now Wanderaid in the UI, though README still says Wani.
-- Google OAuth works as the current primary sign-in path.
-- Apple login is deferred pending Apple Developer Program enrollment.
+- README now says Wanderaid.
+- Google OAuth is documented as the current primary sign-in path.
+- Apple login remains deferred pending Apple Developer Program enrollment.
 - Magic link can remain available as backup/dev path if desired.
 
 Feedback notes:
 
-- TBD
+- Completed in workflow/process documentation checkpoint.
 
 ---
 
@@ -265,25 +291,7 @@ Acceptance notes:
 - Add loading/error states for upload failures.
 - Avoid committing any user images or generated media fixtures to the repo.
 
-### 14. Confirmations for logout and destructive/removal actions
-
-Status: Later
-Area: Data safety, Auth, Dashboard, Trips, Membership, UX
-
-Feedback:
-
-- Add confirmation dialogs before logout and deletions.
-- Treat this as the default rule for all future destructive/removal flows: deleting, removing, revoking, leaving, archiving, or signing/logging out should require confirmation before completing.
-
-Acceptance notes:
-
-- Logout asks for confirmation before ending the current session.
-- Delete/remove actions clearly name what will be removed and whether the action affects only the current user or everyone on the trip.
-- Canceling the confirmation leaves state unchanged.
-- Confirmation copy distinguishes local/demo-only changes from cloud/shared changes.
-- VoiceOver labels and destructive button roles are clear.
-
-### 15. One-tap common place categories with custom option
+### 14. One-tap common place categories with custom option
 
 Status: Later
 Area: Places, Create Place, UX
@@ -301,7 +309,7 @@ Acceptance notes:
 - Custom values should be saved with the place the same way typed categories work today.
 - Suggested category list should be easy to adjust as we learn common trip use cases.
 
-### 16. Wanderaid password login setup after OAuth signup
+### 15. Wanderaid password login setup after OAuth signup
 
 Status: Later
 Area: Auth, Account setup, UX
@@ -319,7 +327,7 @@ Acceptance notes:
 - Account linking behavior should be tested before launch, especially Google/Apple plus password for the same email.
 - Password setup should follow Supabase auth best practices and avoid exposing credentials in logs, files, or chat.
 
-### 17. Sign in with Apple
+### 16. Sign in with Apple
 
 Status: Blocked
 Area: Auth
@@ -332,7 +340,7 @@ Notes:
 - Add as a parallel auth provider after Google + invite flow is stable.
 - Should not block Milestone 2 collaboration learning.
 
-### 18. Planning/itinerary date ranges
+### 17. Planning/itinerary date ranges
 
 Status: Later
 Area: Planning, Itinerary, Dates, UX
@@ -350,7 +358,7 @@ Acceptance notes:
 - Cloud persistence and reload preserve both single-date and range-based items.
 - Future participant/location association should be considered so the app can answer who is staying/located where during overlapping date ranges.
 
-### 19. Realtime collaboration
+### 18. Realtime collaboration
 
 Status: Later
 Area: Supabase realtime, Sync
@@ -360,7 +368,7 @@ Current direction:
 - Keep refresh/relaunch-based sync first.
 - Add realtime only after table model, RLS, and basic collaboration behavior are stable.
 
-### 20. Google Maps deep integration
+### 19. Google Maps deep integration
 
 Status: Later
 Area: Places, Integrations
@@ -370,7 +378,7 @@ Current direction:
 - Manual place entry is enough for now.
 - Later: Google Places search, map previews, external Maps handoff, saved place metadata.
 
-### 21. Google Calendar integration
+### 20. Google Calendar integration
 
 Status: Later
 Area: Dates, Integrations
@@ -380,7 +388,7 @@ Current direction:
 - Keep basic trip dates and planning dates first.
 - Later: calendar export/sync once trip-planning behavior is proven.
 
-### 22. Push notifications/reminders
+### 21. Push notifications/reminders
 
 Status: Later
 Area: Platform, Notifications
