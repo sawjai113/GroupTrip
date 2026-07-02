@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct TripSummaryView: View {
     let tripID: TripPlan.ID
@@ -192,6 +195,7 @@ private struct InvitePeopleCard: View {
     let tripID: TripPlan.ID
     let createdInvite: TripInvite?
     var createInvite: () -> Void
+    @State private var didCopyInviteCode = false
 
     private var inviteForTrip: TripInvite? {
         guard createdInvite?.tripID == tripID else { return nil }
@@ -216,16 +220,40 @@ private struct InvitePeopleCard: View {
                 }
 
                 if let inviteForTrip {
-                    Text(inviteForTrip.code)
-                        .font(.title3.monospaced().weight(.semibold))
-                        .padding(.vertical, AppTheme.Spacing.xSmall)
-                        .accessibilityLabel("Invite code \(inviteForTrip.code)")
+                    HStack(spacing: AppTheme.Spacing.small) {
+                        Text(inviteForTrip.code)
+                            .font(.title3.monospaced().weight(.semibold))
+                            .padding(.vertical, AppTheme.Spacing.xSmall)
+                            .accessibilityLabel("Invite code \(inviteForTrip.code)")
+
+                        Spacer()
+
+                        Button {
+                            copyInviteCode(inviteForTrip.code)
+                        } label: {
+                            Label(didCopyInviteCode ? "Copied" : "Copy", systemImage: didCopyInviteCode ? "checkmark" : "doc.on.doc")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .buttonStyle(.bordered)
+                        .tint(didCopyInviteCode ? AppTheme.success : AppTheme.primary)
+                        .accessibilityLabel(didCopyInviteCode ? "Invite code copied" : "Copy invite code")
+                    }
                 }
 
                 Button(inviteForTrip == nil ? "Create Invite Code" : "Create Another Code", action: createInvite)
                     .buttonStyle(.borderedProminent)
                     .tint(AppTheme.success)
             }
+        }
+    }
+    private func copyInviteCode(_ code: String) {
+        #if canImport(UIKit)
+        UIPasteboard.general.string = code
+        #endif
+        didCopyInviteCode = true
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            await MainActor.run { didCopyInviteCode = false }
         }
     }
 }

@@ -20,26 +20,7 @@ Safety rule: any future action that deletes, removes, revokes, logs out, leaves,
 
 ## Now
 
-### 1. Invite sharing affordance polish
-
-Status: Now
-Area: Trip detail, Invites, UX
-
-Current direction:
-
-- Make it easy for an organizer/member to find or generate an invite code from the trip context.
-- Add a dedicated copy button for the invite code so users do not have to manually select/copy text.
-- Consider a simple share action later, after the copy flow is solid.
-- Ensure invite state is understandable: created, copied, expired/invalid, accepted.
-
-Acceptance notes:
-
-- Invite code has an obvious copy action.
-- Successful copy gives visible feedback.
-- Failure state is understandable.
-- VoiceOver label describes what is being copied.
-
-### 2. Join Trip entry point polish
+### 1. Join Trip entry point polish
 
 Status: Now
 Area: Dashboard, Invites, UX
@@ -56,7 +37,7 @@ Feedback notes:
 - Add a guest join path where someone can enter an invite code and display name without creating/signing into a Google account.
 - Make clear whether the user is joining as an account member or temporary guest collaborator.
 
-### 3. Confirmations for logout and destructive/removal actions
+### 2. Confirmations for logout and destructive/removal actions
 
 Status: Now
 Area: Data safety, Auth, Dashboard, Trips, Membership, UX
@@ -74,7 +55,7 @@ Acceptance notes:
 - Confirmation copy distinguishes local/demo-only changes from cloud/shared changes.
 - VoiceOver labels and destructive button roles are clear.
 
-### 4. Loading and empty states review
+### 3. Loading and empty states review
 
 Status: Now
 Area: UX, QA
@@ -400,6 +381,18 @@ Current direction:
 ---
 
 ## Done / Recently Resolved
+
+### Invite sharing affordance polish
+
+Status: Done
+Area: Trip detail, Invites, UX
+
+Resolution:
+
+- Invite codes now show a dedicated Copy button in the trip summary invite card.
+- Tapping Copy writes the invite code to the iOS pasteboard.
+- The button temporarily changes to Copied with a checkmark for visible feedback.
+- The copy action has an accessibility label.
 
 ### Google OAuth callback redirect
 
