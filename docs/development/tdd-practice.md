@@ -1,6 +1,6 @@
-# Wani Test-Driven Development Practice
+# Wanderaid Test-Driven Development Practice
 
-Wani should use test-driven development as the default practice for new behavior, bug fixes, and refactors.
+Wanderaid uses test-driven development as the default practice for new behavior, bug fixes, and refactors.
 
 ## Core Rule
 
@@ -15,19 +15,21 @@ The expected cycle is:
 5. Run the broader relevant test suite to catch regressions.
 6. **REFACTOR** — clean up while keeping tests green.
 
-## Current Test Baseline
+## Cloud Sync Tests
 
-The current test target has expense-calculation coverage in:
+For cloud persistence tests, use the `wanderaid-tdd-sync-boilerplate` skill. It covers:
 
-- `GroupTripAppTests/TripExpenseCalculatorTests.swift`
+- `FakeTripSyncService` request-recording pattern
+- UUID conventions to prevent test coupling
+- `makeTrip()` helper for test setup
+- Success/failure patterns for create, update, and delete
+- Running targeted and full-suite tests
 
-These tests cover:
+Load it before implementing any new cloud sync entity:
 
-- splitting expenses across selected participants
-- direct payments reducing balances
-- settlement suggestions
-
-Milestone 2 should expand coverage before adding cloud collaboration, auth, invites, and persistence.
+```text
+/skill wanderaid-tdd-sync-boilerplate
+```
 
 ## What Must Be Tested First
 
@@ -37,8 +39,9 @@ Use TDD for:
 - expense logic changes
 - trip/member/participant rules
 - invite and guest identity rules
-- Supabase mapping/serialization
-- persistence/load/save flows
+- Supabase DTO mapping/serialization
+- cloud persistence create/update/delete flows
+- cloud persistence failure handling (no local mutation on error)
 - bug fixes
 - refactors that change behavior
 
@@ -62,80 +65,38 @@ For these, use:
 
 If a visual change changes behavior, navigation, state, filtering, validation, or data mutation, add tests first.
 
-## Recommended Milestone 2 Test Areas
+## Pre-Commit Verification Sequence
 
-Before or during Milestone 2, add tests for:
-
-### Trip membership and participants
-
-- members and expense participants can be represented separately
-- organizer is included as a member
-- guest display names are tracked with stable internal IDs
-- removing a member does not accidentally erase historical expense attribution
-
-### Invite flow
-
-- invite link/code can create a guest collaborator
-- guest can later be associated with an account
-- duplicate display names are allowed but internal IDs remain unique
-- invalid/expired invite behavior is defined
-
-### Supabase mapping
-
-- local models encode/decode correctly to Supabase row DTOs
-- missing optional fields are handled safely
-- server IDs and local IDs are mapped consistently
-
-### Persistence/sync behavior
-
-- creating a trip persists required fields
-- adding places/planning items/expenses persists expected rows
-- loading a trip reconstructs the same local model shape
-- failed saves surface recoverable errors instead of silently losing data
-
-### Expense behavior under collaboration
-
-- splits remain correct when synced participants are loaded from backend
-- direct payments still reduce balances after persistence round-trip
-- deleted or inactive participants do not corrupt historical calculations
-
-## Test Command
-
-Use the current simulator test command:
+Before marking any non-trivial change complete, run these in order:
 
 ```sh
-xcodebuild test \
-  -project GroupTripApp.xcodeproj \
-  -scheme GroupTripApp \
-  -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.5' \
-  CODE_SIGNING_ALLOWED=NO
+# 1. Full test suite
+xcodebuild test -project "GroupTripApp.xcodeproj" -scheme GroupTripApp -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
+
+# 2. Generic build
+xcodebuild -project "GroupTripApp.xcodeproj" -scheme GroupTripApp -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO build
+
+# 3. Whitespace check
+git diff --check
+
+# 4. Secret scan (see wanderaid-build-test-commands skill for the Python script)
 ```
 
-For generic build verification:
+## How to Test
 
 ```sh
-xcodebuild \
-  -project GroupTripApp.xcodeproj \
-  -scheme GroupTripApp \
-  -destination 'generic/platform=iOS' \
-  CODE_SIGNING_ALLOWED=NO \
-  build
+# Full suite
+xcodebuild test -project "GroupTripApp.xcodeproj" -scheme GroupTripApp -destination 'platform=iOS Simulator,name=iPhone 17' CODE_SIGNING_ALLOWED=NO
+
+# Targeted test
+xcodebuild test -project "GroupTripApp.xcodeproj" -scheme GroupTripApp -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:GroupTripAppTests/TripStoreCloudSyncTests/testCloudStorePersistsAddedExpenseAndUpdatesLocalTrip CODE_SIGNING_ALLOWED=NO
+
+# Sub-suite
+xcodebuild test -project "GroupTripApp.xcodeproj" -scheme GroupTripApp -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:GroupTripAppTests/TripStoreCloudSyncTests CODE_SIGNING_ALLOWED=NO
+
+# Generic build
+xcodebuild -project "GroupTripApp.xcodeproj" -scheme GroupTripApp -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO build
 ```
-
-## Agent Workflow
-
-When Hermes or subagents implement behavior changes:
-
-1. The plan must identify testable behaviors first.
-2. Implementation agents must write the failing test before production code.
-3. Agents must report the RED failure output.
-4. Agents must report the GREEN passing output.
-5. Reviewers should reject behavior changes that do not include appropriate tests.
-
-For UI/UX exploration:
-
-- design-only prototypes can be implemented with build/review/manual smoke testing
-- once a UX behavior is accepted, add tests around the state/logic it depends on
 
 ## Practical SwiftUI Testing Guidance
 
@@ -167,4 +128,6 @@ A behavior-changing task is done only when:
 - [ ] the implementation made the test pass
 - [ ] the relevant full test suite passes
 - [ ] build verification passes when app code changed
+- [ ] git diff --check passes
+- [ ] secret scan on modified files passes
 - [ ] reviewers confirm no untested behavior was added

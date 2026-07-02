@@ -1,32 +1,31 @@
-# Wani
+# Wanderaid
 
-Wani is a SwiftUI iOS app for planning group trips with your people. Places, itinerary, dates, and expenses — all in one hub.
+Wanderaid is a SwiftUI iOS app for planning group trips with your people. Places, itinerary, dates, and expenses — all in one hub.
 
 ## Current Status
 
-Milestone 1 (Local Demo) is complete. It was implemented through chunks 1–13, documentation was updated in chunk 14, and final integration review passed in chunk 15. Use `Continue with Test Data` to open the local demo path.
-
-The demo uses a realistic six-person sample trip, `Japan Spring 2027`, and includes a trip dashboard, trip summary hub previews, saved places add/delete, planning item add/delete/toggle, people, expense, direct payment, balance, and settlement flows.
-
-Milestone 1 verification intentionally excludes Supabase sync/auth/invites/cloud collaboration, full trip detail editing, and durable persistence across app restart. Local session edits are for demonstration only; force quitting and relaunching the app restores the baseline sample trip.
+Milestone 2 (Collaborative MVP) is complete. Core cloud CRUD is wired and tested for Places, Planning Items, and Expenses (with splits/direct payments). The app uses Supabase for auth (Google OAuth primary, email/password backup) and data persistence. A manual two-user smoke test has passed — User A creates trip → invite → User B joins → cloud collaboration works.
 
 Latest verification:
 
+- 42 tests passing across 6 suites (as of 2026-06-29).
 - Generic iOS build succeeded.
-- iPhone 17 simulator expense calculator tests succeeded.
+- iPhone 17 simulator tests succeeded.
+- Secret scan and whitespace check passed.
 
-## Run the Local Demo
+## Run the App
 
 1. Open `GroupTripApp.xcodeproj` in Xcode.
 2. Run the `GroupTripApp` scheme on an iOS simulator.
-3. On launch, choose `Continue with Test Data`.
-4. Open the `Japan Spring 2027` sample trip and use the smoke-test checklist in `docs/plans/milestone-1-local-demo.md`.
+3. On launch, sign in with Google to create cloud-backed trips, or choose `Continue with Test Data` for the local demo.
+
+For the full two-user smoke test checklist, see the `wanderaid-manual-smoke-test` skill or run a manual test per `docs/plans/milestone-2-collaborative-mvp.md`.
 
 ## Development
 
 ### Practice
 
-Wani uses test-driven development as the default for behavior changes, bug fixes, and refactors. See `docs/development/tdd-practice.md`.
+Wanderaid uses test-driven development as the default for behavior changes, bug fixes, and refactors. See `docs/development/tdd-practice.md`.
 
 ### Backlog
 

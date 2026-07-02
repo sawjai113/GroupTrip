@@ -2,6 +2,28 @@
 
 This project is small enough for one person to understand, but it is now split well enough for focused subagents to work without colliding. Use these agents as role boundaries, not rigid job titles. One agent can own a task end to end as long as it stays within its lane and calls out handoffs.
 
+## When to Delegate
+
+The main session handles straightforward inline work. Subagents are reserved for tasks that benefit from isolation:
+
+**Delegate to a subagent when:**
+- Multi-file pattern with an established wanderaid-* skill
+- Cross-cutting work spanning layers (schema + service + store + tests)
+- Research / design proposal (read several files, synthesize)
+- Any implementation touching 4+ files or non-trivial logic
+- QA review pass after any non-trivial change
+
+**Do NOT delegate (work inline) when:**
+- Single-file mechanical change (rename, typo fix, single button)
+- Trivial one-line fixes
+- Quick exploration where fast iteration matters
+
+**QA gate after implementation (before commit):**
+- For inline work touching 2+ files or containing logic changes: spawn the QA/Release & PR Review Agent to review the diff before committing.
+- For delegated work: always run the QA/Release & PR Review Agent after the implementation subagent finishes.
+- The QA agent reviews the diff, runs security and whitespace checks, and confirms tests pass.
+- Skip QA gate only for typo fixes, docs-only changes, whitespace fixes, and single-line trivial fixes.
+
 ## Global Rules
 
 - Preserve user changes. Do not revert unrelated work.
@@ -13,7 +35,7 @@ This project is small enough for one person to understand, but it is now split w
 xcodebuild -project "/Users/sawjai/Documents/Group Trip App/GroupTripApp.xcodeproj" -scheme GroupTripApp -destination "generic/platform=iOS" CODE_SIGNING_ALLOWED=NO build
 ```
 
-- Keep Supabase keys client-safe only. Never add `service_role` keys to the app.
+- Keep Supabase keys client-safe only. Never add service-role keys to the app.
 - If a task touches another agent's owned files, mention why in the final handoff.
 - Avoid growing any single SwiftUI file back into a catch-all surface.
 
@@ -316,7 +338,7 @@ Responsibilities:
 Starter prompt:
 
 ```text
-You are the QA/Release & PR Review Agent for this SwiftUI iOS app. Read AGENTS.md first. Own tests, verification, regression risk, and PR review before merge. Prefer adding focused tests and reporting actionable findings. Review diffs for correctness, security, secrets, schema/RLS risks, missing tests, and release blockers. If you fix bugs, keep edits narrow and explain what failed. Run the relevant tests or iOS build before finalizing.
+You are the QA/Release & PR Review Agent for this SwiftUI iOS app. Read AGENTS.md first. You are the QA gate — review this implementation after a feature subagent finishes. Check the diff for correctness, security, secrets, schema/RLS risks, missing tests, and release blockers. Run the relevant tests or iOS build. If you fix bugs, keep edits narrow and explain what failed. Report a pass/fail verdict with the verification evidence.
 ```
 
 ## Recommended Active Team
