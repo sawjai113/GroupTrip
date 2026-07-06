@@ -92,6 +92,35 @@ final class TripStore: ObservableObject {
         }
     }
 
+    @MainActor
+    func saveParticipants(names: [String], to tripID: TripPlan.ID) async {
+        let participants = names
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+            .map { Participant(name: $0) }
+        guard !participants.isEmpty else { return }
+
+        guard let service else {
+            participants.forEach { addParticipant($0, to: tripID) }
+            return
+        }
+
+        do {
+            for participant in participants {
+                let savedParticipant = try await service.createParticipant(participant, in: tripID)
+                addParticipant(savedParticipant, to: tripID)
+            }
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    private func addParticipant(_ participant: Participant, to tripID: TripPlan.ID) {
+        objectWillChange.send()
+        trips.first { $0.id == tripID }?.viewModel.calculator.participants.append(participant)
+    }
+
     func deletePlace(_ placeID: TripPlace.ID, from tripID: TripPlan.ID) {
         updateTrip(withID: tripID) { trip in
             trip.places.removeAll { $0.id == placeID }

@@ -376,6 +376,33 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
 
+    func testCloudStorePersistsAddedParticipantBeforeExpensesReferenceThem() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B030")!
+        let savedParticipant = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F030")!, name: "Bill")
+        service.participantToCreate = savedParticipant
+        let store = TripStore(trips: [makeTrip(id: tripID, name: "Austin Weekend")], service: service)
+
+        await store.saveParticipants(names: [" Bill "], to: tripID)
+
+        XCTAssertEqual(service.createdParticipantRequest?.tripID, tripID)
+        XCTAssertEqual(service.createdParticipantRequest?.participant.name, "Bill")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.participants, [savedParticipant])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsParticipantCreateFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B031")!
+        let store = TripStore(trips: [makeTrip(id: tripID, name: "Austin Weekend")], service: service)
+
+        await store.saveParticipants(names: ["Bill"], to: tripID)
+
+        XCTAssertTrue(store.trips.first?.viewModel.calculator.participants.isEmpty == true)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
     func testCloudStoreDeletesPlaceRemotelyBeforeUpdatingLocalTrip() async throws {
         let service = FakeTripSyncService()
         let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B005")!
@@ -740,6 +767,11 @@ private final class FakeTripSyncService: TripSyncServicing {
         var place: TripPlace
     }
 
+    struct CreateParticipantRequest: Equatable {
+        var tripID: UUID
+        var participant: Participant
+    }
+
     struct DeletePlaceRequest: Equatable {
         var tripID: UUID
         var placeID: UUID
@@ -777,6 +809,7 @@ private final class FakeTripSyncService: TripSyncServicing {
 
     var tripsToLoad: [TripPlan] = []
     var tripToCreate: TripPlan?
+    var participantToCreate: Participant?
     var placeToCreate: TripPlace?
     var planningItemToCreate: TripPlanningItem?
     var expenseToCreate: ExpenseItem?
@@ -785,6 +818,7 @@ private final class FakeTripSyncService: TripSyncServicing {
     var invitePreviewToLookup: TripInvitePreview?
     var didLoadTrips = false
     var createdTripRequest: CreateTripRequest?
+    var createdParticipantRequest: CreateParticipantRequest?
     var createdPlaceRequest: CreatePlaceRequest?
     var deletedPlaceRequest: DeletePlaceRequest?
     var createdPlanningItemRequest: CreatePlanningItemRequest?
@@ -807,6 +841,12 @@ private final class FakeTripSyncService: TripSyncServicing {
         if let createError { throw createError }
         createdTripRequest = CreateTripRequest(name: name, destination: destination, emoji: emoji, imageURL: imageURL, startDate: startDate, endDate: endDate)
         return tripToCreate ?? TripPlan(destination: destination, emoji: emoji, imageURL: imageURL, startDate: startDate, endDate: endDate, viewModel: TripCalculatorViewModel.empty(named: name))
+    }
+
+    func createParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant {
+        if let createError { throw createError }
+        createdParticipantRequest = CreateParticipantRequest(tripID: tripID, participant: participant)
+        return participantToCreate ?? participant
     }
 
     func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace {

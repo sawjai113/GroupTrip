@@ -1,6 +1,6 @@
 # Wanderaid TODO / Feedback Backlog
 
-Last updated: 2026-07-01
+Last updated: 2026-07-06
 
 This is the lightweight git-tracked backlog for feedback, rough TODOs, and manual testing notes before they are promoted into detailed implementation plans or GitHub issues.
 
@@ -339,7 +339,49 @@ Acceptance notes:
 - Cloud persistence and reload preserve both single-date and range-based items.
 - Future participant/location association should be considered so the app can answer who is staying/located where during overlapping date ranges.
 
-### 18. Realtime collaboration
+### 18. Edit existing trip items
+
+Status: Later
+Area: Expenses, Planning, Places, People, Cloud sync, UX
+
+Feedback:
+
+- Make existing expenses editable.
+- More broadly, support editing existing items instead of only creating/deleting them.
+
+Acceptance notes:
+
+- Existing expenses can be edited after creation, including title, amount, payer, and split participants.
+- Existing planning items can be edited after creation, including title, note, date, and completion state.
+- Existing places can be edited after creation, including name, category, and notes.
+- Existing people/participants can be renamed where safe, without breaking existing expense references.
+- Cloud-backed edits persist to Supabase and are readable by another signed-in trip member after refresh/relaunch.
+- Demo/local mode keeps equivalent local edit behavior.
+- Failed cloud edits should not leave the UI showing unsaved changes as if they succeeded.
+- Editing shared items should make it clear that changes affect everyone on the trip.
+
+### 19. Move record payment into suggested settlements
+
+Status: Later
+Area: Expenses, Settlements, Payments, UX
+
+Feedback:
+
+- Remove the standalone “Record Payment” button.
+- Move payment-recording functionality into the Suggested Settlements area.
+- Each suggested settlement should open a pre-populated payment form for that payer/payee/amount.
+
+Acceptance notes:
+
+- Suggested settlement rows expose a clear action to record that exact payment.
+- Tapping a suggested settlement opens the existing payment form pre-filled with payer, recipient, and amount.
+- The user can still edit the pre-filled values before saving.
+- Saving creates the same direct payment record as the current Record Payment flow.
+- Canceling leaves state unchanged.
+- The old standalone Record Payment button is removed once the suggested-settlement flow covers the same capability.
+- The interaction should be accessible via VoiceOver and should make clear that recording a payment affects trip balances for everyone.
+
+### 20. Realtime collaboration
 
 Status: Later
 Area: Supabase realtime, Sync
@@ -349,7 +391,7 @@ Current direction:
 - Keep refresh/relaunch-based sync first.
 - Add realtime only after table model, RLS, and basic collaboration behavior are stable.
 
-### 19. Google Maps deep integration
+### 21. Google Maps deep integration
 
 Status: Later
 Area: Places, Integrations
@@ -359,7 +401,7 @@ Current direction:
 - Manual place entry is enough for now.
 - Later: Google Places search, map previews, external Maps handoff, saved place metadata.
 
-### 20. Google Calendar integration
+### 22. Google Calendar integration
 
 Status: Later
 Area: Dates, Integrations
@@ -369,7 +411,7 @@ Current direction:
 - Keep basic trip dates and planning dates first.
 - Later: calendar export/sync once trip-planning behavior is proven.
 
-### 21. Push notifications/reminders
+### 23. Push notifications/reminders
 
 Status: Later
 Area: Platform, Notifications

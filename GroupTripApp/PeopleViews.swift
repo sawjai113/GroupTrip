@@ -39,6 +39,8 @@ struct PeopleTabView: View {
 
 struct PeopleFeatureView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var saveParticipants: ([String]) async -> Void = { _ in }
+    var usesExternalPersistence: Bool = false
     @State private var activeSheet: ActiveSheet?
 
     var body: some View {
@@ -57,7 +59,11 @@ struct PeopleFeatureView: View {
             }
         }
         .sheet(item: $activeSheet) { _ in
-            AddPersonView(viewModel: viewModel)
+            AddPersonView(
+                viewModel: viewModel,
+                saveParticipants: saveParticipants,
+                usesExternalPersistence: usesExternalPersistence
+            )
         }
     }
 }

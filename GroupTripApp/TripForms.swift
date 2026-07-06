@@ -104,6 +104,8 @@ enum ActiveSheet: Identifiable {
 struct AddPersonView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var saveParticipants: ([String]) async -> Void = { _ in }
+    var usesExternalPersistence: Bool = false
     @State private var names = ""
 
     var body: some View {
@@ -132,8 +134,15 @@ struct AddPersonView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        viewModel.addParticipants(names: parsedNames)
-                        dismiss()
+                        if usesExternalPersistence {
+                            Task {
+                                await saveParticipants(parsedNames)
+                                dismiss()
+                            }
+                        } else {
+                            viewModel.addParticipants(names: parsedNames)
+                            dismiss()
+                        }
                     }
                     .disabled(parsedNames.isEmpty)
                 }

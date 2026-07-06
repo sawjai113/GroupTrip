@@ -7,6 +7,7 @@ struct ExpenseTrackerView: View {
     var saveExpense: (String, Participant.ID, Decimal, Set<Participant.ID>) async -> Void = { _, _, _, _ in }
     var deleteExpense: (ExpenseItem.ID) async -> Void = { _ in }
     var saveDirectPayment: (String, Participant.ID, Participant.ID, Decimal) async -> Void = { _, _, _, _ in }
+    var saveParticipants: ([String]) async -> Void = { _ in }
     var usesExternalPersistence: Bool = false
     @State private var selectedTab: ExpenseTab = .expenses
     @State private var activeSheet: ActiveSheet?
@@ -57,7 +58,11 @@ struct ExpenseTrackerView: View {
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .person:
-                AddPersonView(viewModel: viewModel)
+                AddPersonView(
+                    viewModel: viewModel,
+                    saveParticipants: saveParticipants,
+                    usesExternalPersistence: usesExternalPersistence
+                )
             case .expense:
                 AddExpenseView(
                     viewModel: viewModel,

@@ -97,7 +97,13 @@ struct TripSummaryView: View {
                             .foregroundStyle(.secondary)
 
                         NavigationLink {
-                            PeopleFeatureView(viewModel: viewModel)
+                            PeopleFeatureView(
+                                viewModel: viewModel,
+                                saveParticipants: { names in
+                                    await store.saveParticipants(names: names, to: tripID)
+                                },
+                                usesExternalPersistence: store.supportsCloudSync
+                            )
                         } label: {
                             PeoplePreviewCard(participants: viewModel.calculator.participants)
                         }
@@ -151,6 +157,9 @@ struct TripSummaryView: View {
                                 },
                                 saveDirectPayment: { title, from, to, amount in
                                     await store.saveDirectPayment(title: title, from: from, to: to, amount: amount, in: tripID)
+                                },
+                                saveParticipants: { names in
+                                    await store.saveParticipants(names: names, to: tripID)
                                 },
                                 usesExternalPersistence: store.supportsCloudSync
                             )

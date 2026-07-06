@@ -4,6 +4,7 @@ import Supabase
 protocol TripSyncServicing {
     func loadTrips() async throws -> [TripPlan]
     func createTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async throws -> TripPlan
+    func createParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant
     func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace
     func deletePlace(_ placeID: UUID, from tripID: UUID) async throws
     func createPlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem
@@ -168,6 +169,21 @@ struct SupabaseTripService: TripSyncServicing {
             .execute()
 
         return remoteTrip.tripPlan()
+    }
+
+    func createParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant {
+        let trimmedParticipant = Participant(
+            id: participant.id,
+            name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        guard !trimmedParticipant.name.isEmpty else { return trimmedParticipant }
+
+        try await client
+            .from("trip_participants")
+            .insert(SupabaseTripParticipantDTO(tripID: tripID, participant: trimmedParticipant))
+            .execute()
+
+        return trimmedParticipant
     }
 
     func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace {
@@ -602,6 +618,30 @@ struct SupabaseTripParticipantDTO: Codable, Hashable {
         case linkedMemberID = "linked_member_id"
         case linkedUserID = "linked_user_id"
         case isOrganizer = "is_organizer"
+    }
+
+    init(
+        id: UUID,
+        tripID: UUID,
+        displayName: String,
+        linkedMemberID: UUID? = nil,
+        linkedUserID: UUID? = nil,
+        isOrganizer: Bool = false
+    ) {
+        self.id = id
+        self.tripID = tripID
+        self.displayName = displayName
+        self.linkedMemberID = linkedMemberID
+        self.linkedUserID = linkedUserID
+        self.isOrganizer = isOrganizer
+    }
+
+    init(tripID: UUID, participant: Participant) {
+        self.init(
+            id: participant.id,
+            tripID: tripID,
+            displayName: participant.name
+        )
     }
 
     var participant: Participant {
