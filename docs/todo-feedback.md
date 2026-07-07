@@ -73,6 +73,25 @@ Feedback notes:
 
 - TBD
 
+### 4. Milestone 2 trip management and editing expansion
+
+Status: Now
+Area: Dashboard, Trips, Membership, Cloud sync, UX, Data safety
+
+Decision:
+
+- Add leave trip, archive/delete trip, and edit existing trip items to Milestone 2 scope before TestFlight readiness.
+- Treat these as core collaborative MVP safety and correction flows, not post-milestone polish.
+
+Acceptance notes:
+
+- Leaving a trip removes the current user's access but does not delete the trip for everyone.
+- Owner/last-owner behavior must be explicit before implementation.
+- Cloud trip delete should prefer archive/soft-delete semantics unless a permanent owner-only delete rule is intentionally defined.
+- Existing places, planning items, expenses, payments, and safe person details can be edited after creation.
+- Failed cloud edits must not appear locally as successfully saved.
+- All leave/delete/archive flows require confirmation copy that says who is affected.
+
 ---
 
 ## Regression Checklists
@@ -200,7 +219,7 @@ Acceptance notes:
 
 ### 10. Past trip swipe-to-delete with confirmation
 
-Status: Later
+Status: Now
 Area: Dashboard, Trips, Data safety
 
 Feedback:
@@ -218,7 +237,7 @@ Acceptance notes:
 
 ### 11. Leave current/future trip
 
-Status: Later
+Status: Now
 Area: Dashboard, Trips, Membership, Supabase
 
 Feedback:
@@ -341,7 +360,7 @@ Acceptance notes:
 
 ### 18. Edit existing trip items
 
-Status: Later
+Status: Now
 Area: Expenses, Planning, Places, People, Cloud sync, UX
 
 Feedback:

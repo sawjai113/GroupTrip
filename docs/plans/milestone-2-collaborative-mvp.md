@@ -47,6 +47,9 @@ This milestone should evolve that groundwork rather than duplicate it.
   - recommended first: add place or planning item
   - later in milestone: add expense/payment
 - Expense balances/settlements remain correct after synced data loads.
+- Members can leave trips without deleting the trip for everyone.
+- Owners can archive/delete trips with clear safety rules and confirmation.
+- Existing trip items can be edited after creation, starting with places, planning items, expenses, payments, and people where safe.
 - Demo Mode remains available for quick local exploration.
 
 ### Should Have
@@ -56,6 +59,8 @@ This milestone should evolve that groundwork rather than duplicate it.
 - Simple role labels: owner/member/guest.
 - Basic no-data states for cloud trips.
 - Manual smoke-test checklist for two sessions/devices.
+- Archive/leave/delete copy distinguishes personal access removal from shared-trip removal.
+- Editing flows make shared changes clear and preserve calculation correctness.
 
 ### Non-Goals
 
@@ -292,7 +297,47 @@ Prefer testing below the SwiftUI view layer first:
 
 **TDD:** Required for state transitions where practical; visual review required.
 
-### Chunk 12: TestFlight readiness review
+### Chunk 12: Leave trip flow
+
+**Objective:** Allow a member to leave a current or future cloud trip without deleting the trip for other collaborators.
+
+**Files:**
+
+- `supabase/schema.sql` for leave/archive RPCs or policies if needed.
+- `GroupTripApp/SupabaseTripService.swift` for remote leave behavior.
+- `GroupTripApp/TripStore.swift` for local removal after successful leave.
+- Dashboard/trip-detail SwiftUI surfaces for the leave action.
+- Tests under `GroupTripAppTests/`.
+
+**TDD:** Required for service/store behavior. Confirm leaving removes access locally only after the remote operation succeeds. Owner/last-owner behavior must be explicit before implementation.
+
+### Chunk 13: Archive/delete trip flow
+
+**Objective:** Add safe trip removal behavior with archive-first semantics for cloud-backed trips and clear confirmation copy.
+
+**Files:**
+
+- `supabase/schema.sql` if archive/deleted status needs schema support.
+- `GroupTripApp/SupabaseTripService.swift`.
+- `GroupTripApp/TripStore.swift`.
+- Dashboard/trip card menu or trip-detail action surface.
+- Tests under `GroupTripAppTests/`.
+
+**TDD:** Required. Prefer archive/soft-delete over permanent delete for shared cloud trips unless an explicit owner-only permanent-delete rule is defined. Confirmation must distinguish demo/local deletion from shared cloud archive/delete.
+
+### Chunk 14: Edit existing trip items
+
+**Objective:** Support editing existing places, planning items, expenses, direct payments, and safe participant/person details after creation.
+
+**Files:**
+
+- Feature views/forms: `TripPlacesView.swift`, `TripPlanningView.swift`, `ExpenseViews.swift`, `TripForms.swift`, `PeopleViews.swift`.
+- Store/service: `TripStore.swift`, `SupabaseTripService.swift`.
+- Tests under `GroupTripAppTests/`.
+
+**TDD:** Required for store/service update methods and calculation correctness. Start with places/planning items, then expenses/payments, then participant/person edits where safe. Failed cloud edits must not leave local UI showing unsaved changes as if they persisted.
+
+### Chunk 15: TestFlight readiness review
 
 **Objective:** Confirm close friends/family can use core flows without developer explanation.
 
@@ -318,8 +363,11 @@ Prefer testing below the SwiftUI view layer first:
 - Add a place from one session; refresh and confirm visible from the other.
 - Add a planning item from one session; refresh and confirm visible from the other.
 - Add expense with selected participants.
+- Edit a place, planning item, expense, and direct payment; refresh and confirm edits persist.
 - Add direct payment.
 - Confirm balances/settlements match expected values.
+- Have a non-owner member leave the trip; confirm the trip disappears for that member and remains for others.
+- Archive/delete a test trip as an owner; confirm the action requires confirmation and does not accidentally remove unrelated collaborator data.
 - Confirm no service-role credentials or secrets are present in client code.
 
 ## Confirmed Start Gate
