@@ -11,6 +11,8 @@ struct TripSummaryView: View {
     @ObservedObject private var viewModel: TripCalculatorViewModel
     @State private var isShowingLeaveTripConfirmation = false
     @State private var isLeavingTrip = false
+    @State private var isShowingArchiveTripConfirmation = false
+    @State private var isArchivingTrip = false
 
     init(trip: TripPlan, store: TripStore) {
         self.tripID = trip.id
@@ -188,8 +190,14 @@ struct TripSummaryView: View {
                     }
 
                     if store.supportsCloudSync {
-                        LeaveTripCard(isLeaving: isLeavingTrip) {
-                            isShowingLeaveTripConfirmation = true
+                        VStack(spacing: AppTheme.Spacing.medium) {
+                            ArchiveTripCard(isArchiving: isArchivingTrip) {
+                                isShowingArchiveTripConfirmation = true
+                            }
+
+                            LeaveTripCard(isLeaving: isLeavingTrip) {
+                                isShowingLeaveTripConfirmation = true
+                            }
                         }
                     }
 
@@ -217,6 +225,18 @@ struct TripSummaryView: View {
         } message: {
             Text("This removes the trip from your account only. Other collaborators keep access, and shared trip data is not deleted.")
         }
+        .confirmationDialog(
+            "Archive this trip?",
+            isPresented: $isShowingArchiveTripConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Archive Trip", role: .destructive) {
+                Task { await archiveTrip() }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Trip owners can archive a shared trip for everyone. This hides it from active trip lists without deleting expenses, people, places, or planning items.")
+        }
     }
 
     @MainActor
@@ -224,6 +244,17 @@ struct TripSummaryView: View {
         isLeavingTrip = true
         await store.leaveTrip(tripID)
         isLeavingTrip = false
+
+        if !store.trips.contains(where: { $0.id == tripID }) {
+            dismiss()
+        }
+    }
+
+    @MainActor
+    private func archiveTrip() async {
+        isArchivingTrip = true
+        await store.archiveTrip(tripID)
+        isArchivingTrip = false
 
         if !store.trips.contains(where: { $0.id == tripID }) {
             dismiss()
@@ -240,6 +271,43 @@ struct TripSummaryView: View {
         }
 
         return "All settled up"
+    }
+}
+
+private struct ArchiveTripCard: View {
+    var isArchiving: Bool
+    var archiveTrip: () -> Void
+
+    var body: some View {
+        WaniCard(padding: AppTheme.Spacing.medium, radius: AppTheme.Radius.medium) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                HStack(alignment: .top, spacing: AppTheme.Spacing.small) {
+                    WaniIconBadge(systemImage: "archivebox", tint: AppTheme.warning, size: AppTheme.IconSize.medium)
+
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
+                        Text("Archive Trip")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Owners can hide this shared trip from active lists without deleting trip data.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                Button(role: .destructive, action: archiveTrip) {
+                    if isArchiving {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Label("Archive Trip", systemImage: "archivebox")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(isArchiving)
+            }
+        }
     }
 }
 

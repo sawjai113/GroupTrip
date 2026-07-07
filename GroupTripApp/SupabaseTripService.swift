@@ -17,6 +17,7 @@ protocol TripSyncServicing {
     func lookupInvite(code: String) async throws -> TripInvitePreview?
     func acceptInvite(code: String) async throws
     func leaveTrip(_ tripID: UUID) async throws
+    func archiveTrip(_ tripID: UUID) async throws
 }
 
 struct SupabaseTripService: TripSyncServicing {
@@ -376,6 +377,12 @@ struct SupabaseTripService: TripSyncServicing {
             .execute()
     }
 
+    func archiveTrip(_ tripID: UUID) async throws {
+        try await client
+            .rpc("archive_trip", params: SupabaseArchiveTripParams(tripID: tripID))
+            .execute()
+    }
+
     private static func makeInviteCode() -> String {
         let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
         return String((0..<8).map { _ in alphabet.randomElement() ?? "W" })
@@ -548,6 +555,14 @@ struct SupabaseInviteLookupParams: Encodable {
 }
 
 struct SupabaseLeaveTripParams: Encodable {
+    var tripID: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case tripID = "target_trip_id"
+    }
+}
+
+struct SupabaseArchiveTripParams: Encodable {
     var tripID: UUID
 
     enum CodingKeys: String, CodingKey {

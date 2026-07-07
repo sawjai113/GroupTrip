@@ -166,6 +166,16 @@ begin
   end if;
 
   begin
+    perform public.archive_trip('00000000-0000-0000-0000-000000001001');
+    raise exception 'member should not be able to archive shared trip';
+  exception
+    when raise_exception then
+      if sqlerrm <> 'Only trip owners can archive this trip' then
+        raise;
+      end if;
+  end;
+
+  begin
     insert into public.trip_members (id, trip_id, user_id, role, member_kind, display_name, created_by)
     values ('00000000-0000-0000-0000-000000002901', '00000000-0000-0000-0000-000000001001', '00000000-0000-0000-0000-000000000103', 'member', 'account', 'Forbidden Member', member_id);
     raise exception 'member should not be able to insert memberships';
@@ -399,6 +409,56 @@ begin
     when insufficient_privilege or invalid_authorization_specification then
       null;
   end;
+end $$;
+
+-- Owners can archive a trip without deleting collaborator/membership data;
+-- archived trips stop appearing in normal reads and invite lookup.
+reset role;
+set local role authenticated;
+set local "request.jwt.claim.role" = 'authenticated';
+set local "request.jwt.claim.sub" = '00000000-0000-0000-0000-000000000101';
+
+do $$
+declare
+  owner_rows integer;
+  visible_trips integer;
+begin
+  perform public.archive_trip('00000000-0000-0000-0000-000000001001');
+
+  select count(*) into visible_trips
+  from public.trips
+  where id = '00000000-0000-0000-0000-000000001001';
+
+  if visible_trips <> 0 then
+    raise exception 'archived trip should be hidden from normal trip reads, got % rows', visible_trips;
+  end if;
+
+  select count(*) into owner_rows
+  from public.trip_members
+  where trip_id = '00000000-0000-0000-0000-000000001001'
+    and user_id = '00000000-0000-0000-0000-000000000101'
+    and role = 'owner';
+
+  if owner_rows <> 1 then
+    raise exception 'archive_trip should not delete owner membership, got % owner rows', owner_rows;
+  end if;
+end $$;
+
+reset role;
+set local role anon;
+set local "request.jwt.claim.role" = 'anon';
+set local "request.jwt.claim.sub" = '';
+
+do $$
+declare
+  lookup_rows integer;
+begin
+  select count(*) into lookup_rows
+  from public.lookup_active_trip_invite('WANI-SMOKE-CODE');
+
+  if lookup_rows <> 0 then
+    raise exception 'archived trip invite lookup should return zero rows, got %', lookup_rows;
+  end if;
 end $$;
 
 -- Integrity trigger should reject expense paid by a participant from a different trip.

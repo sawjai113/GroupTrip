@@ -184,10 +184,12 @@ create table if not exists public.trips (
 
 alter table public.trips add column if not exists description text;
 alter table public.trips add column if not exists updated_at timestamptz not null default now();
+alter table public.trips add column if not exists archived_at timestamptz;
 alter table public.trips drop constraint if exists trips_date_order_check;
 alter table public.trips add constraint trips_date_order_check check (end_date >= start_date);
 
 create index if not exists idx_trips_created_by on public.trips (created_by);
+create index if not exists idx_trips_active on public.trips (id) where archived_at is null;
 
 alter table public.trips enable row level security;
 
@@ -205,7 +207,10 @@ drop policy if exists "trip members can read trips" on public.trips;
 create policy "trip members can read trips"
 on public.trips for select
 to authenticated
-using (created_by = auth.uid() or public.is_trip_member(id));
+using (
+  archived_at is null
+  and (created_by = auth.uid() or public.is_trip_member(id))
+);
 
 drop policy if exists "authenticated users can create their own trips" on public.trips;
 create policy "authenticated users can create their own trips"
@@ -214,17 +219,41 @@ to authenticated
 with check (created_by = auth.uid());
 
 drop policy if exists "trip members can update trips" on public.trips;
-create policy "trip members can update trips"
+drop policy if exists "trip owners can update trips" on public.trips;
+create policy "trip owners can update trips"
 on public.trips for update
 to authenticated
-using (public.is_trip_member(id))
-with check (public.is_trip_member(id));
+using (created_by = auth.uid() or public.is_trip_owner(id))
+with check (created_by = auth.uid() or public.is_trip_owner(id));
 
 drop policy if exists "trip owners can delete trips" on public.trips;
 create policy "trip owners can delete trips"
 on public.trips for delete
 to authenticated
 using (created_by = auth.uid() or public.is_trip_owner(id));
+
+create or replace function public.archive_trip(target_trip_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.is_trip_owner(target_trip_id) then
+    raise exception 'Only trip owners can archive this trip';
+  end if;
+
+  update public.trips
+  set archived_at = coalesce(archived_at, now())
+  where id = target_trip_id;
+
+  if not found then
+    raise exception 'Trip not found';
+  end if;
+end;
+$$;
+
+grant execute on function public.archive_trip(uuid) to authenticated;
 
 -- ============================================================
 -- TRIP MEMBERS
@@ -536,6 +565,7 @@ as $$
   from public.trip_invites i
   join public.trips t on t.id = i.trip_id
   where i.code = invite_code
+    and t.archived_at is null
     and i.is_active = true
     and (i.expires_at is null or i.expires_at > now())
     and (i.max_uses is null or i.use_count < i.max_uses)
@@ -567,7 +597,9 @@ begin
   select i.id, i.trip_id, i.role
   into active_invite
   from public.trip_invites i
+  join public.trips t on t.id = i.trip_id
   where i.code = invite_code
+    and t.archived_at is null
     and i.is_active = true
     and (i.expires_at is null or i.expires_at > now())
     and (i.max_uses is null or i.use_count < i.max_uses)

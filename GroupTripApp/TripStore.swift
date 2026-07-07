@@ -357,6 +357,22 @@ final class TripStore: ObservableObject {
     }
 
     @MainActor
+    func archiveTrip(_ tripID: TripPlan.ID) async {
+        guard let service else {
+            trips.removeAll { $0.id == tripID }
+            return
+        }
+
+        do {
+            syncError = nil
+            try await service.archiveTrip(tripID)
+            trips.removeAll { $0.id == tripID }
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    @MainActor
     func loadTrips() async {
         guard let service else { return }
 
