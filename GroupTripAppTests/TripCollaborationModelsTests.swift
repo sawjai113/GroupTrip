@@ -736,6 +736,38 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
 
+    func testCloudStoreLeavesTripRemotelyBeforeRemovingLocalTrip() async {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B019")!
+        let otherTripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B020")!
+        let store = TripStore(
+            trips: [
+                makeTrip(id: tripID, name: "Austin Weekend"),
+                makeTrip(id: otherTripID, name: "Seattle Visit")
+            ],
+            service: service
+        )
+
+        await store.leaveTrip(tripID)
+
+        XCTAssertEqual(service.leftTripID, tripID)
+        XCTAssertEqual(store.trips.map(\.id), [otherTripID])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsLeaveTripFailureWithoutLocalRemoval() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B021")!
+        let store = TripStore(trips: [makeTrip(id: tripID, name: "Austin Weekend")], service: service)
+
+        await store.leaveTrip(tripID)
+
+        XCTAssertEqual(service.leftTripID, tripID)
+        XCTAssertEqual(store.trips.map(\.id), [tripID])
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
     private func makeTrip(id: UUID, name: String) -> TripPlan {
         TripPlan(
             id: id,
@@ -832,6 +864,7 @@ private final class FakeTripSyncService: TripSyncServicing {
     var createdInviteRequest: CreateInviteRequest?
     var lookedUpInviteCode: String?
     var acceptedInviteCode: String?
+    var leftTripID: UUID?
     var createError: Error?
 
     func loadTrips() async throws -> [TripPlan] {
@@ -910,6 +943,11 @@ private final class FakeTripSyncService: TripSyncServicing {
 
     func acceptInvite(code: String) async throws {
         acceptedInviteCode = code
+        if let createError { throw createError }
+    }
+
+    func leaveTrip(_ tripID: UUID) async throws {
+        leftTripID = tripID
         if let createError { throw createError }
     }
 }

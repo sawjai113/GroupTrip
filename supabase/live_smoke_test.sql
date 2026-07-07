@@ -308,6 +308,38 @@ begin
     when invalid_parameter_value then
       null;
   end;
+
+  perform public.leave_trip('00000000-0000-0000-0000-000000001001');
+
+  select count(*) into joined_rows
+  from public.trip_members
+  where trip_id = '00000000-0000-0000-0000-000000001001'
+    and user_id = '00000000-0000-0000-0000-000000000103';
+
+  if joined_rows <> 0 then
+    raise exception 'leave_trip should remove only the caller membership, got % rows', joined_rows;
+  end if;
+end $$;
+
+-- Verify the trip and owner membership still exist from the owner context after the guest leaves.
+reset role;
+set local role authenticated;
+set local "request.jwt.claim.role" = 'authenticated';
+set local "request.jwt.claim.sub" = '00000000-0000-0000-0000-000000000101';
+
+do $$
+declare
+  owner_rows integer;
+begin
+  select count(*) into owner_rows
+  from public.trip_members
+  where trip_id = '00000000-0000-0000-0000-000000001001'
+    and user_id = '00000000-0000-0000-0000-000000000101'
+    and role = 'owner';
+
+  if owner_rows <> 1 then
+    raise exception 'leave_trip should not remove owner membership, got % owner rows', owner_rows;
+  end if;
 end $$;
 
 -- Anonymous users should not get table-level reads.

@@ -361,6 +361,37 @@ on public.trip_members for delete
 to authenticated
 using (public.is_trip_owner(trip_id));
 
+create or replace function public.leave_trip(target_trip_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  current_membership public.trip_members%rowtype;
+begin
+  select *
+  into current_membership
+  from public.trip_members
+  where trip_id = target_trip_id
+    and user_id = auth.uid()
+  limit 1;
+
+  if not found then
+    raise exception 'You are not a member of this trip';
+  end if;
+
+  if current_membership.role = 'owner' then
+    raise exception 'Owners cannot leave a trip until ownership transfer or archive/delete is available';
+  end if;
+
+  delete from public.trip_members
+  where id = current_membership.id;
+end;
+$$;
+
+grant execute on function public.leave_trip(uuid) to authenticated;
+
 -- ============================================================
 -- TRIP PARTICIPANTS
 -- ============================================================

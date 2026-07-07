@@ -4,10 +4,13 @@ import UIKit
 #endif
 
 struct TripSummaryView: View {
+    @Environment(\.dismiss) private var dismiss
     let tripID: TripPlan.ID
     private let initialTrip: TripPlan
     @ObservedObject private var store: TripStore
     @ObservedObject private var viewModel: TripCalculatorViewModel
+    @State private var isShowingLeaveTripConfirmation = false
+    @State private var isLeavingTrip = false
 
     init(trip: TripPlan, store: TripStore) {
         self.tripID = trip.id
@@ -184,6 +187,12 @@ struct TripSummaryView: View {
                         .buttonStyle(.plain)
                     }
 
+                    if store.supportsCloudSync {
+                        LeaveTripCard(isLeaving: isLeavingTrip) {
+                            isShowingLeaveTripConfirmation = true
+                        }
+                    }
+
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
                         Text("Coming Soon")
                             .font(.headline)
@@ -196,6 +205,29 @@ struct TripSummaryView: View {
         }
         .background(AppTheme.background)
         .toolbar(.hidden, for: .navigationBar)
+        .confirmationDialog(
+            "Leave this trip?",
+            isPresented: $isShowingLeaveTripConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Leave Trip", role: .destructive) {
+                Task { await leaveTrip() }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This removes the trip from your account only. Other collaborators keep access, and shared trip data is not deleted.")
+        }
+    }
+
+    @MainActor
+    private func leaveTrip() async {
+        isLeavingTrip = true
+        await store.leaveTrip(tripID)
+        isLeavingTrip = false
+
+        if !store.trips.contains(where: { $0.id == tripID }) {
+            dismiss()
+        }
     }
 
     private var expenseSettlementHint: String {
@@ -208,6 +240,43 @@ struct TripSummaryView: View {
         }
 
         return "All settled up"
+    }
+}
+
+private struct LeaveTripCard: View {
+    var isLeaving: Bool
+    var leaveTrip: () -> Void
+
+    var body: some View {
+        WaniCard(padding: AppTheme.Spacing.medium, radius: AppTheme.Radius.medium) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                HStack(alignment: .top, spacing: AppTheme.Spacing.small) {
+                    WaniIconBadge(systemImage: "rectangle.portrait.and.arrow.right", tint: AppTheme.error, size: AppTheme.IconSize.medium)
+
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
+                        Text("Leave Trip")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Remove this trip from your account without deleting it for anyone else.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+
+                Button(role: .destructive, action: leaveTrip) {
+                    if isLeaving {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Label("Leave Trip", systemImage: "rectangle.portrait.and.arrow.right")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(isLeaving)
+            }
+        }
     }
 }
 
