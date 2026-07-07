@@ -5,6 +5,7 @@ protocol TripSyncServicing {
     func loadTrips() async throws -> [TripPlan]
     func createTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async throws -> TripPlan
     func createParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant
+    func updateParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant
     func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace
     func deletePlace(_ placeID: UUID, from tripID: UUID) async throws
     func createPlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem
@@ -186,6 +187,25 @@ struct SupabaseTripService: TripSyncServicing {
         try await client
             .from("trip_participants")
             .insert(SupabaseTripParticipantDTO(tripID: tripID, participant: trimmedParticipant))
+            .execute()
+
+        return trimmedParticipant
+    }
+
+    func updateParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant {
+        let trimmedParticipant = Participant(
+            id: participant.id,
+            name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        guard !trimmedParticipant.name.isEmpty else {
+            throw SupabaseTripServiceValidationError.invalidParticipant
+        }
+
+        try await client
+            .from("trip_participants")
+            .update(SupabaseTripParticipantPartialUpdate(displayName: trimmedParticipant.name))
+            .eq("id", value: trimmedParticipant.id.uuidString)
+            .eq("trip_id", value: tripID.uuidString)
             .execute()
 
         return trimmedParticipant
@@ -942,16 +962,27 @@ struct SupabaseTripExpenseSplitDTO: Codable, Hashable {
 }
 
 private enum SupabaseTripServiceValidationError: LocalizedError {
+    case invalidParticipant
     case invalidExpense
     case invalidDirectPayment
 
     var errorDescription: String? {
         switch self {
+        case .invalidParticipant:
+            "Participant edits need a display name."
         case .invalidExpense:
             "Expense edits need a title, positive amount, and at least one split participant."
         case .invalidDirectPayment:
             "Payment edits need a title, positive amount, and two different people."
         }
+    }
+}
+
+struct SupabaseTripParticipantPartialUpdate: Encodable {
+    var displayName: String
+
+    enum CodingKeys: String, CodingKey {
+        case displayName = "display_name"
     }
 }
 

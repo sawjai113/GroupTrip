@@ -109,12 +109,14 @@ struct NewTripView: View {
 
 enum ActiveSheet: Identifiable {
     case person
+    case editPerson(Participant)
     case expense
     case payment
 
     var id: String {
         switch self {
         case .person: "person"
+        case .editPerson(let participant): "edit-person-\(participant.id)"
         case .expense: "expense"
         case .payment: "payment"
         }
@@ -124,7 +126,9 @@ enum ActiveSheet: Identifiable {
 struct AddPersonView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var existingParticipant: Participant?
     var saveParticipants: ([String]) async -> Void = { _ in }
+    var updateParticipant: (Participant) async -> Void = { _ in }
     var usesExternalPersistence: Bool = false
     @State private var names = ""
 
@@ -132,29 +136,44 @@ struct AddPersonView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextEditor(text: $names)
-                        .frame(minHeight: 140)
-                        .overlay(alignment: .topLeading) {
-                            if names.isEmpty {
-                                Text("Alex\nSam\nTaylor")
-                                    .foregroundStyle(.tertiary)
-                                    .padding(.top, 8)
-                                    .padding(.leading, 5)
-                                    .allowsHitTesting(false)
+                    if existingParticipant == nil {
+                        TextEditor(text: $names)
+                            .frame(minHeight: 140)
+                            .overlay(alignment: .topLeading) {
+                                if names.isEmpty {
+                                    Text("Alex\nSam\nTaylor")
+                                        .foregroundStyle(.tertiary)
+                                        .padding(.top, 8)
+                                        .padding(.leading, 5)
+                                        .allowsHitTesting(false)
+                                }
                             }
-                        }
+                    } else {
+                        TextField("Name", text: $names)
+                    }
                 } footer: {
-                    Text("Enter one person per line.")
+                    Text(existingParticipant == nil ? "Enter one person per line." : "Renaming keeps this person's expense and payment history linked.")
                 }
             }
-            .navigationTitle("Add People")
+            .navigationTitle(existingParticipant == nil ? "Add People" : "Edit Person")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        if usesExternalPersistence {
+                    Button(existingParticipant == nil ? "Add" : "Save") {
+                        if let existingParticipant {
+                            let updatedParticipant = Participant(id: existingParticipant.id, name: parsedNames.first ?? "")
+                            if usesExternalPersistence {
+                                Task {
+                                    await updateParticipant(updatedParticipant)
+                                    dismiss()
+                                }
+                            } else {
+                                viewModel.updateParticipant(updatedParticipant)
+                                dismiss()
+                            }
+                        } else if usesExternalPersistence {
                             Task {
                                 await saveParticipants(parsedNames)
                                 dismiss()
@@ -165,6 +184,11 @@ struct AddPersonView: View {
                         }
                     }
                     .disabled(parsedNames.isEmpty)
+                }
+            }
+            .onAppear {
+                if let existingParticipant, names.isEmpty {
+                    names = existingParticipant.name
                 }
             }
         }

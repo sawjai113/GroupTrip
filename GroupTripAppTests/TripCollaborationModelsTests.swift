@@ -973,6 +973,53 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
 
+    func testCloudStoreUpdatesParticipantNameRemotelyWithoutChangingExpenseReferences() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B02D")!
+        let alex = Participant(name: "Alex")
+        let sam = Participant(name: "Sam")
+        let expense = ExpenseItem(title: "Dinner", paidBy: alex.id, amount: 80, participants: [alex.id, sam.id])
+        let payment = DirectPayment(title: "Payback", from: sam.id, to: alex.id, amount: 40)
+        let trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [alex, sam]
+        trip.viewModel.calculator.expenses = [expense]
+        trip.viewModel.calculator.payments = [payment]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updateParticipant(Participant(id: alex.id, name: "  Alex Rivera  "), in: tripID)
+
+        let request = try XCTUnwrap(service.updatedParticipantRequest)
+        XCTAssertEqual(request.tripID, tripID)
+        XCTAssertEqual(request.participant.id, alex.id)
+        XCTAssertEqual(request.participant.name, "Alex Rivera")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.participants.first?.id, alex.id)
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.participants.first?.name, "Alex Rivera")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.expenses.first?.paidBy, alex.id)
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.expenses.first?.participants, [alex.id, sam.id])
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.payments.first?.to, alex.id)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsParticipantUpdateFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B02E")!
+        let alex = Participant(name: "Alex")
+        let sam = Participant(name: "Sam")
+        let expense = ExpenseItem(title: "Dinner", paidBy: alex.id, amount: 80, participants: [alex.id, sam.id])
+        let trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [alex, sam]
+        trip.viewModel.calculator.expenses = [expense]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updateParticipant(Participant(id: alex.id, name: "Alex Rivera"), in: tripID)
+
+        XCTAssertEqual(service.updatedParticipantRequest?.participant.name, "Alex Rivera")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.participants.first?.name, "Alex")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.expenses.first?.paidBy, alex.id)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
     private func makeTrip(id: UUID, name: String) -> TripPlan {
         TripPlan(
             id: id,
@@ -1007,6 +1054,11 @@ private final class FakeTripSyncService: TripSyncServicing {
     }
 
     struct CreateParticipantRequest: Equatable {
+        var tripID: UUID
+        var participant: Participant
+    }
+
+    struct UpdateParticipantRequest: Equatable {
         var tripID: UUID
         var participant: Participant
     }
@@ -1073,6 +1125,7 @@ private final class FakeTripSyncService: TripSyncServicing {
     var didLoadTrips = false
     var createdTripRequest: CreateTripRequest?
     var createdParticipantRequest: CreateParticipantRequest?
+    var updatedParticipantRequest: UpdateParticipantRequest?
     var createdPlaceRequest: CreatePlaceRequest?
     var deletedPlaceRequest: DeletePlaceRequest?
     var createdPlanningItemRequest: CreatePlanningItemRequest?
@@ -1106,6 +1159,12 @@ private final class FakeTripSyncService: TripSyncServicing {
         if let createError { throw createError }
         createdParticipantRequest = CreateParticipantRequest(tripID: tripID, participant: participant)
         return participantToCreate ?? participant
+    }
+
+    func updateParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant {
+        updatedParticipantRequest = UpdateParticipantRequest(tripID: tripID, participant: participant)
+        if let createError { throw createError }
+        return participant
     }
 
     func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace {

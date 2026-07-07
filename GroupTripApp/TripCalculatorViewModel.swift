@@ -35,6 +35,13 @@ final class TripCalculatorViewModel: ObservableObject {
         }
     }
 
+    func updateParticipant(_ participant: Participant) {
+        let trimmed = participant.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let index = calculator.participants.firstIndex(where: { $0.id == participant.id }) else { return }
+        calculator.participants[index] = Participant(id: participant.id, name: trimmed)
+    }
+
     func deleteParticipants(at offsets: IndexSet) {
         let sortedParticipants = calculator.participants.sorted { $0.name < $1.name }
         let removedIDs = Set(offsets.map { sortedParticipants[$0].id })

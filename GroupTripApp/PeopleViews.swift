@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PeopleTabView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var editParticipant: (Participant) -> Void = { _ in }
     var addPeople: () -> Void
     @State private var participantPendingDeletion: Participant?
 
@@ -21,9 +22,16 @@ struct PeopleTabView: View {
             } else {
                 VStack(spacing: 12) {
                     ForEach(viewModel.calculator.participants.sorted { $0.name < $1.name }) { participant in
-                        PersonCard(participant: participant, expenseCount: viewModel.calculator.expenses.filter { $0.paidBy == participant.id }.count) {
-                            participantPendingDeletion = participant
-                        }
+                        PersonCard(
+                            participant: participant,
+                            expenseCount: viewModel.calculator.expenses.filter { $0.paidBy == participant.id }.count,
+                            editParticipant: {
+                                editParticipant(participant)
+                            },
+                            deleteParticipant: {
+                                participantPendingDeletion = participant
+                            }
+                        )
                     }
                 }
             }
@@ -60,12 +68,18 @@ struct PeopleTabView: View {
 struct PeopleFeatureView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
     var saveParticipants: ([String]) async -> Void = { _ in }
+    var updateParticipant: (Participant) async -> Void = { _ in }
     var usesExternalPersistence: Bool = false
     @State private var activeSheet: ActiveSheet?
 
     var body: some View {
         List {
-            PeopleSection(viewModel: viewModel)
+            PeopleSection(
+                viewModel: viewModel,
+                editParticipant: { participant in
+                    activeSheet = .editPerson(participant)
+                }
+            )
             SettlementSection(settlements: viewModel.settlements)
         }
         .navigationTitle("People")
@@ -78,12 +92,26 @@ struct PeopleFeatureView: View {
                 }
             }
         }
-        .sheet(item: $activeSheet) { _ in
-            AddPersonView(
-                viewModel: viewModel,
-                saveParticipants: saveParticipants,
-                usesExternalPersistence: usesExternalPersistence
-            )
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .person:
+                AddPersonView(
+                    viewModel: viewModel,
+                    saveParticipants: saveParticipants,
+                    updateParticipant: updateParticipant,
+                    usesExternalPersistence: usesExternalPersistence
+                )
+            case .editPerson(let participant):
+                AddPersonView(
+                    viewModel: viewModel,
+                    existingParticipant: participant,
+                    saveParticipants: saveParticipants,
+                    updateParticipant: updateParticipant,
+                    usesExternalPersistence: usesExternalPersistence
+                )
+            case .expense, .payment:
+                EmptyView()
+            }
         }
     }
 }
@@ -91,6 +119,7 @@ struct PeopleFeatureView: View {
 struct PersonCard: View {
     let participant: Participant
     let expenseCount: Int
+    var editParticipant: () -> Void
     var deleteParticipant: () -> Void
 
     var body: some View {
@@ -106,6 +135,13 @@ struct PersonCard: View {
             }
 
             Spacer()
+
+            Button(action: editParticipant) {
+                Image(systemName: "pencil")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Edit \(participant.name)")
 
             Button(role: .destructive, action: deleteParticipant) {
                 Image(systemName: "trash")
@@ -245,6 +281,7 @@ struct SettlementCards: View {
 
 struct PeopleSection: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var editParticipant: (Participant) -> Void = { _ in }
     @State private var participantPendingDeletion: Participant?
 
     var body: some View {
@@ -253,7 +290,19 @@ struct PeopleSection: View {
                 EmptyRow(title: "No people yet", systemImage: "person.2")
             } else {
                 ForEach(viewModel.calculator.participants.sorted { $0.name < $1.name }) { participant in
-                    Label(participant.name, systemImage: "person.fill")
+                    HStack {
+                        Label(participant.name, systemImage: "person.fill")
+
+                        Spacer()
+
+                        Button {
+                            editParticipant(participant)
+                        } label: {
+                            Image(systemName: "pencil")
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Edit \(participant.name)")
+                    }
                 }
                 .onDelete { offsets in
                     let sortedParticipants = viewModel.calculator.participants.sorted { $0.name < $1.name }

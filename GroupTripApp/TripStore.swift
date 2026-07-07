@@ -128,6 +128,33 @@ final class TripStore: ObservableObject {
         trips.first { $0.id == tripID }?.viewModel.calculator.participants.append(participant)
     }
 
+    @MainActor
+    func updateParticipant(_ participant: Participant, in tripID: TripPlan.ID) async {
+        let trimmedParticipant = Participant(
+            id: participant.id,
+            name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        guard !trimmedParticipant.name.isEmpty else { return }
+
+        guard let service else {
+            replaceParticipant(trimmedParticipant, in: tripID)
+            return
+        }
+
+        do {
+            let savedParticipant = try await service.updateParticipant(trimmedParticipant, in: tripID)
+            replaceParticipant(savedParticipant, in: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    private func replaceParticipant(_ participant: Participant, in tripID: TripPlan.ID) {
+        objectWillChange.send()
+        trips.first { $0.id == tripID }?.viewModel.updateParticipant(participant)
+    }
+
     func deletePlace(_ placeID: TripPlace.ID, from tripID: TripPlan.ID) {
         updateTrip(withID: tripID) { trip in
             trip.places.removeAll { $0.id == placeID }

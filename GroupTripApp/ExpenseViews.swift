@@ -10,6 +10,7 @@ struct ExpenseTrackerView: View {
     var saveDirectPayment: (String, Participant.ID, Participant.ID, Decimal) async -> Void = { _, _, _, _ in }
     var updateDirectPayment: (DirectPayment) async -> Void = { _ in }
     var saveParticipants: ([String]) async -> Void = { _ in }
+    var updateParticipant: (Participant) async -> Void = { _ in }
     var usesExternalPersistence: Bool = false
     @State private var selectedTab: ExpenseTab = .expenses
     @State private var activeSheet: ActiveSheet?
@@ -49,7 +50,12 @@ struct ExpenseTrackerView: View {
                             usesExternalPersistence: usesExternalPersistence
                         )
                     case .people:
-                        PeopleTabView(viewModel: viewModel) {
+                        PeopleTabView(
+                            viewModel: viewModel,
+                            editParticipant: { participant in
+                                activeSheet = .editPerson(participant)
+                            }
+                        ) {
                             activeSheet = .person
                         }
                     }
@@ -65,6 +71,15 @@ struct ExpenseTrackerView: View {
                 AddPersonView(
                     viewModel: viewModel,
                     saveParticipants: saveParticipants,
+                    updateParticipant: updateParticipant,
+                    usesExternalPersistence: usesExternalPersistence
+                )
+            case .editPerson(let participant):
+                AddPersonView(
+                    viewModel: viewModel,
+                    existingParticipant: participant,
+                    saveParticipants: saveParticipants,
+                    updateParticipant: updateParticipant,
                     usesExternalPersistence: usesExternalPersistence
                 )
             case .expense:

@@ -118,6 +118,9 @@ struct TripSummaryView: View {
                                 saveParticipants: { names in
                                     await store.saveParticipants(names: names, to: tripID)
                                 },
+                                updateParticipant: { participant in
+                                    await store.updateParticipant(participant, in: tripID)
+                                },
                                 usesExternalPersistence: store.supportsCloudSync
                             )
                         } label: {
@@ -188,6 +191,9 @@ struct TripSummaryView: View {
                                 },
                                 saveParticipants: { names in
                                     await store.saveParticipants(names: names, to: tripID)
+                                },
+                                updateParticipant: { participant in
+                                    await store.updateParticipant(participant, in: tripID)
                                 },
                                 usesExternalPersistence: store.supportsCloudSync
                             )
