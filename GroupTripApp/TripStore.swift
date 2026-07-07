@@ -92,6 +92,13 @@ final class TripStore: ObservableObject {
         }
     }
 
+    func replacePlace(_ place: TripPlace, in tripID: TripPlan.ID) {
+        updateTrip(withID: tripID) { trip in
+            guard let index = trip.places.firstIndex(where: { $0.id == place.id }) else { return }
+            trip.places[index] = place
+        }
+    }
+
     @MainActor
     func saveParticipants(names: [String], to tripID: TripPlan.ID) async {
         let participants = names
@@ -161,6 +168,30 @@ final class TripStore: ObservableObject {
         do {
             try await service.deletePlace(placeID, from: tripID)
             deletePlace(placeID, from: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func updatePlace(_ place: TripPlace, in tripID: TripPlan.ID) async {
+        let trimmed = TripPlace(
+            id: place.id,
+            name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            category: place.category.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        guard !trimmed.name.isEmpty else { return }
+
+        guard let service else {
+            replacePlace(trimmed, in: tripID)
+            return
+        }
+
+        do {
+            let updated = try await service.updatePlace(trimmed, in: tripID)
+            replacePlace(updated, in: tripID)
             syncError = nil
         } catch {
             syncError = error.localizedDescription

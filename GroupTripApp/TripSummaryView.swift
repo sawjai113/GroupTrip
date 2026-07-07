@@ -153,6 +153,9 @@ struct TripSummaryView: View {
                                 deletePlace: { placeID in
                                     await store.removePlace(placeID, from: tripID)
                                 },
+                                updatePlace: { place in
+                                    await store.updatePlace(place, in: tripID)
+                                },
                                 usesExternalPersistence: store.supportsCloudSync
                             )
                         } label: {

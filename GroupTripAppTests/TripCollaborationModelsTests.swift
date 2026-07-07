@@ -800,6 +800,41 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
 
+    func testCloudStoreUpdatesPlaceRemotelyBeforeReplacingLocalPlace() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B025")!
+        let place = TripPlace(name: "  Zilker Park  ", note: "  Picnic spot  ", category: "  Outdoors  ")
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.places = [place]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updatePlace(place, in: tripID)
+
+        let request = try XCTUnwrap(service.updatedPlaceRequest)
+        XCTAssertEqual(request.place.name, "Zilker Park")
+        XCTAssertEqual(request.place.note, "Picnic spot")
+        XCTAssertEqual(request.place.category, "Outdoors")
+        XCTAssertEqual(store.trips.first?.places.first?.name, "Zilker Park")
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsPlaceUpdateFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B026")!
+        let place = TripPlace(name: "Zilker Park", note: "Picnic", category: "Outdoors")
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.places = [place]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updatePlace(place, in: tripID)
+
+        XCTAssertEqual(service.updatedPlaceRequest?.place.name, "Zilker Park")
+        // Local place should be unchanged because the remote update failed
+        XCTAssertEqual(store.trips.first?.places.first?.name, "Zilker Park")
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
     private func makeTrip(id: UUID, name: String) -> TripPlan {
         TripPlan(
             id: id,
@@ -863,6 +898,21 @@ private final class FakeTripSyncService: TripSyncServicing {
         var expense: ExpenseItem
     }
 
+    struct UpdatePlaceRequest: Equatable {
+        var tripID: UUID
+        var place: TripPlace
+    }
+
+    struct UpdateExpenseRequest: Equatable {
+        var tripID: UUID
+        var expense: ExpenseItem
+    }
+
+    struct UpdateDirectPaymentRequest: Equatable {
+        var tripID: UUID
+        var payment: DirectPayment
+    }
+
     struct DeleteExpenseRequest: Equatable {
         var tripID: UUID
         var expenseID: UUID
@@ -898,6 +948,9 @@ private final class FakeTripSyncService: TripSyncServicing {
     var acceptedInviteCode: String?
     var leftTripID: UUID?
     var archivedTripID: UUID?
+    var updatedPlaceRequest: UpdatePlaceRequest?
+    var updatedExpenseRequest: UpdateExpenseRequest?
+    var updatedPaymentRequest: UpdateDirectPaymentRequest?
     var createError: Error?
 
     func loadTrips() async throws -> [TripPlan] {
@@ -987,6 +1040,24 @@ private final class FakeTripSyncService: TripSyncServicing {
     func archiveTrip(_ tripID: UUID) async throws {
         archivedTripID = tripID
         if let createError { throw createError }
+    }
+
+    func updatePlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace {
+        updatedPlaceRequest = UpdatePlaceRequest(tripID: tripID, place: place)
+        if let createError { throw createError }
+        return place
+    }
+
+    func updateExpense(_ expense: ExpenseItem, in tripID: UUID) async throws -> ExpenseItem {
+        updatedExpenseRequest = UpdateExpenseRequest(tripID: tripID, expense: expense)
+        if let createError { throw createError }
+        return expense
+    }
+
+    func updateDirectPayment(_ payment: DirectPayment, in tripID: UUID) async throws -> DirectPayment {
+        updatedPaymentRequest = UpdateDirectPaymentRequest(tripID: tripID, payment: payment)
+        if let createError { throw createError }
+        return payment
     }
 }
 

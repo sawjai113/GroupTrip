@@ -4,19 +4,24 @@ struct TripPlacesView: View {
     @Binding var places: [TripPlace]
     var savePlace: (TripPlace) async -> Void
     var deletePlace: (TripPlace.ID) async -> Void
+    var updatePlace: (TripPlace) async -> Void
     var usesExternalPersistence: Bool
     @State private var isShowingAddPlace = false
+    @State private var isShowingEditPlace = false
     @State private var placePendingDeletion: TripPlace?
+    @State private var placePendingEdit: TripPlace?
 
     init(
         places: Binding<[TripPlace]>,
         savePlace: @escaping (TripPlace) async -> Void = { _ in },
         deletePlace: @escaping (TripPlace.ID) async -> Void = { _ in },
+        updatePlace: @escaping (TripPlace) async -> Void = { _ in },
         usesExternalPersistence: Bool = false
     ) {
         _places = places
         self.savePlace = savePlace
         self.deletePlace = deletePlace
+        self.updatePlace = updatePlace
         self.usesExternalPersistence = usesExternalPersistence
     }
 
@@ -35,6 +40,9 @@ struct TripPlacesView: View {
                         ForEach(places) { place in
                             TripPlaceCard(place: place) {
                                 placePendingDeletion = place
+                            } edit: {
+                                placePendingEdit = place
+                                isShowingEditPlace = true
                             }
                         }
                     }
@@ -58,6 +66,16 @@ struct TripPlacesView: View {
         .sheet(isPresented: $isShowingAddPlace) {
             AddTripPlaceView { place in
                 Task { await addPlace(place) }
+            }
+        }
+        .sheet(isPresented: $isShowingEditPlace) {
+            if let place = placePendingEdit {
+                AddTripPlaceView(
+                    editing: place,
+                    title: "Edit Place"
+                ) { updated in
+                    Task { await updatePlace(updated) }
+                }
             }
         }
         .confirmationDialog(
@@ -107,16 +125,31 @@ struct TripPlacesView: View {
         }
         placePendingDeletion = nil
     }
+
+    private func updatePlace(_ place: TripPlace) async {
+        if usesExternalPersistence {
+            await self.updatePlace(place)
+        }
+        guard let index = places.firstIndex(where: { $0.id == place.id }) else { return }
+        places[index] = place
+        placePendingEdit = nil
+        isShowingEditPlace = false
+    }
 }
 
 private struct TripPlaceCard: View {
     let place: TripPlace
     var delete: () -> Void
+    var edit: () -> Void
 
     var body: some View {
         WaniCard {
             HStack(alignment: .top, spacing: AppTheme.Spacing.medium + 2) {
-                WaniIconBadge(systemImage: "mappin.and.ellipse", tint: AppTheme.FeatureColor.places)
+                Button(action: edit) {
+                    WaniIconBadge(systemImage: "mappin.and.ellipse", tint: AppTheme.FeatureColor.places)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Edit \(place.name)")
 
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
                     HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.small) {
@@ -164,6 +197,15 @@ private struct AddTripPlaceView: View {
     @State private var category = ""
     @State private var note = ""
     var save: (TripPlace) -> Void
+    var navTitle: String
+
+    init(editing place: TripPlace? = nil, title: String = "Add Place", save: @escaping (TripPlace) -> Void) {
+        self.save = save
+        self.navTitle = title
+        _name = State(initialValue: place?.name ?? "")
+        _category = State(initialValue: place?.category ?? "")
+        _note = State(initialValue: place?.note ?? "")
+    }
 
     private var trimmedName: String {
         name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -182,7 +224,7 @@ private struct AddTripPlaceView: View {
                         .lineLimit(3...6)
                 }
             }
-            .navigationTitle("Add Place")
+            .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

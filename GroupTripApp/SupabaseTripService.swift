@@ -18,6 +18,9 @@ protocol TripSyncServicing {
     func acceptInvite(code: String) async throws
     func leaveTrip(_ tripID: UUID) async throws
     func archiveTrip(_ tripID: UUID) async throws
+    func updatePlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace
+    func updateExpense(_ expense: ExpenseItem, in tripID: UUID) async throws -> ExpenseItem
+    func updateDirectPayment(_ payment: DirectPayment, in tripID: UUID) async throws -> DirectPayment
 }
 
 struct SupabaseTripService: TripSyncServicing {
@@ -381,6 +384,59 @@ struct SupabaseTripService: TripSyncServicing {
         try await client
             .rpc("archive_trip", params: SupabaseArchiveTripParams(tripID: tripID))
             .execute()
+    }
+
+    func updatePlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace {
+        try await client
+            .from("trip_places")
+            .update(
+                SupabaseTripPlaceDTO(
+                    id: place.id,
+                    tripID: tripID,
+                    name: place.name,
+                    note: place.note,
+                    category: place.category,
+                    googlePlaceID: nil,
+                    latitude: nil,
+                    longitude: nil
+                ),
+                returning: .minimal
+            )
+            .eq("id", value: place.id.uuidString)
+            .eq("trip_id", value: tripID.uuidString)
+            .execute()
+        return place
+    }
+
+    func updateExpense(_ expense: ExpenseItem, in tripID: UUID) async throws -> ExpenseItem {
+        // Just update title/amount for now; participant splits are managed separately
+        try await client
+            .from("trip_expenses")
+            .update(SupabaseTripExpensePartialUpdate(
+                id: expense.id,
+                tripID: tripID,
+                title: expense.title,
+                amount: expense.amount
+            ))
+            .eq("id", value: expense.id.uuidString)
+            .eq("trip_id", value: tripID.uuidString)
+            .execute()
+        return expense
+    }
+
+    func updateDirectPayment(_ payment: DirectPayment, in tripID: UUID) async throws -> DirectPayment {
+        try await client
+            .from("trip_direct_payments")
+            .update(SupabaseTripDirectPaymentPartialUpdate(
+                id: payment.id,
+                tripID: tripID,
+                title: payment.title,
+                amount: payment.amount
+            ))
+            .eq("id", value: payment.id.uuidString)
+            .eq("trip_id", value: tripID.uuidString)
+            .execute()
+        return payment
     }
 
     private static func makeInviteCode() -> String {
@@ -853,6 +909,34 @@ struct SupabaseTripExpenseSplitDTO: Codable, Hashable {
         case expenseID = "expense_id"
         case participantID = "participant_id"
         case shareAmount = "share_amount"
+    }
+}
+
+struct SupabaseTripExpensePartialUpdate: Encodable {
+    var id: UUID
+    var tripID: UUID
+    var title: String
+    var amount: Decimal
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case tripID = "trip_id"
+        case title
+        case amount
+    }
+}
+
+struct SupabaseTripDirectPaymentPartialUpdate: Encodable {
+    var id: UUID
+    var tripID: UUID
+    var title: String
+    var amount: Decimal
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case tripID = "trip_id"
+        case title
+        case amount
     }
 }
 
