@@ -435,32 +435,17 @@ struct SupabaseTripService: TripSyncServicing {
         }
 
         try await client
-            .from("trip_expenses")
-            .update(SupabaseTripExpensePartialUpdate(
-                id: trimmedExpense.id,
-                tripID: tripID,
-                title: trimmedExpense.title,
-                paidByParticipantID: trimmedExpense.paidBy,
-                amount: trimmedExpense.amount
-            ))
-            .eq("id", value: trimmedExpense.id.uuidString)
-            .eq("trip_id", value: tripID.uuidString)
-            .execute()
-
-        try await client
-            .from("trip_expense_splits")
-            .delete()
-            .eq("expense_id", value: trimmedExpense.id.uuidString)
-            .execute()
-
-        let shareAmount = trimmedExpense.amount / Decimal(trimmedExpense.participants.count)
-        let splitRows = trimmedExpense.participants.map {
-            SupabaseTripExpenseSplitDTO(expenseID: trimmedExpense.id, participantID: $0, shareAmount: shareAmount)
-        }
-
-        try await client
-            .from("trip_expense_splits")
-            .insert(splitRows)
+            .rpc(
+                "update_trip_expense",
+                params: SupabaseUpdateTripExpenseParams(
+                    expenseID: trimmedExpense.id,
+                    tripID: tripID,
+                    title: trimmedExpense.title,
+                    paidByParticipantID: trimmedExpense.paidBy,
+                    amount: trimmedExpense.amount,
+                    participantIDs: Array(trimmedExpense.participants)
+                )
+            )
             .execute()
 
         return trimmedExpense
@@ -672,6 +657,24 @@ struct SupabaseArchiveTripParams: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case tripID = "target_trip_id"
+    }
+}
+
+struct SupabaseUpdateTripExpenseParams: Encodable {
+    var expenseID: UUID
+    var tripID: UUID
+    var title: String
+    var paidByParticipantID: UUID
+    var amount: Decimal
+    var participantIDs: [UUID]
+
+    enum CodingKeys: String, CodingKey {
+        case expenseID = "p_expense_id"
+        case tripID = "p_trip_id"
+        case title = "p_title"
+        case paidByParticipantID = "p_paid_by_participant_id"
+        case amount = "p_amount"
+        case participantIDs = "p_participant_ids"
     }
 }
 
@@ -983,22 +986,6 @@ struct SupabaseTripParticipantPartialUpdate: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case displayName = "display_name"
-    }
-}
-
-struct SupabaseTripExpensePartialUpdate: Encodable {
-    var id: UUID
-    var tripID: UUID
-    var title: String
-    var paidByParticipantID: UUID
-    var amount: Decimal
-
-    enum CodingKeys: String, CodingKey {
-        case id
-        case tripID = "trip_id"
-        case title
-        case paidByParticipantID = "paid_by_participant_id"
-        case amount
     }
 }
 

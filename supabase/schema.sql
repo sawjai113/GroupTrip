@@ -988,6 +988,92 @@ using (
   )
 );
 
+create or replace function public.update_trip_expense(
+  p_expense_id uuid,
+  p_trip_id uuid,
+  p_title text,
+  p_paid_by_participant_id uuid,
+  p_amount numeric,
+  p_participant_ids uuid[]
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  normalized_title text := nullif(trim(p_title), '');
+  split_count integer := coalesce(array_length(p_participant_ids, 1), 0);
+  split_participant_id uuid;
+  share_amount numeric(12, 2);
+begin
+  if not public.is_trip_member(p_trip_id) then
+    raise exception 'You are not a member of this trip';
+  end if;
+
+  if normalized_title is null then
+    raise exception 'Expense title is required';
+  end if;
+
+  if p_amount <= 0 then
+    raise exception 'Expense amount must be positive';
+  end if;
+
+  if split_count = 0 then
+    raise exception 'Expense must have at least one split participant';
+  end if;
+
+  if not exists (
+    select 1
+    from public.trip_expenses e
+    where e.id = p_expense_id
+      and e.trip_id = p_trip_id
+  ) then
+    raise exception 'Expense not found for trip';
+  end if;
+
+  if not exists (
+    select 1
+    from public.trip_participants p
+    where p.id = p_paid_by_participant_id
+      and p.trip_id = p_trip_id
+  ) then
+    raise exception 'Expense payer must belong to the trip';
+  end if;
+
+  foreach split_participant_id in array p_participant_ids loop
+    if not exists (
+      select 1
+      from public.trip_participants p
+      where p.id = split_participant_id
+        and p.trip_id = p_trip_id
+    ) then
+      raise exception 'Expense split participant must belong to the trip';
+    end if;
+  end loop;
+
+  update public.trip_expenses
+  set title = normalized_title,
+      paid_by_participant_id = p_paid_by_participant_id,
+      amount = p_amount
+  where id = p_expense_id
+    and trip_id = p_trip_id;
+
+  delete from public.trip_expense_splits
+  where expense_id = p_expense_id;
+
+  share_amount := p_amount / split_count;
+  foreach split_participant_id in array p_participant_ids loop
+    insert into public.trip_expense_splits (expense_id, participant_id, share_amount)
+    values (p_expense_id, split_participant_id, share_amount);
+  end loop;
+end;
+$$;
+
+revoke all on function public.update_trip_expense(uuid, uuid, text, uuid, numeric, uuid[]) from public;
+revoke all on function public.update_trip_expense(uuid, uuid, text, uuid, numeric, uuid[]) from anon;
+grant execute on function public.update_trip_expense(uuid, uuid, text, uuid, numeric, uuid[]) to authenticated;
+
 -- ============================================================
 -- TRIP DIRECT PAYMENTS
 -- ============================================================
