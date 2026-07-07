@@ -80,6 +80,17 @@ struct TripSummaryView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
 
+                        if store.supportsCloudSync, store.isLoading {
+                            WaniCard(padding: AppTheme.Spacing.medium, radius: AppTheme.Radius.medium) {
+                                HStack(spacing: AppTheme.Spacing.small) {
+                                    ProgressView()
+                                    Text("Syncing latest trip updates…")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+
                         if store.supportsCloudSync {
                             InvitePeopleCard(tripID: tripID, createdInvite: store.createdInvite) {
                                 Task { await store.createInvite(for: tripID) }

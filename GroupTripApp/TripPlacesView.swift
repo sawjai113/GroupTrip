@@ -6,6 +6,7 @@ struct TripPlacesView: View {
     var deletePlace: (TripPlace.ID) async -> Void
     var usesExternalPersistence: Bool
     @State private var isShowingAddPlace = false
+    @State private var placePendingDeletion: TripPlace?
 
     init(
         places: Binding<[TripPlace]>,
@@ -33,7 +34,7 @@ struct TripPlacesView: View {
                     VStack(spacing: AppTheme.Spacing.medium) {
                         ForEach(places) { place in
                             TripPlaceCard(place: place) {
-                                Task { await removePlace(place) }
+                                placePendingDeletion = place
                             }
                         }
                     }
@@ -58,6 +59,24 @@ struct TripPlacesView: View {
             AddTripPlaceView { place in
                 Task { await addPlace(place) }
             }
+        }
+        .confirmationDialog(
+            "Delete this place?",
+            isPresented: Binding(
+                get: { placePendingDeletion != nil },
+                set: { isPresented in
+                    if !isPresented { placePendingDeletion = nil }
+                }
+            ),
+            titleVisibility: .visible,
+            presenting: placePendingDeletion
+        ) { place in
+            Button("Delete Place", role: .destructive) {
+                Task { await removePlace(place) }
+            }
+            Button("Cancel", role: .cancel) { placePendingDeletion = nil }
+        } message: { place in
+            Text("This removes \(place.name) from this trip. Shared cloud trips will remove it for everyone.")
         }
     }
 
@@ -86,6 +105,7 @@ struct TripPlacesView: View {
                 places.removeAll { $0.id == place.id }
             }
         }
+        placePendingDeletion = nil
     }
 }
 

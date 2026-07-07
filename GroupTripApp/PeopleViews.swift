@@ -3,6 +3,7 @@ import SwiftUI
 struct PeopleTabView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
     var addPeople: () -> Void
+    @State private var participantPendingDeletion: Participant?
 
     var body: some View {
         VStack(spacing: 14) {
@@ -21,11 +22,29 @@ struct PeopleTabView: View {
                 VStack(spacing: 12) {
                     ForEach(viewModel.calculator.participants.sorted { $0.name < $1.name }) { participant in
                         PersonCard(participant: participant, expenseCount: viewModel.calculator.expenses.filter { $0.paidBy == participant.id }.count) {
-                            deleteParticipant(participant)
+                            participantPendingDeletion = participant
                         }
                     }
                 }
             }
+        }
+        .confirmationDialog(
+            "Remove this person?",
+            isPresented: Binding(
+                get: { participantPendingDeletion != nil },
+                set: { isPresented in
+                    if !isPresented { participantPendingDeletion = nil }
+                }
+            ),
+            titleVisibility: .visible,
+            presenting: participantPendingDeletion
+        ) { participant in
+            Button("Remove Person", role: .destructive) {
+                deleteParticipant(participant)
+            }
+            Button("Cancel", role: .cancel) { participantPendingDeletion = nil }
+        } message: { participant in
+            Text("This removes \(participant.name) from the people list. Existing expense references may change.")
         }
     }
 
@@ -34,6 +53,7 @@ struct PeopleTabView: View {
         if let index = sortedParticipants.firstIndex(where: { $0.id == participant.id }) {
             viewModel.deleteParticipants(at: IndexSet(integer: index))
         }
+        participantPendingDeletion = nil
     }
 }
 
@@ -225,6 +245,7 @@ struct SettlementCards: View {
 
 struct PeopleSection: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
+    @State private var participantPendingDeletion: Participant?
 
     var body: some View {
         Section {
@@ -234,11 +255,42 @@ struct PeopleSection: View {
                 ForEach(viewModel.calculator.participants.sorted { $0.name < $1.name }) { participant in
                     Label(participant.name, systemImage: "person.fill")
                 }
-                .onDelete(perform: viewModel.deleteParticipants)
+                .onDelete { offsets in
+                    let sortedParticipants = viewModel.calculator.participants.sorted { $0.name < $1.name }
+                    if let offset = offsets.first, sortedParticipants.indices.contains(offset) {
+                        participantPendingDeletion = sortedParticipants[offset]
+                    }
+                }
             }
         } header: {
             Text("People")
         }
+        .confirmationDialog(
+            "Remove this person?",
+            isPresented: Binding(
+                get: { participantPendingDeletion != nil },
+                set: { isPresented in
+                    if !isPresented { participantPendingDeletion = nil }
+                }
+            ),
+            titleVisibility: .visible,
+            presenting: participantPendingDeletion
+        ) { participant in
+            Button("Remove Person", role: .destructive) {
+                deleteParticipant(participant)
+            }
+            Button("Cancel", role: .cancel) { participantPendingDeletion = nil }
+        } message: { participant in
+            Text("This removes \(participant.name) from the people list. Existing expense references may change.")
+        }
+    }
+
+    private func deleteParticipant(_ participant: Participant) {
+        let sortedParticipants = viewModel.calculator.participants.sorted { $0.name < $1.name }
+        if let index = sortedParticipants.firstIndex(where: { $0.id == participant.id }) {
+            viewModel.deleteParticipants(at: IndexSet(integer: index))
+        }
+        participantPendingDeletion = nil
     }
 }
 

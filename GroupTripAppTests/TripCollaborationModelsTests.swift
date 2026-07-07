@@ -311,7 +311,7 @@ final class TripStoreCloudSyncTests: XCTestCase {
         let startDate = SupabaseDateFormatter.date(from: "2027-03-24")!
         let endDate = SupabaseDateFormatter.date(from: "2027-04-04")!
 
-        await store.addRemoteTrip(
+        let didCreateTrip = await store.addRemoteTrip(
             name: " Kyoto Spring ",
             destination: " Kyoto ",
             emoji: " 🌸 ",
@@ -320,6 +320,7 @@ final class TripStoreCloudSyncTests: XCTestCase {
             endDate: endDate
         )
 
+        XCTAssertTrue(didCreateTrip)
         XCTAssertEqual(service.createdTripRequest?.name, "Kyoto Spring")
         XCTAssertEqual(service.createdTripRequest?.destination, "Kyoto")
         XCTAssertEqual(service.createdTripRequest?.emoji, "🌸")
@@ -334,7 +335,7 @@ final class TripStoreCloudSyncTests: XCTestCase {
         let store = TripStore(service: service)
         let date = SupabaseDateFormatter.date(from: "2027-03-24")!
 
-        await store.addRemoteTrip(
+        let didCreateTrip = await store.addRemoteTrip(
             name: "Kyoto Spring",
             destination: "Kyoto",
             emoji: "🌸",
@@ -343,6 +344,7 @@ final class TripStoreCloudSyncTests: XCTestCase {
             endDate: date
         )
 
+        XCTAssertFalse(didCreateTrip)
         XCTAssertTrue(store.trips.isEmpty)
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }

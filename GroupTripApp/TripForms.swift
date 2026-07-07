@@ -10,6 +10,7 @@ struct NewTripView: View {
     @State private var endDate = Date()
     @State private var selectedImageURL = CoverImage.defaultOptions[0].url
     @State private var customImageURL = ""
+    @State private var isCreatingTrip = false
 
     var body: some View {
         NavigationStack {
@@ -54,17 +55,27 @@ struct NewTripView: View {
                         .textInputAutocapitalization(.never)
                         .keyboardType(.URL)
                 }
+
+                if let syncError = store.syncError {
+                    Section {
+                        Label(syncError, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(AppTheme.error)
+                            .font(.footnote)
+                    }
+                }
             }
             .navigationTitle("Create New Trip")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .disabled(isCreatingTrip)
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create Trip") {
+                    Button {
                         Task {
-                            await store.addRemoteTrip(
+                            isCreatingTrip = true
+                            let didCreate = await store.addRemoteTrip(
                                 name: name,
                                 destination: destination,
                                 emoji: emoji,
@@ -72,10 +83,19 @@ struct NewTripView: View {
                                 startDate: startDate,
                                 endDate: endDate
                             )
-                            dismiss()
+                            isCreatingTrip = false
+                            if didCreate {
+                                dismiss()
+                            }
+                        }
+                    } label: {
+                        if isCreatingTrip {
+                            ProgressView()
+                        } else {
+                            Text("Create Trip")
                         }
                     }
-                    .disabled(!canSave)
+                    .disabled(!canSave || isCreatingTrip)
                 }
             }
         }

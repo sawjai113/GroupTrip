@@ -357,17 +357,22 @@ final class TripStore: ObservableObject {
     }
 
     @MainActor
-    func addRemoteTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async {
+    @discardableResult
+    func addRemoteTrip(name: String, destination: String, emoji: String, imageURL: String, startDate: Date, endDate: Date) async -> Bool {
         guard let service else {
             addTrip(name: name, destination: destination, emoji: emoji, imageURL: imageURL, startDate: startDate, endDate: endDate)
-            return
+            return true
         }
 
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedDestination = destination.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedEmoji = emoji.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedImageURL = imageURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else { return }
+        guard !trimmedName.isEmpty else { return false }
+
+        isLoading = true
+        syncError = nil
+        defer { isLoading = false }
 
         do {
             let trip = try await service.createTrip(
@@ -379,8 +384,11 @@ final class TripStore: ObservableObject {
                 endDate: max(startDate, endDate)
             )
             trips.append(trip)
+            syncError = nil
+            return true
         } catch {
             syncError = error.localizedDescription
+            return false
         }
     }
 
@@ -389,8 +397,8 @@ final class TripStore: ObservableObject {
         guard let service else { return }
 
         do {
-            createdInvite = try await service.createInvite(for: tripID, role: role)
             syncError = nil
+            createdInvite = try await service.createInvite(for: tripID, role: role)
         } catch {
             syncError = error.localizedDescription
         }
@@ -406,8 +414,8 @@ final class TripStore: ObservableObject {
         }
 
         do {
-            invitePreview = try await service.lookupInvite(code: normalizedCode)
             syncError = nil
+            invitePreview = try await service.lookupInvite(code: normalizedCode)
         } catch {
             invitePreview = nil
             syncError = error.localizedDescription
@@ -421,10 +429,10 @@ final class TripStore: ObservableObject {
         guard !normalizedCode.isEmpty else { return }
 
         do {
+            syncError = nil
             try await service.acceptInvite(code: normalizedCode)
             trips = try await service.loadTrips()
             invitePreview = nil
-            syncError = nil
         } catch {
             syncError = error.localizedDescription
         }

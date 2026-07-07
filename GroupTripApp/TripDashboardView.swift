@@ -30,6 +30,7 @@ struct TripDashboardView: View {
     @StateObject var store: TripStore
     @State private var isShowingNewTrip = false
     @State private var isShowingJoinInvite = false
+    @State private var isShowingSignOutConfirmation = false
     @State private var pastTripsOpen = false
     var modeBadge: ModeBadge?
     var signOut: (() -> Void)?
@@ -37,7 +38,11 @@ struct TripDashboardView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                WaniHeader(modeBadge: modeBadge, signOut: signOut, joinTrip: modeBadge == .cloud ? { isShowingJoinInvite = true } : nil) {
+                WaniHeader(
+                    modeBadge: modeBadge,
+                    signOut: signOut == nil ? nil : { isShowingSignOutConfirmation = true },
+                    joinTrip: modeBadge == .cloud ? { isShowingJoinInvite = true } : nil
+                ) {
                     isShowingNewTrip = true
                 }
 
@@ -82,9 +87,26 @@ struct TripDashboardView: View {
                 await store.loadTrips()
             }
             .alert("Trip Sync Error", isPresented: store.errorAlertBinding) {
+                if store.supportsCloudSync {
+                    Button("Retry") {
+                        Task { await store.loadTrips() }
+                    }
+                }
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(store.syncError ?? "Something went wrong.")
+            }
+            .confirmationDialog(
+                modeBadge == .demo ? "Exit demo mode?" : "Sign out of Wanderaid?",
+                isPresented: $isShowingSignOutConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button(modeBadge == .demo ? "Exit Demo" : "Sign Out", role: .destructive) {
+                    signOut?()
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text(modeBadge == .demo ? "You'll return to mode selection. Demo changes are local only." : "You'll return to the sign-in screen. Cloud trips stay saved and can be loaded again after signing in.")
             }
         }
     }
@@ -202,7 +224,20 @@ struct JoinTripInviteView: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(AppTheme.primary)
-                            .disabled(trimmedCode.isEmpty || isLookingUp)
+                            .disabled(trimmedCode.isEmpty || isLookingUp || isJoining)
+                        }
+                    }
+
+                    if let syncError = store.syncError {
+                        WaniCard {
+                            HStack(alignment: .top, spacing: AppTheme.Spacing.small) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(AppTheme.error)
+                                Text(syncError)
+                                    .font(.footnote)
+                                    .foregroundStyle(AppTheme.error)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                         }
                     }
 

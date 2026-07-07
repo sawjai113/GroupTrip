@@ -7,6 +7,7 @@ struct TripPlanningView: View {
     var deleteItemRemotely: (TripPlanningItem.ID) async -> Void
     var usesExternalPersistence: Bool
     @State private var isShowingAddItem = false
+    @State private var itemPendingDeletion: TripPlanningItem?
 
     init(
         items: Binding<[TripPlanningItem]>,
@@ -40,7 +41,7 @@ struct TripPlanningView: View {
                             TripPlanningItemCard(item: item) {
                                 Task { await toggleItem(item) }
                             } delete: {
-                                Task { await deleteItem(item) }
+                                itemPendingDeletion = item
                             }
                         }
                     }
@@ -65,6 +66,24 @@ struct TripPlanningView: View {
             AddTripPlanningItemView { item in
                 Task { await addItem(item) }
             }
+        }
+        .confirmationDialog(
+            "Delete this itinerary item?",
+            isPresented: Binding(
+                get: { itemPendingDeletion != nil },
+                set: { isPresented in
+                    if !isPresented { itemPendingDeletion = nil }
+                }
+            ),
+            titleVisibility: .visible,
+            presenting: itemPendingDeletion
+        ) { item in
+            Button("Delete Item", role: .destructive) {
+                Task { await deleteItem(item) }
+            }
+            Button("Cancel", role: .cancel) { itemPendingDeletion = nil }
+        } message: { item in
+            Text("This removes \(item.title) from this trip. Shared cloud trips will remove it for everyone.")
         }
     }
 
@@ -115,6 +134,7 @@ struct TripPlanningView: View {
                 items.removeAll { $0.id == item.id }
             }
         }
+        itemPendingDeletion = nil
     }
 
     private func toggleItem(_ item: TripPlanningItem) async {
