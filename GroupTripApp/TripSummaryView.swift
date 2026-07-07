@@ -134,6 +134,9 @@ struct TripSummaryView: View {
                                 toggleItem: { itemID in
                                     await store.togglePlanningItemRemotely(itemID, for: tripID)
                                 },
+                                updateItem: { item in
+                                    await store.updatePlanningItem(item, in: tripID)
+                                },
                                 deleteItem: { itemID in
                                     await store.removePlanningItem(itemID, from: tripID)
                                 },

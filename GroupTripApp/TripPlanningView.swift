@@ -4,21 +4,26 @@ struct TripPlanningView: View {
     @Binding var items: [TripPlanningItem]
     var saveItem: (TripPlanningItem) async -> Void
     var toggleItemRemotely: (TripPlanningItem.ID) async -> Void
+    var updateItemRemotely: (TripPlanningItem) async -> Void
     var deleteItemRemotely: (TripPlanningItem.ID) async -> Void
     var usesExternalPersistence: Bool
     @State private var isShowingAddItem = false
+    @State private var isShowingEditItem = false
     @State private var itemPendingDeletion: TripPlanningItem?
+    @State private var itemPendingEdit: TripPlanningItem?
 
     init(
         items: Binding<[TripPlanningItem]>,
         saveItem: @escaping (TripPlanningItem) async -> Void = { _ in },
         toggleItem: @escaping (TripPlanningItem.ID) async -> Void = { _ in },
+        updateItem: @escaping (TripPlanningItem) async -> Void = { _ in },
         deleteItem: @escaping (TripPlanningItem.ID) async -> Void = { _ in },
         usesExternalPersistence: Bool = false
     ) {
         _items = items
         self.saveItem = saveItem
         self.toggleItemRemotely = toggleItem
+        self.updateItemRemotely = updateItem
         self.deleteItemRemotely = deleteItem
         self.usesExternalPersistence = usesExternalPersistence
     }
@@ -42,6 +47,9 @@ struct TripPlanningView: View {
                                 Task { await toggleItem(item) }
                             } delete: {
                                 itemPendingDeletion = item
+                            } edit: {
+                                itemPendingEdit = item
+                                isShowingEditItem = true
                             }
                         }
                     }
@@ -65,6 +73,16 @@ struct TripPlanningView: View {
         .sheet(isPresented: $isShowingAddItem) {
             AddTripPlanningItemView { item in
                 Task { await addItem(item) }
+            }
+        }
+        .sheet(isPresented: $isShowingEditItem) {
+            if let item = itemPendingEdit {
+                AddTripPlanningItemView(
+                    editing: item,
+                    title: "Edit Item"
+                ) { updated in
+                    Task { await updateItem(updated) }
+                }
             }
         }
         .confirmationDialog(
@@ -147,6 +165,18 @@ struct TripPlanningView: View {
             }
         }
     }
+
+    private func updateItem(_ item: TripPlanningItem) async {
+        if usesExternalPersistence {
+            await updateItemRemotely(item)
+        } else if let index = items.firstIndex(where: { $0.id == item.id }) {
+            withAnimation(.snappy) {
+                items[index] = item
+            }
+        }
+        itemPendingEdit = nil
+        isShowingEditItem = false
+    }
 }
 
 private struct CalendarPreviewGrid: View {
@@ -195,6 +225,7 @@ private struct TripPlanningItemCard: View {
     let item: TripPlanningItem
     var toggle: () -> Void
     var delete: () -> Void
+    var edit: () -> Void
 
     private var itemTint: Color {
         item.isDone ? AppTheme.success : AppTheme.FeatureColor.itinerary
@@ -219,6 +250,15 @@ private struct TripPlanningItemCard: View {
                         Spacer(minLength: AppTheme.Spacing.small)
 
                         statusBadge
+
+                        Button(action: edit) {
+                            Image(systemName: "pencil")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(width: AppTheme.IconSize.large, height: AppTheme.IconSize.large)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityLabel("Edit \(item.title)")
 
                         Button(role: .destructive, action: delete) {
                             Image(systemName: "trash")
@@ -270,7 +310,19 @@ private struct AddTripPlanningItemView: View {
     @State private var note = ""
     @State private var hasDate = false
     @State private var date = Date()
+    private let existingItem: TripPlanningItem?
+    var navTitle: String
     var save: (TripPlanningItem) -> Void
+
+    init(editing item: TripPlanningItem? = nil, title: String = "Add Item", save: @escaping (TripPlanningItem) -> Void) {
+        self.existingItem = item
+        self.navTitle = title
+        self.save = save
+        _title = State(initialValue: item?.title ?? "")
+        _note = State(initialValue: item?.note ?? "")
+        _hasDate = State(initialValue: item?.date != nil)
+        _date = State(initialValue: item?.date ?? Date())
+    }
 
     private var trimmedTitle: String {
         title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -296,7 +348,7 @@ private struct AddTripPlanningItemView: View {
                     }
                 }
             }
-            .navigationTitle("Add Item")
+            .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -309,9 +361,11 @@ private struct AddTripPlanningItemView: View {
                     Button("Save") {
                         save(
                             TripPlanningItem(
+                                id: existingItem?.id ?? UUID(),
                                 title: trimmedTitle,
                                 note: note.trimmingCharacters(in: .whitespacesAndNewlines),
-                                date: hasDate ? date : nil
+                                date: hasDate ? date : nil,
+                                isDone: existingItem?.isDone ?? false
                             )
                         )
                         dismiss()

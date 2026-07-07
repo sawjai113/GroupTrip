@@ -835,6 +835,48 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
 
+    func testCloudStoreUpdatesPlanningItemRemotelyBeforeReplacingLocalItem() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B027")!
+        let original = TripPlanningItem(title: "Book dinner", note: "Friday", date: nil, isDone: false)
+        let updated = TripPlanningItem(id: original.id, title: "  Book brunch  ", note: "  Saturday morning  ", date: SupabaseDateFormatter.date(from: "2026-07-04"), isDone: true)
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.planningItems = [original]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updatePlanningItem(updated, in: tripID)
+
+        let request = try XCTUnwrap(service.updatedPlanningItemRequest)
+        XCTAssertEqual(request.tripID, tripID)
+        XCTAssertEqual(request.item.id, original.id)
+        XCTAssertEqual(request.item.title, "Book brunch")
+        XCTAssertEqual(request.item.note, "Saturday morning")
+        XCTAssertTrue(request.item.isDone)
+        XCTAssertEqual(store.trips.first?.planningItems.first?.title, "Book brunch")
+        XCTAssertEqual(store.trips.first?.planningItems.first?.note, "Saturday morning")
+        XCTAssertTrue(store.trips.first?.planningItems.first?.isDone == true)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsPlanningItemUpdateFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B028")!
+        let original = TripPlanningItem(title: "Book dinner", note: "Friday", date: nil, isDone: false)
+        let updated = TripPlanningItem(id: original.id, title: "Book brunch", note: "Saturday", date: nil, isDone: true)
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.planningItems = [original]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updatePlanningItem(updated, in: tripID)
+
+        XCTAssertEqual(service.updatedPlanningItemRequest?.item.title, "Book brunch")
+        XCTAssertEqual(store.trips.first?.planningItems.first?.title, "Book dinner")
+        XCTAssertEqual(store.trips.first?.planningItems.first?.note, "Friday")
+        XCTAssertFalse(store.trips.first?.planningItems.first?.isDone == true)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
     private func makeTrip(id: UUID, name: String) -> TripPlan {
         TripPlan(
             id: id,

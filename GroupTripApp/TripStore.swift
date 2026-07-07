@@ -260,14 +260,27 @@ final class TripStore: ObservableObject {
         guard let item = trips.first(where: { $0.id == tripID })?.planningItems.first(where: { $0.id == itemID }) else { return }
         var updatedItem = item
         updatedItem.isDone.toggle()
+        await updatePlanningItem(updatedItem, in: tripID)
+    }
+
+    @MainActor
+    func updatePlanningItem(_ item: TripPlanningItem, in tripID: TripPlan.ID) async {
+        let trimmedItem = TripPlanningItem(
+            id: item.id,
+            title: item.title.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: item.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            date: item.date,
+            isDone: item.isDone
+        )
+        guard !trimmedItem.title.isEmpty else { return }
 
         guard let service else {
-            togglePlanningItem(itemID, for: tripID)
+            replacePlanningItem(trimmedItem, in: tripID)
             return
         }
 
         do {
-            let savedItem = try await service.updatePlanningItem(updatedItem, in: tripID)
+            let savedItem = try await service.updatePlanningItem(trimmedItem, in: tripID)
             replacePlanningItem(savedItem, in: tripID)
             syncError = nil
         } catch {

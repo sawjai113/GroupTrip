@@ -74,7 +74,7 @@ struct TripPlacesView: View {
                     editing: place,
                     title: "Edit Place"
                 ) { updated in
-                    Task { await updatePlace(updated) }
+                    Task { await performUpdatePlace(updated) }
                 }
             }
         }
@@ -126,12 +126,12 @@ struct TripPlacesView: View {
         placePendingDeletion = nil
     }
 
-    private func updatePlace(_ place: TripPlace) async {
+    private func performUpdatePlace(_ place: TripPlace) async {
         if usesExternalPersistence {
-            await self.updatePlace(place)
+            await updatePlace(place)
+        } else if let index = places.firstIndex(where: { $0.id == place.id }) {
+            places[index] = place
         }
-        guard let index = places.firstIndex(where: { $0.id == place.id }) else { return }
-        places[index] = place
         placePendingEdit = nil
         isShowingEditPlace = false
     }
