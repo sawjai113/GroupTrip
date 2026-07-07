@@ -174,11 +174,17 @@ struct TripSummaryView: View {
                                 saveExpense: { title, paidBy, amount, participants in
                                     await store.saveExpense(title: title, paidBy: paidBy, amount: amount, participants: participants, to: tripID)
                                 },
+                                updateExpense: { expense in
+                                    await store.updateExpense(expense, in: tripID)
+                                },
                                 deleteExpense: { expenseID in
                                     await store.removeExpense(expenseID, from: tripID)
                                 },
                                 saveDirectPayment: { title, from, to, amount in
                                     await store.saveDirectPayment(title: title, from: from, to: to, amount: amount, in: tripID)
+                                },
+                                updateDirectPayment: { payment in
+                                    await store.updateDirectPayment(payment, in: tripID)
                                 },
                                 saveParticipants: { names in
                                     await store.saveParticipants(names: names, to: tripID)

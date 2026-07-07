@@ -65,6 +65,19 @@ final class TripCalculatorViewModel: ObservableObject {
         }
     }
 
+    func updateExpense(_ expense: ExpenseItem) {
+        let trimmed = expense.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, expense.amount > 0, !expense.participants.isEmpty,
+              let index = calculator.expenses.firstIndex(where: { $0.id == expense.id }) else { return }
+        calculator.expenses[index] = ExpenseItem(
+            id: expense.id,
+            title: trimmed,
+            paidBy: expense.paidBy,
+            amount: expense.amount,
+            participants: expense.participants
+        )
+    }
+
     func addPayment(title: String, from: Participant.ID, to: Participant.ID, amount: Decimal) {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, from != to, amount > 0 else { return }
@@ -79,6 +92,19 @@ final class TripCalculatorViewModel: ObservableObject {
         for offset in offsets.sorted(by: >) {
             calculator.payments.remove(at: offset)
         }
+    }
+
+    func updatePayment(_ payment: DirectPayment) {
+        let trimmed = payment.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, payment.from != payment.to, payment.amount > 0,
+              let index = calculator.payments.firstIndex(where: { $0.id == payment.id }) else { return }
+        calculator.payments[index] = DirectPayment(
+            id: payment.id,
+            title: trimmed,
+            from: payment.from,
+            to: payment.to,
+            amount: payment.amount
+        )
     }
 }
 

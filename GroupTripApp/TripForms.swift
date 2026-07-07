@@ -181,7 +181,9 @@ struct AddPersonView: View {
 struct AddExpenseView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var existingExpense: ExpenseItem?
     var saveExpense: (String, Participant.ID, Decimal, Set<Participant.ID>) async -> Void = { _, _, _, _ in }
+    var updateExpense: (ExpenseItem) async -> Void = { _ in }
     var usesExternalPersistence: Bool = false
     @State private var title = ""
     @State private var amount = ""
@@ -215,9 +217,14 @@ struct AddExpenseView: View {
                     }
                 }
             }
-            .navigationTitle("Add Expense")
+            .navigationTitle(existingExpense == nil ? "Add Expense" : "Edit Expense")
             .onAppear {
-                if paidBy == nil {
+                if let existingExpense, title.isEmpty {
+                    title = existingExpense.title
+                    amount = existingExpense.amount.currencyText.replacingOccurrences(of: "$", with: "")
+                    paidBy = existingExpense.paidBy
+                    selectedParticipants = existingExpense.participants
+                } else if paidBy == nil {
                     paidBy = viewModel.calculator.participants.first?.id
                     selectedParticipants = Set(viewModel.calculator.participants.map(\.id))
                 }
@@ -227,9 +234,26 @@ struct AddExpenseView: View {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add Expense") {
+                    Button(existingExpense == nil ? "Add Expense" : "Save") {
                         let selectedPayer = paidByBinding.wrappedValue
-                        if usesExternalPersistence {
+                        if let existingExpense {
+                            let updated = ExpenseItem(
+                                id: existingExpense.id,
+                                title: title,
+                                paidBy: selectedPayer,
+                                amount: parsedAmount,
+                                participants: selectedParticipants
+                            )
+                            if usesExternalPersistence {
+                                Task {
+                                    await updateExpense(updated)
+                                    dismiss()
+                                }
+                            } else {
+                                viewModel.updateExpense(updated)
+                                dismiss()
+                            }
+                        } else if usesExternalPersistence {
                             Task {
                                 await saveExpense(title, selectedPayer, parsedAmount, selectedParticipants)
                                 dismiss()
@@ -285,7 +309,9 @@ struct AddExpenseView: View {
 struct AddPaymentView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var existingPayment: DirectPayment?
     var saveDirectPayment: (String, Participant.ID, Participant.ID, Decimal) async -> Void = { _, _, _, _ in }
+    var updateDirectPayment: (DirectPayment) async -> Void = { _ in }
     var usesExternalPersistence: Bool = false
     @State private var title = ""
     @State private var amount = ""
@@ -315,20 +341,44 @@ struct AddPaymentView: View {
                     }
                 }
             }
-            .navigationTitle("Add Payment")
+            .navigationTitle(existingPayment == nil ? "Add Payment" : "Edit Payment")
             .onAppear {
-                from = viewModel.calculator.participants.first?.id
-                to = viewModel.calculator.participants.dropFirst().first?.id ?? viewModel.calculator.participants.first?.id
+                if let existingPayment, title.isEmpty {
+                    title = existingPayment.title
+                    amount = existingPayment.amount.currencyText.replacingOccurrences(of: "$", with: "")
+                    from = existingPayment.from
+                    to = existingPayment.to
+                } else if from == nil {
+                    from = viewModel.calculator.participants.first?.id
+                    to = viewModel.calculator.participants.dropFirst().first?.id ?? viewModel.calculator.participants.first?.id
+                }
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
+                    Button(existingPayment == nil ? "Add" : "Save") {
                         let fromID = fromBinding.wrappedValue
                         let toID = toBinding.wrappedValue
-                        if usesExternalPersistence {
+                        if let existingPayment {
+                            let updated = DirectPayment(
+                                id: existingPayment.id,
+                                title: title,
+                                from: fromID,
+                                to: toID,
+                                amount: parsedAmount
+                            )
+                            if usesExternalPersistence {
+                                Task {
+                                    await updateDirectPayment(updated)
+                                    dismiss()
+                                }
+                            } else {
+                                viewModel.updatePayment(updated)
+                                dismiss()
+                            }
+                        } else if usesExternalPersistence {
                             Task {
                                 await saveDirectPayment(title, fromID, toID, parsedAmount)
                                 dismiss()

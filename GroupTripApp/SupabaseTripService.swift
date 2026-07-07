@@ -409,34 +409,63 @@ struct SupabaseTripService: TripSyncServicing {
     }
 
     func updateExpense(_ expense: ExpenseItem, in tripID: UUID) async throws -> ExpenseItem {
-        // Just update title/amount for now; participant splits are managed separately
+        let trimmedExpense = Self.trimmedExpense(expense)
+        guard !trimmedExpense.title.isEmpty, trimmedExpense.amount > 0, !trimmedExpense.participants.isEmpty else {
+            throw SupabaseTripServiceValidationError.invalidExpense
+        }
+
         try await client
             .from("trip_expenses")
             .update(SupabaseTripExpensePartialUpdate(
-                id: expense.id,
+                id: trimmedExpense.id,
                 tripID: tripID,
-                title: expense.title,
-                amount: expense.amount
+                title: trimmedExpense.title,
+                paidByParticipantID: trimmedExpense.paidBy,
+                amount: trimmedExpense.amount
             ))
-            .eq("id", value: expense.id.uuidString)
+            .eq("id", value: trimmedExpense.id.uuidString)
             .eq("trip_id", value: tripID.uuidString)
             .execute()
-        return expense
+
+        try await client
+            .from("trip_expense_splits")
+            .delete()
+            .eq("expense_id", value: trimmedExpense.id.uuidString)
+            .execute()
+
+        let shareAmount = trimmedExpense.amount / Decimal(trimmedExpense.participants.count)
+        let splitRows = trimmedExpense.participants.map {
+            SupabaseTripExpenseSplitDTO(expenseID: trimmedExpense.id, participantID: $0, shareAmount: shareAmount)
+        }
+
+        try await client
+            .from("trip_expense_splits")
+            .insert(splitRows)
+            .execute()
+
+        return trimmedExpense
     }
 
     func updateDirectPayment(_ payment: DirectPayment, in tripID: UUID) async throws -> DirectPayment {
+        let trimmedPayment = Self.trimmedPayment(payment)
+        guard !trimmedPayment.title.isEmpty, trimmedPayment.from != trimmedPayment.to, trimmedPayment.amount > 0 else {
+            throw SupabaseTripServiceValidationError.invalidDirectPayment
+        }
+
         try await client
             .from("trip_direct_payments")
             .update(SupabaseTripDirectPaymentPartialUpdate(
-                id: payment.id,
+                id: trimmedPayment.id,
                 tripID: tripID,
-                title: payment.title,
-                amount: payment.amount
+                title: trimmedPayment.title,
+                fromParticipantID: trimmedPayment.from,
+                toParticipantID: trimmedPayment.to,
+                amount: trimmedPayment.amount
             ))
-            .eq("id", value: payment.id.uuidString)
+            .eq("id", value: trimmedPayment.id.uuidString)
             .eq("trip_id", value: tripID.uuidString)
             .execute()
-        return payment
+        return trimmedPayment
     }
 
     private static func makeInviteCode() -> String {
@@ -912,16 +941,32 @@ struct SupabaseTripExpenseSplitDTO: Codable, Hashable {
     }
 }
 
+private enum SupabaseTripServiceValidationError: LocalizedError {
+    case invalidExpense
+    case invalidDirectPayment
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidExpense:
+            "Expense edits need a title, positive amount, and at least one split participant."
+        case .invalidDirectPayment:
+            "Payment edits need a title, positive amount, and two different people."
+        }
+    }
+}
+
 struct SupabaseTripExpensePartialUpdate: Encodable {
     var id: UUID
     var tripID: UUID
     var title: String
+    var paidByParticipantID: UUID
     var amount: Decimal
 
     enum CodingKeys: String, CodingKey {
         case id
         case tripID = "trip_id"
         case title
+        case paidByParticipantID = "paid_by_participant_id"
         case amount
     }
 }
@@ -930,12 +975,16 @@ struct SupabaseTripDirectPaymentPartialUpdate: Encodable {
     var id: UUID
     var tripID: UUID
     var title: String
+    var fromParticipantID: UUID
+    var toParticipantID: UUID
     var amount: Decimal
 
     enum CodingKeys: String, CodingKey {
         case id
         case tripID = "trip_id"
         case title
+        case fromParticipantID = "from_participant_id"
+        case toParticipantID = "to_participant_id"
         case amount
     }
 }

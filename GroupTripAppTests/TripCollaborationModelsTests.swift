@@ -877,6 +877,102 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
 
+    func testCloudStoreUpdatesExpenseRemotelyBeforeReplacingLocalExpense() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B029")!
+        let alex = Participant(name: "Alex")
+        let sam = Participant(name: "Sam")
+        let original = ExpenseItem(title: "Dinner", paidBy: alex.id, amount: 80, participants: [alex.id, sam.id])
+        let updated = ExpenseItem(id: original.id, title: "  Brunch  ", paidBy: sam.id, amount: 120, participants: [sam.id])
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [alex, sam]
+        trip.viewModel.calculator.expenses = [original]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updateExpense(updated, in: tripID)
+
+        let request = try XCTUnwrap(service.updatedExpenseRequest)
+        XCTAssertEqual(request.tripID, tripID)
+        XCTAssertEqual(request.expense.id, original.id)
+        XCTAssertEqual(request.expense.title, "Brunch")
+        XCTAssertEqual(request.expense.paidBy, sam.id)
+        XCTAssertEqual(request.expense.amount, 120)
+        XCTAssertEqual(request.expense.participants, [sam.id])
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.expenses.first?.title, "Brunch")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.expenses.first?.paidBy, sam.id)
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.expenses.first?.participants, [sam.id])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsExpenseUpdateFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B02A")!
+        let alex = Participant(name: "Alex")
+        let sam = Participant(name: "Sam")
+        let original = ExpenseItem(title: "Dinner", paidBy: alex.id, amount: 80, participants: [alex.id, sam.id])
+        let updated = ExpenseItem(id: original.id, title: "Brunch", paidBy: sam.id, amount: 120, participants: [sam.id])
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [alex, sam]
+        trip.viewModel.calculator.expenses = [original]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updateExpense(updated, in: tripID)
+
+        XCTAssertEqual(service.updatedExpenseRequest?.expense.title, "Brunch")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.expenses.first?.title, "Dinner")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.expenses.first?.paidBy, alex.id)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
+    func testCloudStoreUpdatesDirectPaymentRemotelyBeforeReplacingLocalPayment() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B02B")!
+        let alex = Participant(name: "Alex")
+        let sam = Participant(name: "Sam")
+        let original = DirectPayment(title: "Payback", from: alex.id, to: sam.id, amount: 40)
+        let updated = DirectPayment(id: original.id, title: "  Brunch payback  ", from: sam.id, to: alex.id, amount: 65)
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [alex, sam]
+        trip.viewModel.calculator.payments = [original]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updateDirectPayment(updated, in: tripID)
+
+        let request = try XCTUnwrap(service.updatedPaymentRequest)
+        XCTAssertEqual(request.tripID, tripID)
+        XCTAssertEqual(request.payment.id, original.id)
+        XCTAssertEqual(request.payment.title, "Brunch payback")
+        XCTAssertEqual(request.payment.from, sam.id)
+        XCTAssertEqual(request.payment.to, alex.id)
+        XCTAssertEqual(request.payment.amount, 65)
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.payments.first?.title, "Brunch payback")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.payments.first?.from, sam.id)
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.payments.first?.to, alex.id)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsDirectPaymentUpdateFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B02C")!
+        let alex = Participant(name: "Alex")
+        let sam = Participant(name: "Sam")
+        let original = DirectPayment(title: "Payback", from: alex.id, to: sam.id, amount: 40)
+        let updated = DirectPayment(id: original.id, title: "Brunch payback", from: sam.id, to: alex.id, amount: 65)
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.viewModel.calculator.participants = [alex, sam]
+        trip.viewModel.calculator.payments = [original]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updateDirectPayment(updated, in: tripID)
+
+        XCTAssertEqual(service.updatedPaymentRequest?.payment.title, "Brunch payback")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.payments.first?.title, "Payback")
+        XCTAssertEqual(store.trips.first?.viewModel.calculator.payments.first?.from, alex.id)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
     private func makeTrip(id: UUID, name: String) -> TripPlan {
         TripPlan(
             id: id,

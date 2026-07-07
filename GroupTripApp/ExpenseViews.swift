@@ -5,8 +5,10 @@ struct ExpenseTrackerView: View {
     let destination: String
     @ObservedObject var viewModel: TripCalculatorViewModel
     var saveExpense: (String, Participant.ID, Decimal, Set<Participant.ID>) async -> Void = { _, _, _, _ in }
+    var updateExpense: (ExpenseItem) async -> Void = { _ in }
     var deleteExpense: (ExpenseItem.ID) async -> Void = { _ in }
     var saveDirectPayment: (String, Participant.ID, Participant.ID, Decimal) async -> Void = { _, _, _, _ in }
+    var updateDirectPayment: (DirectPayment) async -> Void = { _ in }
     var saveParticipants: ([String]) async -> Void = { _ in }
     var usesExternalPersistence: Bool = false
     @State private var selectedTab: ExpenseTab = .expenses
@@ -32,6 +34,7 @@ struct ExpenseTrackerView: View {
                         ExpenseTabView(
                             viewModel: viewModel,
                             usesExternalPersistence: usesExternalPersistence,
+                            updateExpenseRemotely: updateExpense,
                             deleteExpenseRemotely: deleteExpense
                         ) {
                             activeSheet = .expense
@@ -42,6 +45,7 @@ struct ExpenseTrackerView: View {
                         BalancesTabView(
                             viewModel: viewModel,
                             saveDirectPayment: saveDirectPayment,
+                            updateDirectPayment: updateDirectPayment,
                             usesExternalPersistence: usesExternalPersistence
                         )
                     case .people:
@@ -172,10 +176,12 @@ struct CompactMetric: View {
 struct ExpenseTabView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
     var usesExternalPersistence: Bool = false
+    var updateExpenseRemotely: (ExpenseItem) async -> Void = { _ in }
     var deleteExpenseRemotely: (ExpenseItem.ID) async -> Void = { _ in }
     var addExpense: () -> Void
     var addPeople: () -> Void
     @State private var expensePendingDeletion: ExpenseItem?
+    @State private var expenseBeingEdited: ExpenseItem?
 
     private var hasParticipants: Bool {
         !viewModel.calculator.participants.isEmpty
@@ -218,10 +224,26 @@ struct ExpenseTabView: View {
                     ForEach(viewModel.calculator.expenses) { expense in
                         ExpenseCard(expense: expense, paidBy: viewModel.participantName(for: expense.paidBy)) {
                             expensePendingDeletion = expense
+                        } editExpense: {
+                            expenseBeingEdited = expense
                         }
                     }
                 }
             }
+        }
+        .sheet(item: $expenseBeingEdited) { expense in
+            AddExpenseView(
+                viewModel: viewModel,
+                existingExpense: expense,
+                updateExpense: { updated in
+                    if usesExternalPersistence {
+                        await updateExpenseRemotely(updated)
+                    } else {
+                        viewModel.updateExpense(updated)
+                    }
+                },
+                usesExternalPersistence: usesExternalPersistence
+            )
         }
         .confirmationDialog(
             "Delete this expense?",
@@ -257,6 +279,7 @@ struct ExpenseCard: View {
     let expense: ExpenseItem
     let paidBy: String
     var deleteExpense: () -> Void
+    var editExpense: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -284,6 +307,13 @@ struct ExpenseCard: View {
                 .foregroundStyle(AppTheme.primary)
                 .monospacedDigit()
 
+            Button(action: editExpense) {
+                Image(systemName: "pencil")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Edit \(expense.title)")
+
             Button(role: .destructive, action: deleteExpense) {
                 Image(systemName: "trash")
                     .font(.subheadline.weight(.semibold))
@@ -299,8 +329,10 @@ struct ExpenseCard: View {
 struct BalancesTabView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
     var saveDirectPayment: (String, Participant.ID, Participant.ID, Decimal) async -> Void = { _, _, _, _ in }
+    var updateDirectPayment: (DirectPayment) async -> Void = { _ in }
     var usesExternalPersistence: Bool = false
     @State private var activeSheet: ActiveSheet?
+    @State private var paymentBeingEdited: DirectPayment?
 
     var body: some View {
         VStack(spacing: 14) {
@@ -329,6 +361,24 @@ struct BalancesTabView: View {
                 participantCount: viewModel.calculator.participants.count,
                 totalExpenses: viewModel.calculator.totalExpenses
             )
+
+            if !viewModel.calculator.payments.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Recorded Payments")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    ForEach(viewModel.calculator.payments) { payment in
+                        DirectPaymentCard(
+                            payment: payment,
+                            fromName: viewModel.participantName(for: payment.from),
+                            toName: viewModel.participantName(for: payment.to)
+                        ) {
+                            paymentBeingEdited = payment
+                        }
+                    }
+                }
+            }
         }
         .sheet(item: $activeSheet) { _ in
             AddPaymentView(
@@ -337,5 +387,62 @@ struct BalancesTabView: View {
                 usesExternalPersistence: usesExternalPersistence
             )
         }
+        .sheet(item: $paymentBeingEdited) { payment in
+            AddPaymentView(
+                viewModel: viewModel,
+                existingPayment: payment,
+                updateDirectPayment: { updated in
+                    if usesExternalPersistence {
+                        await updateDirectPayment(updated)
+                    } else {
+                        viewModel.updatePayment(updated)
+                    }
+                },
+                usesExternalPersistence: usesExternalPersistence
+            )
+        }
+    }
+}
+
+struct DirectPaymentCard: View {
+    let payment: DirectPayment
+    let fromName: String
+    let toName: String
+    var editPayment: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.left.arrow.right")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.primary)
+                .frame(width: 34, height: 34)
+                .background(AppTheme.primary.opacity(0.12))
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(payment.title)
+                    .font(.body.weight(.semibold))
+                Text("\(fromName) paid \(toName)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Text(payment.amount.currencyText)
+                .font(.headline)
+                .foregroundStyle(AppTheme.primary)
+                .monospacedDigit()
+
+            Button(action: editPayment) {
+                Image(systemName: "pencil")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Edit \(payment.title)")
+        }
+        .padding(14)
+        .background(AppTheme.paper)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

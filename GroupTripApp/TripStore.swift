@@ -358,6 +358,38 @@ final class TripStore: ObservableObject {
         trips.first { $0.id == tripID }?.viewModel.calculator.expenses.removeAll { $0.id == expenseID }
     }
 
+    private func replaceExpense(_ expense: ExpenseItem, in tripID: TripPlan.ID) {
+        objectWillChange.send()
+        guard let expenses = trips.first(where: { $0.id == tripID })?.viewModel.calculator.expenses,
+              let index = expenses.firstIndex(where: { $0.id == expense.id }) else { return }
+        trips.first { $0.id == tripID }?.viewModel.calculator.expenses[index] = expense
+    }
+
+    @MainActor
+    func updateExpense(_ expense: ExpenseItem, in tripID: TripPlan.ID) async {
+        let trimmed = ExpenseItem(
+            id: expense.id,
+            title: expense.title.trimmingCharacters(in: .whitespacesAndNewlines),
+            paidBy: expense.paidBy,
+            amount: expense.amount,
+            participants: expense.participants
+        )
+        guard !trimmed.title.isEmpty, trimmed.amount > 0, !trimmed.participants.isEmpty else { return }
+
+        guard let service else {
+            replaceExpense(trimmed, in: tripID)
+            return
+        }
+
+        do {
+            let savedExpense = try await service.updateExpense(trimmed, in: tripID)
+            replaceExpense(savedExpense, in: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
     @MainActor
     func saveDirectPayment(title: String, from: Participant.ID, to: Participant.ID, amount: Decimal, in tripID: TripPlan.ID) async {
         let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -382,6 +414,38 @@ final class TripStore: ObservableObject {
     private func addDirectPayment(_ payment: DirectPayment, to tripID: TripPlan.ID) {
         objectWillChange.send()
         trips.first { $0.id == tripID }?.viewModel.calculator.payments.insert(payment, at: 0)
+    }
+
+    private func replaceDirectPayment(_ payment: DirectPayment, in tripID: TripPlan.ID) {
+        objectWillChange.send()
+        guard let payments = trips.first(where: { $0.id == tripID })?.viewModel.calculator.payments,
+              let index = payments.firstIndex(where: { $0.id == payment.id }) else { return }
+        trips.first { $0.id == tripID }?.viewModel.calculator.payments[index] = payment
+    }
+
+    @MainActor
+    func updateDirectPayment(_ payment: DirectPayment, in tripID: TripPlan.ID) async {
+        let trimmed = DirectPayment(
+            id: payment.id,
+            title: payment.title.trimmingCharacters(in: .whitespacesAndNewlines),
+            from: payment.from,
+            to: payment.to,
+            amount: payment.amount
+        )
+        guard !trimmed.title.isEmpty, trimmed.from != trimmed.to, trimmed.amount > 0 else { return }
+
+        guard let service else {
+            replaceDirectPayment(trimmed, in: tripID)
+            return
+        }
+
+        do {
+            let savedPayment = try await service.updateDirectPayment(trimmed, in: tripID)
+            replaceDirectPayment(savedPayment, in: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
     }
 
     @MainActor
