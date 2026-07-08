@@ -615,17 +615,6 @@ final class TripStore: ObservableObject {
             return false
         }
     }
-
-    var errorAlertBinding: Binding<Bool> {
-        Binding(
-            get: { self.syncError != nil },
-            set: { isPresented in
-                if !isPresented {
-                    self.syncError = nil
-                }
-            }
-        )
-    }
 }
 
 extension TripStore {
