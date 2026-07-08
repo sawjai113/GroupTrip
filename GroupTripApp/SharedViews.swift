@@ -206,6 +206,7 @@ struct PlaceholderActionCard: View {
 }
 
 struct EmptyTripsView: View {
+    var joinTrip: (() -> Void)?
     var createTrip: () -> Void
 
     var body: some View {
@@ -215,13 +216,25 @@ struct EmptyTripsView: View {
             VStack(spacing: AppTheme.Spacing.xSmall + 2) {
                 Text("No trips yet")
                     .font(.title3.weight(.semibold))
-                Text("Create your first trip to start organizing the details")
+                Text(joinTrip == nil ? "Create your first trip to start organizing the details" : "Create a new trip or join one from a friend’s invite code.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
 
-            WaniPrimaryActionButton(title: "Create Your First Trip", systemImage: "plus", action: createTrip)
+            VStack(spacing: AppTheme.Spacing.small) {
+                WaniPrimaryActionButton(title: "Create Your First Trip", systemImage: "plus", action: createTrip)
+
+                if let joinTrip {
+                    Button(action: joinTrip) {
+                        Label("Join with Invite Code", systemImage: "link.badge.plus")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityLabel("Join a trip with an invite code")
+                }
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 64)

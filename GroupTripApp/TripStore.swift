@@ -577,12 +577,17 @@ final class TripStore: ObservableObject {
         let normalizedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
         guard !normalizedCode.isEmpty else {
             invitePreview = nil
+            syncError = nil
             return
         }
 
         do {
             syncError = nil
-            invitePreview = try await service.lookupInvite(code: normalizedCode)
+            let preview = try await service.lookupInvite(code: normalizedCode)
+            invitePreview = preview
+            if preview == nil {
+                syncError = "We couldn't find an active trip invite for that code."
+            }
         } catch {
             invitePreview = nil
             syncError = error.localizedDescription
@@ -590,18 +595,24 @@ final class TripStore: ObservableObject {
     }
 
     @MainActor
-    func acceptInvite(code: String) async {
-        guard let service else { return }
+    @discardableResult
+    func acceptInvite(code: String) async -> Bool {
+        guard let service else { return false }
         let normalizedCode = code.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        guard !normalizedCode.isEmpty else { return }
+        guard !normalizedCode.isEmpty else {
+            syncError = nil
+            return false
+        }
 
         do {
             syncError = nil
             try await service.acceptInvite(code: normalizedCode)
             trips = try await service.loadTrips()
             invitePreview = nil
+            return true
         } catch {
             syncError = error.localizedDescription
+            return false
         }
     }
 

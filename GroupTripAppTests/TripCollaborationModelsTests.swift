@@ -700,6 +700,38 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertNil(store.syncError)
     }
 
+    func testCloudStoreClearsInviteLookupStateForBlankCode() async {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B03B")!
+        let store = TripStore(service: service)
+        store.invitePreview = TripInvitePreview(
+            inviteID: UUID(uuidString: "00000000-0000-0000-0000-00000000C03B")!,
+            tripID: tripID,
+            tripName: "Austin Weekend",
+            role: .guest,
+            expiresAt: nil
+        )
+        store.syncError = TestError.intentional.localizedDescription
+
+        await store.lookupInvite(code: "   ")
+
+        XCTAssertNil(service.lookedUpInviteCode)
+        XCTAssertNil(store.invitePreview)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsMissingInvitePreview() async {
+        let service = FakeTripSyncService()
+        service.invitePreviewToLookup = nil
+        let store = TripStore(service: service)
+
+        await store.lookupInvite(code: "missing-code")
+
+        XCTAssertEqual(service.lookedUpInviteCode, "MISSING-CODE")
+        XCTAssertNil(store.invitePreview)
+        XCTAssertEqual(store.syncError, "We couldn't find an active trip invite for that code.")
+    }
+
     func testCloudStoreAcceptsInviteThenReloadsTrips() async throws {
         let service = FakeTripSyncService()
         let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B005")!
@@ -714,8 +746,9 @@ final class TripStoreCloudSyncTests: XCTestCase {
             expiresAt: nil
         )
 
-        await store.acceptInvite(code: " wani2027 ")
+        let didJoin = await store.acceptInvite(code: " wani2027 ")
 
+        XCTAssertTrue(didJoin)
         XCTAssertEqual(service.acceptedInviteCode, "WANI2027")
         XCTAssertTrue(service.didLoadTrips)
         XCTAssertEqual(store.trips.map(\.id), [tripID])
@@ -728,12 +761,25 @@ final class TripStoreCloudSyncTests: XCTestCase {
         service.createError = TestError.intentional
         let store = TripStore(service: service)
 
-        await store.acceptInvite(code: "WANI2027")
+        let didJoin = await store.acceptInvite(code: "WANI2027")
 
+        XCTAssertFalse(didJoin)
         XCTAssertEqual(service.acceptedInviteCode, "WANI2027")
         XCTAssertFalse(service.didLoadTrips)
         XCTAssertTrue(store.trips.isEmpty)
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
+    func testCloudStoreRejectsBlankInviteAcceptWithoutCallingService() async {
+        let service = FakeTripSyncService()
+        let store = TripStore(service: service)
+        store.syncError = TestError.intentional.localizedDescription
+
+        let didJoin = await store.acceptInvite(code: "   ")
+
+        XCTAssertFalse(didJoin)
+        XCTAssertNil(service.acceptedInviteCode)
+        XCTAssertNil(store.syncError)
     }
 
     func testCloudStoreLeavesTripRemotelyBeforeRemovingLocalTrip() async {

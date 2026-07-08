@@ -53,7 +53,9 @@ struct TripDashboardView: View {
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 64)
                         } else if store.trips.isEmpty {
-                            EmptyTripsView {
+                            EmptyTripsView(
+                                joinTrip: modeBadge == .cloud ? { isShowingJoinInvite = true } : nil
+                            ) {
                                 isShowingNewTrip = true
                             }
                         } else {
@@ -86,7 +88,17 @@ struct TripDashboardView: View {
             .task {
                 await store.loadTrips()
             }
-            .alert("Trip Sync Error", isPresented: store.errorAlertBinding) {
+            .alert(
+                "Trip Sync Error",
+                isPresented: Binding(
+                    get: { store.syncError != nil && !isShowingJoinInvite },
+                    set: { isPresented in
+                        if !isPresented {
+                            store.syncError = nil
+                        }
+                    }
+                )
+            ) {
                 if store.supportsCloudSync {
                     Button("Retry") {
                         Task { await store.loadTrips() }
@@ -188,6 +200,7 @@ struct JoinTripInviteView: View {
     @State private var inviteCode = ""
     @State private var isLookingUp = false
     @State private var isJoining = false
+    @State private var didJoinTrip = false
 
     private var trimmedCode: String {
         inviteCode.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -199,11 +212,21 @@ struct JoinTripInviteView: View {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
                     WaniSectionHeader(
                         title: "Join a Trip",
-                        subtitle: "Enter an invite code to preview the trip before joining."
+                        subtitle: "Use a friend’s invite code to add the trip to your signed-in Wanderaid account."
                     )
 
                     WaniCard {
                         VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                            VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
+                                Label("Signed-in join", systemImage: "person.crop.circle.badge.checkmark")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(AppTheme.success)
+                                Text("You’ll join with this account, and Wanderaid will refresh your cloud trips after the invite is accepted.")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
                             TextField("Invite code", text: $inviteCode)
                                 .textInputAutocapitalization(.characters)
                                 .autocorrectionDisabled()
@@ -213,8 +236,11 @@ struct JoinTripInviteView: View {
                                 Task { await lookupInvite() }
                             } label: {
                                 if isLookingUp {
-                                    ProgressView()
-                                        .frame(maxWidth: .infinity)
+                                    HStack {
+                                        ProgressView()
+                                        Text("Checking invite…")
+                                    }
+                                    .frame(maxWidth: .infinity)
                                 } else {
                                     Label("Preview Invite", systemImage: "magnifyingglass")
                                         .frame(maxWidth: .infinity)
@@ -222,7 +248,24 @@ struct JoinTripInviteView: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(AppTheme.primary)
-                            .disabled(trimmedCode.isEmpty || isLookingUp || isJoining)
+                            .disabled(trimmedCode.isEmpty || isLookingUp || isJoining || didJoinTrip)
+                        }
+                    }
+
+                    if didJoinTrip {
+                        WaniCard {
+                            HStack(alignment: .top, spacing: AppTheme.Spacing.small) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(AppTheme.success)
+                                VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
+                                    Text("Trip joined")
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("Your cloud trips were refreshed. The joined trip is now on your dashboard.")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                            }
                         }
                     }
 
@@ -248,17 +291,24 @@ struct JoinTripInviteView: View {
                                         .foregroundStyle(AppTheme.success)
                                     Text(preview.tripName)
                                         .font(.title3.weight(.semibold))
-                                    Text("You'll join as a \(preview.role.rawValue).")
+                                    Text("Invite role: \(preview.role.rawValue.capitalized) collaborator")
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
+                                    Text("Because you’re signed in, this trip will stay linked to your account after relaunch.")
+                                        .font(.footnote)
+                                        .foregroundStyle(.secondary)
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
 
                                 Button {
                                     Task { await acceptInvite() }
                                 } label: {
                                     if isJoining {
-                                        ProgressView()
-                                            .frame(maxWidth: .infinity)
+                                        HStack {
+                                            ProgressView()
+                                            Text("Joining and refreshing trips…")
+                                        }
+                                        .frame(maxWidth: .infinity)
                                     } else {
                                         Label("Join Trip", systemImage: "person.badge.plus")
                                             .frame(maxWidth: .infinity)
@@ -266,7 +316,7 @@ struct JoinTripInviteView: View {
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .tint(AppTheme.success)
-                                .disabled(isJoining)
+                                .disabled(isLookingUp || isJoining || didJoinTrip)
                             }
                         }
                     }
@@ -285,6 +335,7 @@ struct JoinTripInviteView: View {
 
     @MainActor
     private func lookupInvite() async {
+        didJoinTrip = false
         isLookingUp = true
         await store.lookupInvite(code: inviteCode)
         isLookingUp = false
@@ -293,10 +344,12 @@ struct JoinTripInviteView: View {
     @MainActor
     private func acceptInvite() async {
         isJoining = true
-        await store.acceptInvite(code: inviteCode)
+        let didJoin = await store.acceptInvite(code: inviteCode)
         isJoining = false
 
-        if store.syncError == nil {
+        if didJoin {
+            didJoinTrip = true
+            try? await Task.sleep(for: .milliseconds(650))
             dismiss()
         }
     }

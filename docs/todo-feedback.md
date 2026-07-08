@@ -22,20 +22,20 @@ Safety rule: any future action that deletes, removes, revokes, logs out, leaves,
 
 ### 1. Join Trip entry point polish
 
-Status: Now
+Status: Done
 Area: Dashboard, Invites, UX
 
-Current direction:
+Resolution:
 
-- Make the signed-in dashboard clearly support joining a trip by invite code.
-- Include loading, success, and error states.
-- Reload cloud trips after a successful join.
-- Keep Demo Mode separate from Signed-in Mode.
+- Signed-in empty dashboard now offers both creating a first trip and joining with an invite code.
+- Join sheet clarifies this is a signed-in/account join and that cloud trips refresh after accepting.
+- Invite preview, checking, joining, success, missing-code, and error states are explicit.
+- Store clears stale invite errors/previews for blank codes and returns success/failure from invite accept.
+- Successful invite accept reloads cloud trips before dismissing.
 
-Feedback notes:
+Deferred notes:
 
-- Add a guest join path where someone can enter an invite code and display name without creating/signing into a Google account.
-- Make clear whether the user is joining as an account member or temporary guest collaborator.
+- Guest join without mandatory signup remains a later product/auth flow; current polish is for signed-in joins.
 
 ### 2. Confirmations for logout and destructive/removal actions
 
