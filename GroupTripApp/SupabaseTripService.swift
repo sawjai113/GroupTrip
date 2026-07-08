@@ -202,10 +202,14 @@ struct SupabaseTripService: TripSyncServicing {
         }
 
         try await client
-            .from("trip_participants")
-            .update(SupabaseTripParticipantPartialUpdate(displayName: trimmedParticipant.name))
-            .eq("id", value: trimmedParticipant.id.uuidString)
-            .eq("trip_id", value: tripID.uuidString)
+            .rpc(
+                "rename_trip_participant",
+                params: SupabaseRenameTripParticipantParams(
+                    participantID: trimmedParticipant.id,
+                    tripID: tripID,
+                    displayName: trimmedParticipant.name
+                )
+            )
             .execute()
 
         return trimmedParticipant
@@ -660,6 +664,18 @@ struct SupabaseArchiveTripParams: Encodable {
     }
 }
 
+struct SupabaseRenameTripParticipantParams: Encodable {
+    var participantID: UUID
+    var tripID: UUID
+    var displayName: String
+
+    enum CodingKeys: String, CodingKey {
+        case participantID = "p_participant_id"
+        case tripID = "p_trip_id"
+        case displayName = "p_display_name"
+    }
+}
+
 struct SupabaseUpdateTripExpenseParams: Encodable {
     var expenseID: UUID
     var tripID: UUID
@@ -978,14 +994,6 @@ private enum SupabaseTripServiceValidationError: LocalizedError {
         case .invalidDirectPayment:
             "Payment edits need a title, positive amount, and two different people."
         }
-    }
-}
-
-struct SupabaseTripParticipantPartialUpdate: Encodable {
-    var displayName: String
-
-    enum CodingKeys: String, CodingKey {
-        case displayName = "display_name"
     }
 }
 

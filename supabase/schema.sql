@@ -472,18 +472,57 @@ on public.trip_participants for insert
 to authenticated
 with check (public.is_trip_member(trip_id));
 
+-- Participant edits are intentionally routed through a narrow RPC below. Do
+-- not expose broad UPDATE on trip_participants: participant rows also carry
+-- linked membership/user and organizer fields that should not be mutable from
+-- generic client updates.
 drop policy if exists "trip members can update participants" on public.trip_participants;
-create policy "trip members can update participants"
-on public.trip_participants for update
-to authenticated
-using (public.is_trip_member(trip_id))
-with check (public.is_trip_member(trip_id));
 
 drop policy if exists "trip members can delete participants" on public.trip_participants;
 create policy "trip members can delete participants"
 on public.trip_participants for delete
 to authenticated
 using (public.is_trip_member(trip_id));
+
+create or replace function public.rename_trip_participant(
+  p_participant_id uuid,
+  p_trip_id uuid,
+  p_display_name text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  trimmed_display_name text := nullif(trim(p_display_name), '');
+begin
+  if auth.uid() is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if trimmed_display_name is null then
+    raise exception 'Participant edits need a display name';
+  end if;
+
+  if not public.is_trip_member(p_trip_id) then
+    raise exception 'Only trip members can rename participants';
+  end if;
+
+  update public.trip_participants
+  set display_name = trimmed_display_name
+  where id = p_participant_id
+    and trip_id = p_trip_id;
+
+  if not found then
+    raise exception 'Participant not found for trip';
+  end if;
+end;
+$$;
+
+revoke all on function public.rename_trip_participant(uuid, uuid, text) from public;
+revoke all on function public.rename_trip_participant(uuid, uuid, text) from anon;
+grant execute on function public.rename_trip_participant(uuid, uuid, text) to authenticated;
 
 -- ============================================================
 -- TRIP INVITES
