@@ -67,9 +67,7 @@ private struct ModeSelectionView: View {
                 Spacer()
 
                 VStack(spacing: AppTheme.Spacing.medium) {
-                    Image(systemName: "paperplane.fill")
-                        .font(.system(size: 56))
-                        .foregroundStyle(AppTheme.primary)
+                    WanderaidLogoMark(size: 72)
 
                     Text("Wanderaid")
                         .font(.largeTitle.weight(.bold))
@@ -153,9 +151,7 @@ private struct LoginView: View {
                 Spacer()
 
                 VStack(spacing: 10) {
-                    Image(systemName: "paperplane.fill")
-                        .font(.system(size: 52))
-                        .foregroundStyle(AppTheme.primary)
+                    WanderaidLogoMark(size: 68)
 
                     Text("Wanderaid")
                         .font(.largeTitle.weight(.bold))

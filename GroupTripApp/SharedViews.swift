@@ -51,6 +51,18 @@ struct WaniSectionHeader: View {
     }
 }
 
+struct WanderaidLogoMark: View {
+    var size: CGFloat
+
+    var body: some View {
+        Image("WanderaidLogoTransparent")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
 struct WaniIconBadge: View {
     enum BadgeShape {
         case roundedSquare
@@ -198,9 +210,7 @@ struct EmptyTripsView: View {
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.large) {
-            Image(systemName: "paperplane")
-                .font(.system(size: AppTheme.IconSize.xLarge))
-                .foregroundStyle(.tertiary)
+            WanderaidLogoMark(size: AppTheme.IconSize.xLarge + AppTheme.Spacing.medium)
 
             VStack(spacing: AppTheme.Spacing.xSmall + 2) {
                 Text("No trips yet")

@@ -121,9 +121,7 @@ struct WaniHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {
-                Image(systemName: "paperplane.fill")
-                    .font(.title2)
-                    .foregroundStyle(AppTheme.primary)
+                WanderaidLogoMark(size: 30)
 
                 Text("Wanderaid")
                     .font(.title2.weight(.semibold))
