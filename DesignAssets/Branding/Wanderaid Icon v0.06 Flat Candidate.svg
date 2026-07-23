@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Wanderaid WanWan flat icon candidate</title>
+  <desc id="desc">A minimal flat lemonade cup icon with the text WanWan and a small paper-plane travel cue.</desc>
+  <rect width="1024" height="1024" rx="224" fill="#0E9F9A"/>
+
+  <g transform="translate(0 20)">
+    <path d="M344 260h336l-54 470c-6 52-50 90-102 90h-24c-52 0-96-38-102-90l-54-470z" fill="#FFF6DD"/>
+    <path d="M402 342h220l-43 346c-4 33-32 58-65 58h-4c-33 0-61-25-65-58l-43-346z" fill="#F25568"/>
+    <rect x="326" y="222" width="372" height="92" rx="34" fill="#FFF6DD"/>
+
+    <path d="M492 224l-34-170h56l34 170z" fill="#F25568"/>
+    <rect x="426" y="42" width="170" height="54" rx="27" fill="#FFF6DD"/>
+    <rect x="478" y="42" width="58" height="54" fill="#F25568"/>
+
+    <path d="M650 206a82 82 0 0 1 116 0l-58 58z" fill="#FFD43B"/>
+    <path d="M708 264l-58-58a82 82 0 0 0 0 116z" fill="#FFD43B"/>
+
+    <path d="M206 500h612l-72 88H278z" fill="#FFD43B"/>
+    <path d="M206 500l92-66v66z" fill="#FFD43B"/>
+    <path d="M818 500l-92-66v66z" fill="#FFD43B"/>
+    <path d="M278 588l-72 66h112z" fill="#FFD43B"/>
+    <path d="M746 588l72 66H706z" fill="#FFD43B"/>
+
+    <text x="512" y="568"
+      fill="#0E9F9A"
+      font-family="Arial Rounded MT Bold, Avenir Next Rounded, Arial, sans-serif"
+      font-size="116"
+      font-weight="800"
+      text-anchor="middle"
+      letter-spacing="0">WanWan</text>
+
+    <path d="M462 674l142-68-54 148-28-54-60 52z" fill="#FFF6DD"/>
+    <path d="M524 700l80-94-54 148z" fill="#F25568"/>
+  </g>
+</svg>

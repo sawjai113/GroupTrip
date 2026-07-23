@@ -8,9 +8,11 @@ Milestone 2 (Collaborative MVP) is complete. Core cloud CRUD is wired and tested
 
 Latest verification:
 
-- 42 tests passing across 6 suites (as of 2026-06-29).
+- 66 tests passing across 6 suites (as of 2026-07-22).
 - Generic iOS build succeeded.
 - iPhone 17 simulator tests succeeded.
+- Live rollback Supabase cross-user smoke succeeded.
+- Archiveability check succeeded with `CODE_SIGNING_ALLOWED=NO`.
 - Secret scan and whitespace check passed.
 
 ## Run the App

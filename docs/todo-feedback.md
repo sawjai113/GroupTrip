@@ -1,6 +1,6 @@
 # Wanderaid TODO / Feedback Backlog
 
-Last updated: 2026-07-06
+Last updated: 2026-07-08
 
 This is the lightweight git-tracked backlog for feedback, rough TODOs, and manual testing notes before they are promoted into detailed implementation plans or GitHub issues.
 
@@ -57,7 +57,7 @@ Acceptance notes:
 
 ### 3. Loading and empty states review
 
-Status: Now
+Status: Done
 Area: UX, QA
 
 Review signed-in/cloud screens for:
@@ -71,11 +71,11 @@ Review signed-in/cloud screens for:
 
 Feedback notes:
 
-- TBD
+- 2026-07-22 Milestone 2 testing reported complete. No loading/empty/error-state blocker identified for Milestone 2 closeout; keep any future copy/polish issues as tester feedback.
 
 ### 4. Milestone 2 trip management and editing expansion
 
-Status: Now
+Status: Done
 Area: Dashboard, Trips, Membership, Cloud sync, UX, Data safety
 
 Decision:
@@ -91,6 +91,11 @@ Acceptance notes:
 - Existing places, planning items, expenses, payments, and safe person details can be edited after creation.
 - Failed cloud edits must not appear locally as successfully saved.
 - All leave/delete/archive flows require confirmation copy that says who is affected.
+
+Resolution:
+
+- 2026-07-22 Milestone 2 manual testing reported complete and passed, including collaborative item editing and trip management/safety flows.
+- Remaining UX consistency notes are tracked below as Later items rather than Milestone 2 blockers.
 
 ---
 
@@ -145,7 +150,7 @@ Feedback notes:
 
 ### 5. Collaborative editing smoke: add a place or planning item
 
-Status: Next
+Status: Done
 Area: Supabase sync, Places, Planning
 
 Goal: After invite join works reliably, prove one meaningful collaborative action from a second account/session.
@@ -158,11 +163,13 @@ Candidate first action:
 
 Feedback notes:
 
-- TBD
+- 2026-07-08 manual smoke passed: two-session collaborative place/planning flow works well enough for now.
+- Hold off on UI changes while visual direction is still undecided; current flow is acceptable as a functional baseline.
+- Continue capturing future TODO items as rough backlog notes when UI/flow issues appear during testing.
 
 ### 6. Collaborative expense smoke
 
-Status: Next
+Status: Done
 Area: Expenses, Supabase sync, Calculation correctness
 
 Goal: Prove expenses can be added/loaded from synced data without breaking balances.
@@ -177,7 +184,7 @@ Checklist:
 
 Feedback notes:
 
-- TBD
+- 2026-07-22 Milestone 2 manual testing reported complete and passed, including collaborative expenses, direct payments, edits, balances/settlements, and refresh/relaunch persistence.
 
 ### 7. README/status cleanup after Google auth
 
@@ -309,6 +316,22 @@ Acceptance notes:
 - Custom values should be saved with the place the same way typed categories work today.
 - Suggested category list should be easy to adjust as we learn common trip use cases.
 
+### 14a. Saved place edit affordance consistency
+
+Status: Later
+Area: Places, Editing, UX
+
+Feedback:
+
+- Saved places can currently be edited by tapping the place row, but this differs from other editable items that expose a pencil icon.
+- During smoke testing, this made the edit affordance less obvious even though the function works.
+
+Acceptance notes:
+
+- Decide whether saved places should keep tap-to-edit, add a visible pencil/edit icon, or align with a broader editing pattern once the UI direction is clearer.
+- If tap-to-edit remains, add enough visual/copy affordance that users understand the row is editable.
+- Preserve existing cloud-backed edit behavior; this is primarily a UX consistency item.
+
 ### 15. Wanderaid password login setup after OAuth signup
 
 Status: Later
@@ -329,16 +352,16 @@ Acceptance notes:
 
 ### 16. Sign in with Apple
 
-Status: Blocked
+Status: Done
 Area: Auth
 
-Blocked by: Apple Developer Program enrollment still pending.
+Resolution:
 
 Notes:
 
-- Hold off until enrollment is approved.
-- Add as a parallel auth provider after Google + invite flow is stable.
-- Should not block Milestone 2 collaboration learning.
+- Sign in with Apple is implemented as a parallel auth provider alongside Google.
+- `GroupTripApp.entitlements` includes the Apple Sign In capability and linted successfully on 2026-07-22.
+- App Store/TestFlight submission should still verify Apple Developer team signing and the App Store Connect capability state during archive/upload.
 
 ### 17. Planning/itinerary date ranges
 
@@ -438,6 +461,24 @@ Area: Platform, Notifications
 Current direction:
 
 - Defer until collaboration and planning flows are stable.
+
+### 24. Move invite code flow into People page
+
+Status: Later
+Area: People, Invites, Navigation, UX
+
+Feedback:
+
+- Move the “Invite People” / create invite code functionality out of the top-level trip summary page and into the People page.
+- The trip page should stay focused on trip overview and section navigation; people/member management should own inviting collaborators.
+
+Acceptance notes:
+
+- Cloud-backed trips expose invite-code creation from the People page.
+- Existing invite-code behavior is preserved: create code, copy code, show creation/loading/error feedback.
+- Top-level trip summary no longer shows the invite card once the People page owns the flow.
+- The People page makes the distinction clear between expense participants and app collaborators/members if both concepts appear there.
+- Demo/local mode does not show cloud invite controls.
 
 ---
 
