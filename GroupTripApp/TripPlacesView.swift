@@ -38,11 +38,19 @@ struct TripPlacesView: View {
                 } else {
                     VStack(spacing: AppTheme.Spacing.medium) {
                         ForEach(places) { place in
-                            TripPlaceCard(place: place) {
+                            SwipeRevealActionRow(
+                                actionTitle: "Delete",
+                                actionSystemImage: "trash",
+                                actionAccessibilityLabel: "Delete \(place.name)"
+                            ) {
                                 placePendingDeletion = place
-                            } edit: {
-                                placePendingEdit = place
-                                isShowingEditPlace = true
+                            } content: {
+                                TripPlaceCard(place: place) {
+                                    placePendingDeletion = place
+                                } edit: {
+                                    placePendingEdit = place
+                                    isShowingEditPlace = true
+                                }
                             }
                         }
                     }

@@ -574,64 +574,27 @@ private struct PastTripSwipeRow: View {
     let actionTitle: String
     let actionSystemImage: String
     var requestAction: () -> Void
-    @State private var isActionRevealed = false
-    @GestureState private var dragTranslation: CGFloat = 0
-
-    private let actionWidth: CGFloat = 96
-
-    private var horizontalOffset: CGFloat {
-        let baseOffset = isActionRevealed ? -actionWidth : 0
-        return min(0, max(-actionWidth, baseOffset + dragTranslation))
-    }
+    @State private var isNavigating = false
 
     var body: some View {
-        ZStack(alignment: .trailing) {
-            Button(role: .destructive) {
-                requestAction()
-            } label: {
-                VStack(spacing: AppTheme.Spacing.xSmall) {
-                    Image(systemName: actionSystemImage)
-                        .font(.headline)
-                    Text(actionTitle)
-                        .font(.caption.weight(.semibold))
+        SwipeRevealActionRow(
+            actionTitle: actionTitle,
+            actionSystemImage: actionSystemImage,
+            actionAccessibilityLabel: "\(actionTitle) past trip"
+        ) {
+            requestAction()
+        } content: {
+            CompactTripCard(trip: trip)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    isNavigating = true
                 }
-                .frame(width: actionWidth)
-                .frame(maxHeight: .infinity)
-                .foregroundStyle(.white)
-                .background(AppTheme.error)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .accessibilityLabel("\(actionTitle) past trip")
-
-            NavigationLink {
-                TripSummaryView(trip: trip, store: store)
-            } label: {
-                CompactTripCard(trip: trip)
-            }
-            .buttonStyle(.plain)
-            .offset(x: horizontalOffset)
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 18)
-                    .updating($dragTranslation) { value, state, _ in
-                        state = value.translation.width
-                    }
-                    .onEnded { value in
-                        withAnimation(.snappy) {
-                            if value.translation.width < -40 {
-                                isActionRevealed = true
-                            } else if value.translation.width > 30 {
-                                isActionRevealed = false
-                            } else {
-                                isActionRevealed = horizontalOffset < -(actionWidth / 2)
-                            }
-                        }
-                    }
-            )
-            .accessibilityAction(named: Text(actionTitle)) {
-                requestAction()
-            }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint("Opens trip details")
+                .navigationDestination(isPresented: $isNavigating) {
+                    TripSummaryView(trip: trip, store: store)
+                }
         }
-        .clipped()
     }
 }
 

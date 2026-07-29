@@ -303,6 +303,46 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertNil(store.syncError)
     }
 
+    func testCloudStoreShowsCachedTripsBeforeRemoteLoadCompletes() async throws {
+        let service = FakeTripSyncService()
+        let cache = UserDefaults(suiteName: "TripStoreCacheTests-shows-cached")!
+        cache.removePersistentDomain(forName: "TripStoreCacheTests-shows-cached")
+        let cachedTrip = makeTrip(id: UUID(uuidString: "00000000-0000-0000-0000-00000000B080")!, name: "Cached Weekend")
+        let remoteTrip = makeTrip(id: UUID(uuidString: "00000000-0000-0000-0000-00000000B081")!, name: "Remote Weekend")
+        let cacheKey = "test.cached.trips"
+        TripStore.cacheTrips([cachedTrip], in: cache, key: cacheKey)
+        service.tripsToLoad = [remoteTrip]
+
+        let store = TripStore(service: service, cacheStore: cache, cacheKey: cacheKey)
+
+        XCTAssertEqual(store.trips.map(\.id), [cachedTrip.id])
+
+        await store.loadTrips()
+
+        XCTAssertEqual(store.trips.map(\.id), [remoteTrip.id])
+        XCTAssertEqual(TripStore.cachedTrips(in: cache, key: cacheKey).map(\.id), [remoteTrip.id])
+        cache.removePersistentDomain(forName: "TripStoreCacheTests-shows-cached")
+    }
+
+    func testCloudStoreKeepsCachedTripsVisibleWhenRemoteLoadFails() async throws {
+        let service = FakeTripSyncService()
+        service.loadError = TestError.intentional
+        let cache = UserDefaults(suiteName: "TripStoreCacheTests-keeps-cached")!
+        cache.removePersistentDomain(forName: "TripStoreCacheTests-keeps-cached")
+        let cachedTrip = makeTrip(id: UUID(uuidString: "00000000-0000-0000-0000-00000000B082")!, name: "Cached Weekend")
+        let cacheKey = "test.cached.trips.failure"
+        TripStore.cacheTrips([cachedTrip], in: cache, key: cacheKey)
+
+        let store = TripStore(service: service, cacheStore: cache, cacheKey: cacheKey)
+
+        await store.loadTrips()
+
+        XCTAssertEqual(store.trips.map(\.id), [cachedTrip.id])
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+        XCTAssertFalse(store.isLoading)
+        cache.removePersistentDomain(forName: "TripStoreCacheTests-keeps-cached")
+    }
+
     func testCloudStoreCreatesRemoteTripWithTrimmedValuesAndAppendsReturnedTrip() async throws {
         let service = FakeTripSyncService()
         let createdTrip = makeTrip(id: UUID(uuidString: "00000000-0000-0000-0000-00000000B002")!, name: "Kyoto Spring")
@@ -1189,8 +1229,10 @@ private final class FakeTripSyncService: TripSyncServicing {
     var updatedExpenseRequest: UpdateExpenseRequest?
     var updatedPaymentRequest: UpdateDirectPaymentRequest?
     var createError: Error?
+    var loadError: Error?
 
     func loadTrips() async throws -> [TripPlan] {
+        if let loadError { throw loadError }
         didLoadTrips = true
         return tripsToLoad
     }

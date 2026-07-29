@@ -32,6 +32,75 @@ struct WaniCard<Content: View>: View {
     }
 }
 
+struct SwipeRevealActionRow<Content: View>: View {
+    let actionTitle: String
+    let actionSystemImage: String
+    var actionTint: Color = AppTheme.error
+    var actionAccessibilityLabel: String? = nil
+    var action: () -> Void
+    @ViewBuilder var content: Content
+
+    @State private var isActionRevealed = false
+    @GestureState private var dragTranslation: CGFloat = 0
+
+    private let actionWidth: CGFloat = 96
+
+    private var horizontalOffset: CGFloat {
+        let baseOffset = isActionRevealed ? -actionWidth : 0
+        return min(0, max(-actionWidth, baseOffset + dragTranslation))
+    }
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            Button(role: .destructive) {
+                withAnimation(.snappy) {
+                    isActionRevealed = false
+                }
+                action()
+            } label: {
+                VStack(spacing: AppTheme.Spacing.xSmall) {
+                    Image(systemName: actionSystemImage)
+                        .font(.headline)
+                    Text(actionTitle)
+                        .font(.caption.weight(.semibold))
+                }
+                .frame(width: actionWidth)
+                .frame(maxHeight: .infinity)
+                .foregroundStyle(.white)
+                .background(actionTint)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.large, style: .continuous))
+            .accessibilityLabel(actionAccessibilityLabel ?? actionTitle)
+
+            content
+                .offset(x: horizontalOffset)
+                .highPriorityGesture(
+                    DragGesture(minimumDistance: 18)
+                        .updating($dragTranslation) { value, state, _ in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            state = value.translation.width
+                        }
+                        .onEnded { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            withAnimation(.snappy) {
+                                if value.translation.width < -40 {
+                                    isActionRevealed = true
+                                } else if value.translation.width > 30 {
+                                    isActionRevealed = false
+                                } else {
+                                    isActionRevealed = horizontalOffset < -(actionWidth / 2)
+                                }
+                            }
+                        }
+                )
+                .accessibilityAction(named: Text(actionTitle)) {
+                    action()
+                }
+        }
+        .clipped()
+    }
+}
+
 struct WaniSectionHeader: View {
     let title: String
     var subtitle: String?

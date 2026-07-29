@@ -1,22 +1,39 @@
 import SwiftUI
 
 final class TripStore: ObservableObject {
-    @Published var trips: [TripPlan]
+    @Published var trips: [TripPlan] {
+        didSet { cacheTripsIfNeeded() }
+    }
     @Published var isLoading = false
     @Published var syncError: String?
     @Published var createdInvite: TripInvite?
     @Published var invitePreview: TripInvitePreview?
     private let service: (any TripSyncServicing)?
+    private let cacheStore: UserDefaults?
+    private let cacheKey: String
+
+    private static let defaultCacheKey = "wanderaid.cached.cloud.trips.v1"
 
     var supportsCloudSync: Bool { service != nil }
 
-    init(trips: [TripPlan], service: (any TripSyncServicing)? = nil) {
-        self.trips = trips
+    init(
+        trips: [TripPlan],
+        service: (any TripSyncServicing)? = nil,
+        cacheStore: UserDefaults? = nil,
+        cacheKey: String = TripStore.defaultCacheKey
+    ) {
         self.service = service
+        self.cacheStore = cacheStore
+        self.cacheKey = cacheKey
+        if service != nil, trips.isEmpty, let cacheStore {
+            self.trips = Self.cachedTrips(in: cacheStore, key: cacheKey)
+        } else {
+            self.trips = trips
+        }
     }
 
-    convenience init(service: any TripSyncServicing) {
-        self.init(trips: [], service: service)
+    convenience init(service: any TripSyncServicing, cacheStore: UserDefaults? = nil, cacheKey: String = TripStore.defaultCacheKey) {
+        self.init(trips: [], service: service, cacheStore: cacheStore, cacheKey: cacheKey)
     }
 
     var currentTrips: [TripPlan] {
@@ -511,7 +528,7 @@ final class TripStore: ObservableObject {
     func loadTrips() async {
         guard let service else { return }
 
-        isLoading = true
+        isLoading = trips.isEmpty
         syncError = nil
 
         do {
@@ -615,6 +632,160 @@ final class TripStore: ObservableObject {
             return false
         }
     }
+}
+
+extension TripStore {
+    static func cacheTrips(_ trips: [TripPlan], in store: UserDefaults, key: String = TripStore.defaultCacheKey) {
+        let snapshots = trips.map(CachedTrip.init(trip:))
+        guard let data = try? JSONEncoder().encode(snapshots) else { return }
+        store.set(data, forKey: key)
+    }
+
+    static func cachedTrips(in store: UserDefaults, key: String = TripStore.defaultCacheKey) -> [TripPlan] {
+        guard let data = store.data(forKey: key),
+              let snapshots = try? JSONDecoder().decode([CachedTrip].self, from: data) else { return [] }
+        return snapshots.map(\.trip)
+    }
+
+    private func cacheTripsIfNeeded() {
+        guard service != nil, let cacheStore else { return }
+        Self.cacheTrips(trips, in: cacheStore, key: cacheKey)
+    }
+}
+
+private struct CachedTrip: Codable {
+    var id: UUID
+    var destination: String
+    var emoji: String
+    var imageURL: String
+    var startDate: Date
+    var endDate: Date
+    var tripName: String
+    var participants: [CachedParticipant]
+    var expenses: [CachedExpense]
+    var payments: [CachedDirectPayment]
+    var places: [CachedPlace]
+    var planningItems: [CachedPlanningItem]
+
+    init(trip: TripPlan) {
+        id = trip.id
+        destination = trip.destination
+        emoji = trip.emoji
+        imageURL = trip.imageURL
+        startDate = trip.startDate
+        endDate = trip.endDate
+        tripName = trip.viewModel.tripName
+        participants = trip.viewModel.calculator.participants.map(CachedParticipant.init(participant:))
+        expenses = trip.viewModel.calculator.expenses.map(CachedExpense.init(expense:))
+        payments = trip.viewModel.calculator.payments.map(CachedDirectPayment.init(payment:))
+        places = trip.places.map(CachedPlace.init(place:))
+        planningItems = trip.planningItems.map(CachedPlanningItem.init(item:))
+    }
+
+    var trip: TripPlan {
+        TripPlan(
+            id: id,
+            destination: destination,
+            emoji: emoji,
+            imageURL: imageURL,
+            startDate: startDate,
+            endDate: endDate,
+            viewModel: TripCalculatorViewModel(
+                tripName: tripName,
+                calculator: TripExpenseCalculator(
+                    participants: participants.map(\.participant),
+                    expenses: expenses.map(\.expense),
+                    payments: payments.map(\.payment)
+                )
+            ),
+            places: places.map(\.place),
+            planningItems: planningItems.map(\.item)
+        )
+    }
+}
+
+private struct CachedParticipant: Codable {
+    var id: UUID
+    var name: String
+
+    init(participant: Participant) {
+        id = participant.id
+        name = participant.name
+    }
+
+    var participant: Participant { Participant(id: id, name: name) }
+}
+
+private struct CachedExpense: Codable {
+    var id: UUID
+    var title: String
+    var paidBy: UUID
+    var amount: Decimal
+    var participants: [UUID]
+
+    init(expense: ExpenseItem) {
+        id = expense.id
+        title = expense.title
+        paidBy = expense.paidBy
+        amount = expense.amount
+        participants = Array(expense.participants)
+    }
+
+    var expense: ExpenseItem {
+        ExpenseItem(id: id, title: title, paidBy: paidBy, amount: amount, participants: Set(participants))
+    }
+}
+
+private struct CachedDirectPayment: Codable {
+    var id: UUID
+    var title: String
+    var from: UUID
+    var to: UUID
+    var amount: Decimal
+
+    init(payment: DirectPayment) {
+        id = payment.id
+        title = payment.title
+        from = payment.from
+        to = payment.to
+        amount = payment.amount
+    }
+
+    var payment: DirectPayment { DirectPayment(id: id, title: title, from: from, to: to, amount: amount) }
+}
+
+private struct CachedPlace: Codable {
+    var id: UUID
+    var name: String
+    var note: String
+    var category: String
+
+    init(place: TripPlace) {
+        id = place.id
+        name = place.name
+        note = place.note
+        category = place.category
+    }
+
+    var place: TripPlace { TripPlace(id: id, name: name, note: note, category: category) }
+}
+
+private struct CachedPlanningItem: Codable {
+    var id: UUID
+    var title: String
+    var note: String
+    var date: Date?
+    var isDone: Bool
+
+    init(item: TripPlanningItem) {
+        id = item.id
+        title = item.title
+        note = item.note
+        date = item.date
+        isDone = item.isDone
+    }
+
+    var item: TripPlanningItem { TripPlanningItem(id: id, title: title, note: note, date: date, isDone: isDone) }
 }
 
 extension TripStore {

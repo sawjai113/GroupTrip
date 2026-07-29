@@ -22,16 +22,24 @@ struct PeopleTabView: View {
             } else {
                 VStack(spacing: 12) {
                     ForEach(viewModel.calculator.participants.sorted { $0.name < $1.name }) { participant in
-                        PersonCard(
-                            participant: participant,
-                            expenseCount: viewModel.calculator.expenses.filter { $0.paidBy == participant.id }.count,
-                            editParticipant: {
-                                editParticipant(participant)
-                            },
-                            deleteParticipant: {
-                                participantPendingDeletion = participant
-                            }
-                        )
+                        SwipeRevealActionRow(
+                            actionTitle: "Remove",
+                            actionSystemImage: "trash",
+                            actionAccessibilityLabel: "Remove \(participant.name)"
+                        ) {
+                            participantPendingDeletion = participant
+                        } content: {
+                            PersonCard(
+                                participant: participant,
+                                expenseCount: viewModel.calculator.expenses.filter { $0.paidBy == participant.id }.count,
+                                editParticipant: {
+                                    editParticipant(participant)
+                                },
+                                deleteParticipant: {
+                                    participantPendingDeletion = participant
+                                }
+                            )
+                        }
                     }
                 }
             }

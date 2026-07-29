@@ -237,10 +237,18 @@ struct ExpenseTabView: View {
             } else {
                 VStack(spacing: 12) {
                     ForEach(viewModel.calculator.expenses) { expense in
-                        ExpenseCard(expense: expense, paidBy: viewModel.participantName(for: expense.paidBy)) {
+                        SwipeRevealActionRow(
+                            actionTitle: "Delete",
+                            actionSystemImage: "trash",
+                            actionAccessibilityLabel: "Delete \(expense.title)"
+                        ) {
                             expensePendingDeletion = expense
-                        } editExpense: {
-                            expenseBeingEdited = expense
+                        } content: {
+                            ExpenseCard(expense: expense, paidBy: viewModel.participantName(for: expense.paidBy)) {
+                                expensePendingDeletion = expense
+                            } editExpense: {
+                                expenseBeingEdited = expense
+                            }
                         }
                     }
                 }

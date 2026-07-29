@@ -43,13 +43,21 @@ struct TripPlanningView: View {
                 } else {
                     VStack(spacing: AppTheme.Spacing.medium) {
                         ForEach(items) { item in
-                            TripPlanningItemCard(item: item) {
-                                Task { await toggleItem(item) }
-                            } delete: {
+                            SwipeRevealActionRow(
+                                actionTitle: "Delete",
+                                actionSystemImage: "trash",
+                                actionAccessibilityLabel: "Delete \(item.title)"
+                            ) {
                                 itemPendingDeletion = item
-                            } edit: {
-                                itemPendingEdit = item
-                                isShowingEditItem = true
+                            } content: {
+                                TripPlanningItemCard(item: item) {
+                                    Task { await toggleItem(item) }
+                                } delete: {
+                                    itemPendingDeletion = item
+                                } edit: {
+                                    itemPendingEdit = item
+                                    isShowingEditItem = true
+                                }
                             }
                         }
                     }

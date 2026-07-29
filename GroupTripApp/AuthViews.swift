@@ -6,7 +6,7 @@ import Security
 struct AuthGateView: View {
     @StateObject private var appSession = AppSession()
     @StateObject private var authViewModel = AuthViewModel()
-    @StateObject private var remoteTripStore = TripStore(service: SupabaseTripService())
+    @StateObject private var remoteTripStore = TripStore(service: SupabaseTripService(), cacheStore: .standard)
     @StateObject private var demoTripStore = TripStore.sample
 
     var body: some View {
