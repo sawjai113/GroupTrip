@@ -525,19 +525,13 @@ struct PastTripsSection: View {
             if isOpen {
                 VStack(spacing: 16) {
                     ForEach(trips) { trip in
-                        NavigationLink {
-                            TripSummaryView(trip: trip, store: store)
-                        } label: {
-                            CompactTripCard(trip: trip)
-                        }
-                        .buttonStyle(.plain)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                tripPendingArchive = trip
-                            } label: {
-                                Label(store.supportsCloudSync ? "Archive" : "Remove", systemImage: "archivebox")
-                            }
-                            .accessibilityLabel(store.supportsCloudSync ? "Archive past trip" : "Remove past trip")
+                        PastTripSwipeRow(
+                            trip: trip,
+                            store: store,
+                            actionTitle: store.supportsCloudSync ? "Archive" : "Remove",
+                            actionSystemImage: store.supportsCloudSync ? "archivebox" : "trash"
+                        ) {
+                            tripPendingArchive = trip
                         }
                     }
                 }
@@ -571,6 +565,73 @@ struct PastTripsSection: View {
         if !store.trips.contains(where: { $0.id == trip.id }) {
             tripPendingArchive = nil
         }
+    }
+}
+
+private struct PastTripSwipeRow: View {
+    let trip: TripPlan
+    @ObservedObject var store: TripStore
+    let actionTitle: String
+    let actionSystemImage: String
+    var requestAction: () -> Void
+    @State private var isActionRevealed = false
+    @GestureState private var dragTranslation: CGFloat = 0
+
+    private let actionWidth: CGFloat = 96
+
+    private var horizontalOffset: CGFloat {
+        let baseOffset = isActionRevealed ? -actionWidth : 0
+        return min(0, max(-actionWidth, baseOffset + dragTranslation))
+    }
+
+    var body: some View {
+        ZStack(alignment: .trailing) {
+            Button(role: .destructive) {
+                requestAction()
+            } label: {
+                VStack(spacing: AppTheme.Spacing.xSmall) {
+                    Image(systemName: actionSystemImage)
+                        .font(.headline)
+                    Text(actionTitle)
+                        .font(.caption.weight(.semibold))
+                }
+                .frame(width: actionWidth)
+                .frame(maxHeight: .infinity)
+                .foregroundStyle(.white)
+                .background(AppTheme.error)
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .accessibilityLabel("\(actionTitle) past trip")
+
+            NavigationLink {
+                TripSummaryView(trip: trip, store: store)
+            } label: {
+                CompactTripCard(trip: trip)
+            }
+            .buttonStyle(.plain)
+            .offset(x: horizontalOffset)
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 18)
+                    .updating($dragTranslation) { value, state, _ in
+                        state = value.translation.width
+                    }
+                    .onEnded { value in
+                        withAnimation(.snappy) {
+                            if value.translation.width < -40 {
+                                isActionRevealed = true
+                            } else if value.translation.width > 30 {
+                                isActionRevealed = false
+                            } else {
+                                isActionRevealed = horizontalOffset < -(actionWidth / 2)
+                            }
+                        }
+                    }
+            )
+            .accessibilityAction(named: Text(actionTitle)) {
+                requestAction()
+            }
+        }
+        .clipped()
     }
 }
 

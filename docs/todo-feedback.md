@@ -226,10 +226,28 @@ Area: Dashboard, Trips, Data safety
 
 Resolution:
 
-- Past trip rows now expose a trailing swipe action.
+- Past trip rows now expose a custom trailing swipe action that works in the dashboard's ScrollView/card layout.
 - The action is intentionally archive/remove rather than permanent delete: cloud-backed trips call the existing archive path, while demo trips are removed locally.
 - A confirmation dialog names the selected trip before anything changes.
 - Canceling the confirmation leaves the trip list unchanged.
+
+### 10a. Confirmation popup legibility and placement
+
+Status: Now
+Area: Data safety, UX, Accessibility
+
+Feedback:
+
+- Native confirmation popups can appear too narrow, making longer destructive-action copy harder to read.
+- Some confirmation popups, such as expense deletion, can appear higher on screen than expected instead of near the user's point of focus.
+- Consider replacing scattered native confirmation dialogs with a wider, consistent Wanderaid confirmation component for destructive/removal actions.
+
+Acceptance notes:
+
+- Confirmation text has enough width and line spacing to be readable for longer shared-data explanations.
+- The confirmation appears in a predictable location across dashboard, expenses, places, planning, people, leave, archive, and logout flows.
+- Destructive and cancel actions remain visually distinct and accessible.
+- Existing safeguards are preserved: cancel leaves state unchanged and destructive mutation only runs after confirmation.
 
 ### 11. Leave current/future trip
 
