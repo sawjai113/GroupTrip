@@ -41,13 +41,13 @@ struct SwipeRevealActionRow<Content: View>: View {
     @ViewBuilder var content: Content
 
     @State private var isActionRevealed = false
-    @GestureState private var dragTranslation: CGFloat = 0
+    @State private var dragOffset: CGFloat = 0
 
     private let actionWidth: CGFloat = 96
 
     private var horizontalOffset: CGFloat {
         let baseOffset = isActionRevealed ? -actionWidth : 0
-        return min(0, max(-actionWidth, baseOffset + dragTranslation))
+        return min(0, max(-actionWidth, baseOffset + dragOffset))
     }
 
     var body: some View {
@@ -76,20 +76,28 @@ struct SwipeRevealActionRow<Content: View>: View {
                 .offset(x: horizontalOffset)
                 .highPriorityGesture(
                     DragGesture(minimumDistance: 18)
-                        .updating($dragTranslation) { value, state, _ in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
-                            state = value.translation.width
+                        .onChanged { value in
+                            guard abs(value.translation.width) > abs(value.translation.height) else {
+                                dragOffset = 0
+                                return
+                            }
+                            dragOffset = value.translation.width
                         }
                         .onEnded { value in
-                            guard abs(value.translation.width) > abs(value.translation.height) else { return }
+                            guard abs(value.translation.width) > abs(value.translation.height) else {
+                                dragOffset = 0
+                                return
+                            }
+                            let finalOffset = horizontalOffset
                             withAnimation(.snappy) {
                                 if value.translation.width < -40 {
                                     isActionRevealed = true
                                 } else if value.translation.width > 30 {
                                     isActionRevealed = false
                                 } else {
-                                    isActionRevealed = horizontalOffset < -(actionWidth / 2)
+                                    isActionRevealed = finalOffset < -(actionWidth / 2)
                                 }
+                                dragOffset = 0
                             }
                         }
                 )
