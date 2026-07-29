@@ -32,6 +32,92 @@ struct WaniCard<Content: View>: View {
     }
 }
 
+extension View {
+    func destructiveConfirmationOverlay<Item: Identifiable>(
+        item: Binding<Item?>,
+        title: String,
+        message: @escaping (Item) -> String,
+        destructiveTitle: String,
+        cancelTitle: String = "Cancel",
+        onConfirm: @escaping (Item) -> Void
+    ) -> some View {
+        modifier(
+            DestructiveConfirmationOverlayModifier(
+                item: item,
+                title: title,
+                message: message,
+                destructiveTitle: destructiveTitle,
+                cancelTitle: cancelTitle,
+                onConfirm: onConfirm
+            )
+        )
+    }
+}
+
+private struct DestructiveConfirmationOverlayModifier<Item: Identifiable>: ViewModifier {
+    @Binding var item: Item?
+    let title: String
+    let message: (Item) -> String
+    let destructiveTitle: String
+    let cancelTitle: String
+    let onConfirm: (Item) -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if let item {
+                    ZStack {
+                        Color.black.opacity(0.32)
+                            .ignoresSafeArea()
+                            .onTapGesture { self.item = nil }
+
+                        VStack(spacing: AppTheme.Spacing.large) {
+                            VStack(spacing: AppTheme.Spacing.small) {
+                                Text(title)
+                                    .font(.title3.weight(.semibold))
+                                    .multilineTextAlignment(.center)
+                                    .frame(maxWidth: .infinity)
+
+                                Text(message(item))
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+
+                            VStack(spacing: AppTheme.Spacing.small) {
+                                Button(role: .destructive) {
+                                    onConfirm(item)
+                                } label: {
+                                    Text(destructiveTitle)
+                                        .font(.body.weight(.semibold))
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, AppTheme.Spacing.small)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(AppTheme.error)
+
+                                Button(cancelTitle, role: .cancel) {
+                                    self.item = nil
+                                }
+                                .font(.body.weight(.semibold))
+                            }
+                        }
+                        .padding(AppTheme.Spacing.large)
+                        .frame(maxWidth: 380)
+                        .background(AppTheme.paper)
+                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.xLarge, style: .continuous))
+                        .shadow(color: .black.opacity(0.18), radius: 24, y: 12)
+                        .padding(.horizontal, AppTheme.Spacing.large)
+                    }
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                    .zIndex(10)
+                }
+            }
+            .animation(.snappy, value: item?.id)
+    }
+}
+
 struct SwipeRevealActionRow<Content: View>: View {
     let actionTitle: String
     let actionSystemImage: String

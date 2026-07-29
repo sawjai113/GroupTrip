@@ -268,23 +268,15 @@ struct ExpenseTabView: View {
                 usesExternalPersistence: usesExternalPersistence
             )
         }
-        .confirmationDialog(
-            "Delete this expense?",
-            isPresented: Binding(
-                get: { expensePendingDeletion != nil },
-                set: { isPresented in
-                    if !isPresented { expensePendingDeletion = nil }
-                }
-            ),
-            titleVisibility: .visible,
-            presenting: expensePendingDeletion
+        .destructiveConfirmationOverlay(
+            item: $expensePendingDeletion,
+            title: "Delete this expense?",
+            message: { expense in
+                "This removes \(expense.title) from this trip. Shared cloud trips will remove it for everyone."
+            },
+            destructiveTitle: "Delete Expense"
         ) { expense in
-            Button("Delete Expense", role: .destructive) {
-                deleteExpense(expense)
-            }
-            Button("Cancel", role: .cancel) { expensePendingDeletion = nil }
-        } message: { expense in
-            Text("This removes \(expense.title) from this trip. Shared cloud trips will remove it for everyone.")
+            deleteExpense(expense)
         }
     }
 
