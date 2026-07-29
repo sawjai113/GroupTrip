@@ -50,6 +50,10 @@ struct SwipeRevealActionRow<Content: View>: View {
         return min(0, max(-actionWidth, baseOffset + dragOffset))
     }
 
+    private var isActionVisible: Bool {
+        horizontalOffset < -1
+    }
+
     var body: some View {
         ZStack(alignment: .trailing) {
             Button(role: .destructive) {
@@ -70,6 +74,9 @@ struct SwipeRevealActionRow<Content: View>: View {
                 .background(actionTint)
             }
             .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.large, style: .continuous))
+            .opacity(isActionVisible ? 1 : 0)
+            .allowsHitTesting(isActionVisible)
+            .accessibilityHidden(!isActionVisible)
             .accessibilityLabel(actionAccessibilityLabel ?? actionTitle)
 
             content
@@ -106,6 +113,10 @@ struct SwipeRevealActionRow<Content: View>: View {
                 }
         }
         .clipped()
+        .onDisappear {
+            isActionRevealed = false
+            dragOffset = 0
+        }
     }
 }
 
