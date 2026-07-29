@@ -39,21 +39,16 @@ Deferred notes:
 
 ### 2. Confirmations for logout and destructive/removal actions
 
-Status: Now
+Status: Done
 Area: Data safety, Auth, Dashboard, Trips, Membership, UX
 
-Feedback:
+Resolution:
 
-- Add confirmation dialogs before logout and deletions.
-- Treat this as the default rule for all future destructive/removal flows: deleting, removing, revoking, leaving, archiving, or signing/logging out should require confirmation before completing.
-
-Acceptance notes:
-
-- Logout asks for confirmation before ending the current session.
-- Delete/remove actions clearly name what will be removed and whether the action affects only the current user or everyone on the trip.
-- Canceling the confirmation leaves state unchanged.
-- Confirmation copy distinguishes local/demo-only changes from cloud/shared changes.
-- VoiceOver labels and destructive button roles are clear.
+- Logout / exit demo now asks for confirmation before ending the current session.
+- Place, planning item, expense, person, leave trip, archive trip, and past-trip removal/archive flows now route through confirmation dialogs before mutation.
+- Confirmation copy distinguishes local/demo-only changes from cloud/shared effects where the app can know the persistence mode.
+- Destructive buttons use destructive roles, and cancel paths leave state unchanged.
+- Keep this as a standing rule for future delete, remove, revoke, leave, archive, or sign/log-out flows.
 
 ### 3. Loading and empty states review
 
@@ -224,23 +219,17 @@ Acceptance notes:
 - Logout remains visually/destructively distinguished enough to avoid accidental taps.
 - VoiceOver labels and tap targets are preserved.
 
-### 10. Past trip swipe-to-delete with confirmation
+### 10. Past trip swipe actions with confirmation
 
-Status: Now
+Status: Done
 Area: Dashboard, Trips, Data safety
 
-Feedback:
+Resolution:
 
-- Add swipe-to-delete for past trips.
-- Require a confirmation step before the trip is actually deleted.
-
-Acceptance notes:
-
-- Swipe action is available only where deletion is appropriate, starting with past trips.
-- Confirmation copy clearly names the trip being deleted.
-- Deletion does not happen if the user cancels.
-- Cloud-backed deletion must respect Supabase permissions and should not orphan related data.
-- Consider soft-delete/archive semantics before permanent deletion for shared trips.
+- Past trip rows now expose a trailing swipe action.
+- The action is intentionally archive/remove rather than permanent delete: cloud-backed trips call the existing archive path, while demo trips are removed locally.
+- A confirmation dialog names the selected trip before anything changes.
+- Canceling the confirmation leaves the trip list unchanged.
 
 ### 11. Leave current/future trip
 

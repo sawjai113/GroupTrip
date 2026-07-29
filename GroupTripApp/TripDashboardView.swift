@@ -498,6 +498,7 @@ struct PastTripsSection: View {
     let trips: [TripPlan]
     @ObservedObject var store: TripStore
     @Binding var isOpen: Bool
+    @State private var tripPendingArchive: TripPlan?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -530,11 +531,45 @@ struct PastTripsSection: View {
                             CompactTripCard(trip: trip)
                         }
                         .buttonStyle(.plain)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                tripPendingArchive = trip
+                            } label: {
+                                Label(store.supportsCloudSync ? "Archive" : "Remove", systemImage: "archivebox")
+                            }
+                            .accessibilityLabel(store.supportsCloudSync ? "Archive past trip" : "Remove past trip")
+                        }
                     }
                 }
                 .clipped()
                 .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
             }
+        }
+        .confirmationDialog(
+            store.supportsCloudSync ? "Archive this past trip?" : "Remove this past trip?",
+            isPresented: Binding(
+                get: { tripPendingArchive != nil },
+                set: { isPresented in
+                    if !isPresented { tripPendingArchive = nil }
+                }
+            ),
+            titleVisibility: .visible,
+            presenting: tripPendingArchive
+        ) { trip in
+            Button(store.supportsCloudSync ? "Archive Trip" : "Remove Trip", role: .destructive) {
+                Task { await archivePastTrip(trip) }
+            }
+            Button("Cancel", role: .cancel) { tripPendingArchive = nil }
+        } message: { trip in
+            Text(store.supportsCloudSync ? "This hides \(trip.viewModel.tripName) from active trip lists for everyone without deleting trip data." : "This removes \(trip.viewModel.tripName) from this local demo only. Shared cloud data is not affected.")
+        }
+    }
+
+    @MainActor
+    private func archivePastTrip(_ trip: TripPlan) async {
+        await store.archiveTrip(trip.id)
+        if !store.trips.contains(where: { $0.id == trip.id }) {
+            tripPendingArchive = nil
         }
     }
 }
