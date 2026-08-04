@@ -389,6 +389,7 @@ After every major milestone or large multi-session push, run a short retrospecti
 - What slowed us down or caused rework.
 - Which AI workflows helped most: inline agent, subagent, spawned profile, skill, cron, or manual smoke test.
 - Token/model efficiency: did we use DeepSeek/general for planning and admin, and reserve Codex/coding for implementation and code review?
+- For major retrospectives or high-stakes process decisions, consider running the `general` profile's `/moa` retrospective preset once to get a concise Codex engineering perspective while keeping DeepSeek as the aggregator.
 - Whether any tasks should have started with a cheaper scoping pass before Codex work.
 - Whether any new process should become a skill, memory, or AGENTS.md rule.
 - One concrete workflow adjustment for the next milestone.
