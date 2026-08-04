@@ -24,6 +24,25 @@ The main session handles straightforward inline work. Subagents are reserved for
 - The QA agent reviews the diff, runs security and whitespace checks, and confirms tests pass.
 - Skip QA gate only for typo fixes, docs-only changes, whitespace fixes, and single-line trivial fixes.
 
+## Model Routing / Token Efficiency
+
+Use the cheaper `general` profile / DeepSeek lane for planning and research, and reserve the `coding` profile / Codex lane for implementation and code review.
+
+**Prefer DeepSeek (`general`) for:**
+- Product/UX briefs, acceptance criteria, scope cuts, and roadmap thinking.
+- Android planning and platform-parity advice.
+- Design/Figma critique, visual direction, accessibility checklists, and implementation notes that do not edit code.
+- Integrations research and setup planning before code or SDK changes.
+- Admin tasks, retrospectives, cron/VPS guidance, and non-coding chat.
+
+**Prefer Codex (`coding`) for:**
+- Any agent that edits Swift, SQL, Xcode project files, tests, or scripts in the repo.
+- Auth/Supabase, Supabase Data/Sync, Trips, Expenses, iOS Platform, and QA/Release work.
+- Design/Figma or Integrations tasks once they move from planning into implementation.
+- QA/release/code-review agents that inspect diffs, reason about tests, or validate security-sensitive changes.
+
+Default workflow: start cheap in `general` for discovery/specification. Spawn or switch to `coding` for implementation and QA. If unsure, do a short DeepSeek scoping pass first, then spend Codex on the smallest well-defined coding task.
+
 ## Global Rules
 
 - Preserve user changes. Do not revert unrelated work.
@@ -361,6 +380,18 @@ Keep these as supporting lanes:
 - Android Planning Agent: keep mostly advisory until the iOS MVP and Supabase contracts stabilize.
 
 Do not run every agent on every task. Pick one owner and one reviewer/support agent per task whenever possible.
+
+## Milestone Retrospectives
+
+After every major milestone or large multi-session push, run a short retrospective before moving to the next milestone. Include:
+
+- What shipped / what changed.
+- What slowed us down or caused rework.
+- Which AI workflows helped most: inline agent, subagent, spawned profile, skill, cron, or manual smoke test.
+- Token/model efficiency: did we use DeepSeek/general for planning and admin, and reserve Codex/coding for implementation and code review?
+- Whether any tasks should have started with a cheaper scoping pass before Codex work.
+- Whether any new process should become a skill, memory, or AGENTS.md rule.
+- One concrete workflow adjustment for the next milestone.
 
 ## Handoff Template
 
