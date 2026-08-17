@@ -179,6 +179,75 @@ final class DashboardSummaryTests: XCTestCase {
         XCTAssertNil(summary.money)
     }
 
+    func testMoneySummaryAggregatesBalancesAcrossTripsForMultipleParticipantIDs() {
+        let accountID = UUID(uuidString: "00000000-0000-0000-0000-00000000F301")!
+        let me = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F201")!, name: "Me", accountID: accountID)
+        let friend = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F202")!, name: "Friend")
+        let firstTrip = makeTrip(
+            id: "D018",
+            name: "Austin",
+            startDay: 5,
+            endDay: 7,
+            participants: [me, friend],
+            expenses: [ExpenseItem(title: "Hotel", paidBy: me.id, amount: 100, participants: [me.id, friend.id])]
+        )
+
+        let otherMe = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F203")!, name: "Me Two", accountID: accountID)
+        let otherFriend = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F204")!, name: "Friend Two")
+        let secondTrip = makeTrip(
+            id: "D019",
+            name: "Kyoto",
+            startDay: 10,
+            endDay: 12,
+            participants: [otherMe, otherFriend],
+            expenses: [ExpenseItem(title: "Dinner", paidBy: otherFriend.id, amount: 80, participants: [otherMe.id, otherFriend.id])]
+        )
+
+        let summary = DashboardTripSummaryBuilder.summary(
+            from: [firstTrip, secondTrip],
+            currentParticipantIDs: Set([me.id, otherMe.id])
+        )
+
+        XCTAssertEqual(summary.money?.owedToYou, Decimal(50))
+        XCTAssertEqual(summary.money?.youOwe, Decimal(40))
+    }
+
+    func testMoneySummaryNilForNilParticipantIDSet() {
+        let me = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F205")!, name: "Me")
+        let friend = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F206")!, name: "Friend")
+        let expense = ExpenseItem(title: "Hotel", paidBy: me.id, amount: 100, participants: [me.id, friend.id])
+        let trip = makeTrip(
+            id: "D01A",
+            name: "Austin",
+            startDay: 5,
+            endDay: 7,
+            participants: [me, friend],
+            expenses: [expense]
+        )
+
+        let summary = DashboardTripSummaryBuilder.summary(from: [trip], currentParticipantIDs: nil)
+
+        XCTAssertNil(summary.money)
+    }
+
+    func testMoneySummaryNilForEmptyParticipantIDSet() {
+        let me = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F207")!, name: "Me")
+        let friend = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F208")!, name: "Friend")
+        let expense = ExpenseItem(title: "Hotel", paidBy: me.id, amount: 100, participants: [me.id, friend.id])
+        let trip = makeTrip(
+            id: "D01B",
+            name: "Austin",
+            startDay: 5,
+            endDay: 7,
+            participants: [me, friend],
+            expenses: [expense]
+        )
+
+        let summary = DashboardTripSummaryBuilder.summary(from: [trip], currentParticipantIDs: Set<Participant.ID>())
+
+        XCTAssertNil(summary.money)
+    }
+
     // MARK: - TripStore exposure
 
     func testStoreDashboardSummaryMatchesSummaryBuilder() {
@@ -207,6 +276,62 @@ final class DashboardSummaryTests: XCTestCase {
         XCTAssertEqual(viaStore.featuredTrips.map(\.id), direct.featuredTrips.map(\.id))
         XCTAssertEqual(viaStore.attentionItems, direct.attentionItems)
         XCTAssertEqual(viaStore.money, direct.money)
+    }
+
+    func testStoreDashboardSummaryResolvesMoneyByAccountIDAcrossTrips() {
+        let accountID = UUID(uuidString: "00000000-0000-0000-0000-00000000F302")!
+        let me = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F209")!, name: "Me", accountID: accountID)
+        let friend = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F20A")!, name: "Friend")
+        let firstTrip = makeTrip(
+            id: "D01C",
+            name: "Austin",
+            startDay: 5,
+            endDay: 7,
+            participants: [me, friend],
+            expenses: [ExpenseItem(title: "Hotel", paidBy: me.id, amount: 100, participants: [me.id, friend.id])]
+        )
+
+        let otherMe = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F20B")!, name: "Me Two", accountID: accountID)
+        let otherFriend = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F20C")!, name: "Friend Two")
+        let secondTrip = makeTrip(
+            id: "D01D",
+            name: "Kyoto",
+            startDay: 10,
+            endDay: 12,
+            participants: [otherMe, otherFriend],
+            expenses: [ExpenseItem(title: "Dinner", paidBy: otherFriend.id, amount: 80, participants: [otherMe.id, otherFriend.id])]
+        )
+
+        let store = TripStore(trips: [firstTrip, secondTrip])
+
+        let summary = store.dashboardSummary(currentAccountID: accountID)
+
+        XCTAssertEqual(summary.money?.owedToYou, Decimal(50))
+        XCTAssertEqual(summary.money?.youOwe, Decimal(40))
+    }
+
+    func testStoreDashboardSummaryKeepsMoneyNilWhenAccountIDIsNilOrUnmapped() {
+        let accountID = UUID(uuidString: "00000000-0000-0000-0000-00000000F303")!
+        let me = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F20D")!, name: "Me", accountID: accountID)
+        let friend = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000F20E")!, name: "Friend")
+        let expense = ExpenseItem(title: "Hotel", paidBy: me.id, amount: 100, participants: [me.id, friend.id])
+        let trip = makeTrip(
+            id: "D01E",
+            name: "Austin",
+            startDay: 5,
+            endDay: 7,
+            participants: [me, friend],
+            expenses: [expense]
+        )
+        let store = TripStore(trips: [trip])
+
+        let nilAccountSummary = store.dashboardSummary(currentAccountID: nil)
+        let unmappedAccountSummary = store.dashboardSummary(
+            currentAccountID: UUID(uuidString: "00000000-0000-0000-0000-00000000F304")!
+        )
+
+        XCTAssertNil(nilAccountSummary.money)
+        XCTAssertNil(unmappedAccountSummary.money)
     }
 
     // MARK: - Helpers

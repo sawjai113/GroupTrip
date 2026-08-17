@@ -3,10 +3,14 @@ import Foundation
 struct Participant: Identifiable, Hashable {
     let id: UUID
     var name: String
+    /// Optional linkage to a signed-in account (Supabase `linked_user_id`),
+    /// used to resolve dashboard money for the current user per trip.
+    var accountID: UUID?
 
-    init(id: UUID = UUID(), name: String) {
+    init(id: UUID = UUID(), name: String, accountID: UUID? = nil) {
         self.id = id
         self.name = name
+        self.accountID = accountID
     }
 }
 

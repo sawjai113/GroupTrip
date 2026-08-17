@@ -180,7 +180,8 @@ struct SupabaseTripService: TripSyncServicing {
     func createParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant {
         let trimmedParticipant = Participant(
             id: participant.id,
-            name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            accountID: participant.accountID
         )
         guard !trimmedParticipant.name.isEmpty else { return trimmedParticipant }
 
@@ -195,7 +196,8 @@ struct SupabaseTripService: TripSyncServicing {
     func updateParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant {
         let trimmedParticipant = Participant(
             id: participant.id,
-            name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            accountID: participant.accountID
         )
         guard !trimmedParticipant.name.isEmpty else {
             throw SupabaseTripServiceValidationError.invalidParticipant
@@ -794,12 +796,13 @@ struct SupabaseTripParticipantDTO: Codable, Hashable {
         self.init(
             id: participant.id,
             tripID: tripID,
-            displayName: participant.name
+            displayName: participant.name,
+            linkedUserID: participant.accountID
         )
     }
 
     var participant: Participant {
-        Participant(id: id, name: displayName)
+        Participant(id: id, name: displayName, accountID: linkedUserID)
     }
 
     var expenseParticipant: ExpenseParticipant {

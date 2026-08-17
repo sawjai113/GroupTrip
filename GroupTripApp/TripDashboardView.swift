@@ -35,10 +35,11 @@ struct TripDashboardView: View {
     @State private var isShowingNoFocusedTrip = false
     var modeBadge: ModeBadge?
     var appearance: Binding<AppAppearance> = .constant(.auto)
+    var currentAccountID: UUID?
     var signOut: (() -> Void)?
 
     var body: some View {
-        let summary = store.dashboardSummary(currentParticipantID: nil)
+        let summary = store.dashboardSummary(currentAccountID: currentAccountID)
         let bottomNavTrip = summary.currentTrips.first ?? summary.futureTrips.first
         let bottomNavTripIsNext = summary.currentTrips.isEmpty && !summary.futureTrips.isEmpty
 

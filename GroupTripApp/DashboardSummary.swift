@@ -32,6 +32,10 @@ struct DashboardMoneySummary: Equatable {
 
 enum DashboardTripSummaryBuilder {
     static func summary(from trips: [TripPlan], currentParticipantID: Participant.ID?) -> DashboardSummary {
+        summary(from: trips, currentParticipantIDs: currentParticipantID.map { Set([$0]) })
+    }
+
+    static func summary(from trips: [TripPlan], currentParticipantIDs: Set<Participant.ID>?) -> DashboardSummary {
         let currentTrips = trips.filter { $0.status == .current }.sorted { $0.startDate < $1.startDate }
         let futureTrips = trips.filter { $0.status == .future }.sorted { $0.startDate < $1.startDate }
         let pastTrips = trips.filter { $0.status == .past }.sorted { $0.startDate > $1.startDate }
@@ -49,7 +53,7 @@ enum DashboardTripSummaryBuilder {
             pastTrips: pastTrips,
             featuredTrips: featuredTrips,
             attentionItems: attentionItems(from: trips),
-            money: moneySummary(from: trips, currentParticipantID: currentParticipantID)
+            money: moneySummary(from: trips, currentParticipantIDs: currentParticipantIDs)
         )
     }
 
@@ -75,15 +79,15 @@ enum DashboardTripSummaryBuilder {
 
     private static func moneySummary(
         from trips: [TripPlan],
-        currentParticipantID: Participant.ID?
+        currentParticipantIDs: Set<Participant.ID>?
     ) -> DashboardMoneySummary? {
-        guard let currentParticipantID else { return nil }
+        guard let currentParticipantIDs, !currentParticipantIDs.isEmpty else { return nil }
 
         var owedToYou: Decimal = 0
         var youOwe: Decimal = 0
 
         for trip in trips {
-            for balance in trip.viewModel.calculator.balances() where balance.participant.id == currentParticipantID {
+            for balance in trip.viewModel.calculator.balances() where currentParticipantIDs.contains(balance.participant.id) {
                 if balance.net > 0 {
                     owedToYou += balance.net
                 } else if balance.net < 0 {

@@ -144,6 +144,7 @@ struct SupabaseProfileBootstrapDTO: Codable, Hashable {
 @MainActor
 final class AuthViewModel: ObservableObject {
     @Published private(set) var isAuthenticated = false
+    @Published private(set) var currentUserID: UUID?
     @Published private(set) var isLoading = true
     @Published var authError: String?
     @Published var authMessage: String?
@@ -200,13 +201,16 @@ final class AuthViewModel: ObservableObject {
                     do {
                         try await service.bootstrapProfile(userID: userID, email: email)
                         isAuthenticated = true
+                        currentUserID = userID
                         authError = nil
                     } catch {
                         authError = error.localizedDescription
                         isAuthenticated = false
+                        currentUserID = nil
                     }
                 case .signedOut:
                     isAuthenticated = false
+                    currentUserID = nil
                 }
                 isLoading = false
             }

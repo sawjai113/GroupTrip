@@ -133,6 +133,39 @@ final class SupabaseDTOTests: XCTestCase {
         XCTAssertTrue(kyoto.viewModel.calculator.expenses.isEmpty)
     }
 
+    func testParticipantDTOParticipantPreservesLinkedUserIDAsAccountID() {
+        let userID = UUID(uuidString: "33333333-3333-3333-3333-333333333333")!
+        let dto = SupabaseTripParticipantDTO(
+            id: UUID(uuidString: "55555555-5555-5555-5555-555555555551")!,
+            tripID: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            displayName: "Alex",
+            linkedUserID: userID
+        )
+
+        XCTAssertEqual(dto.participant.accountID, userID)
+        XCTAssertNil(SupabaseTripParticipantDTO(
+            id: UUID(uuidString: "55555555-5555-5555-5555-555555555552")!,
+            tripID: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            displayName: "Sam"
+        ).participant.accountID)
+    }
+
+    func testParticipantDTOInitFromParticipantCarriesAccountIDAsLinkedUserID() {
+        let accountID = UUID(uuidString: "33333333-3333-3333-3333-333333333334")!
+        let participant = Participant(
+            id: UUID(uuidString: "55555555-5555-5555-5555-555555555553")!,
+            name: "Alex",
+            accountID: accountID
+        )
+
+        let dto = SupabaseTripParticipantDTO(
+            tripID: UUID(uuidString: "11111111-1111-1111-1111-111111111112")!,
+            participant: participant
+        )
+
+        XCTAssertEqual(dto.linkedUserID, accountID)
+    }
+
     func testCollaborativeTripDTOAssemblesCalculatorPlacesAndPlanningItems() throws {
         let tripDTO = SupabaseTripDTO(
             id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
@@ -242,6 +275,31 @@ final class AuthViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.isAuthenticated)
         XCTAssertFalse(viewModel.isLoading)
     }
+
+    func testSignedInSessionStoresCurrentUserID() async throws {
+        let service = FakeAuthService()
+        let viewModel = AuthViewModel(service: service)
+        let userID = UUID(uuidString: "00000000-0000-0000-0000-00000000A002")!
+
+        service.send(.signedIn(userID: userID, email: "alex@example.com"))
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertEqual(viewModel.currentUserID, userID)
+        XCTAssertTrue(viewModel.isAuthenticated)
+    }
+
+    func testSignedOutSessionClearsCurrentUserID() async throws {
+        let service = FakeAuthService()
+        let viewModel = AuthViewModel(service: service)
+
+        service.send(.signedIn(userID: UUID(uuidString: "00000000-0000-0000-0000-00000000A003")!, email: "alex@example.com"))
+        try await Task.sleep(nanoseconds: 50_000_000)
+        service.send(.signedOut)
+        try await Task.sleep(nanoseconds: 50_000_000)
+
+        XCTAssertNil(viewModel.currentUserID)
+        XCTAssertFalse(viewModel.isAuthenticated)
+    }
 }
 
 private final class FakeAuthService: AuthServicing {
@@ -341,6 +399,24 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
         XCTAssertFalse(store.isLoading)
         cache.removePersistentDomain(forName: "TripStoreCacheTests-keeps-cached")
+    }
+
+    func testTripCachePreservesParticipantAccountID() throws {
+        let cache = UserDefaults(suiteName: "TripStoreCacheTests-participant-account")!
+        cache.removePersistentDomain(forName: "TripStoreCacheTests-participant-account")
+        let cacheKey = "test.cached.trips.participant.account"
+        let participantID = UUID(uuidString: "00000000-0000-0000-0000-00000000B084")!
+        let accountID = UUID(uuidString: "00000000-0000-0000-0000-00000000B085")!
+        var cachedTrip = makeTrip(id: UUID(uuidString: "00000000-0000-0000-0000-00000000B083")!, name: "Cached Weekend")
+        cachedTrip.viewModel.calculator.participants = [
+            Participant(id: participantID, name: "Alex", accountID: accountID)
+        ]
+
+        TripStore.cacheTrips([cachedTrip], in: cache, key: cacheKey)
+
+        let restoredTrip = try XCTUnwrap(TripStore.cachedTrips(in: cache, key: cacheKey).first)
+        XCTAssertEqual(restoredTrip.viewModel.calculator.participants.first?.accountID, accountID)
+        cache.removePersistentDomain(forName: "TripStoreCacheTests-participant-account")
     }
 
     func testCloudStoreCreatesRemoteTripWithTrimmedValuesAndAppendsReturnedTrip() async throws {

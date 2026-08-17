@@ -163,7 +163,11 @@ struct AddPersonView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(existingParticipant == nil ? "Add" : "Save") {
                         if let existingParticipant {
-                            let updatedParticipant = Participant(id: existingParticipant.id, name: parsedNames.first ?? "")
+                            let updatedParticipant = Participant(
+                                id: existingParticipant.id,
+                                name: parsedNames.first ?? "",
+                                accountID: existingParticipant.accountID
+                            )
                             if usesExternalPersistence {
                                 Task {
                                     await updateParticipant(updatedParticipant)

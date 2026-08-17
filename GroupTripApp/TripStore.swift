@@ -64,6 +64,23 @@ final class TripStore: ObservableObject {
         DashboardTripSummaryBuilder.summary(from: trips, currentParticipantID: currentParticipantID)
     }
 
+    /// Dashboard summary scoped to a signed-in account. Participant IDs are
+    /// resolved per trip via `Participant.accountID`, so a user who has a
+    /// different participant per trip is aggregated across all of them.
+    /// Money stays nil when the account ID is nil or maps to no participant.
+    func dashboardSummary(currentAccountID: UUID?) -> DashboardSummary {
+        let participantIDs = currentAccountID.map { accountID in
+            Set(
+                trips.flatMap { trip in
+                    trip.viewModel.calculator.participants.compactMap { participant in
+                        participant.accountID == accountID ? participant.id : nil
+                    }
+                }
+            )
+        }
+        return DashboardTripSummaryBuilder.summary(from: trips, currentParticipantIDs: participantIDs)
+    }
+
     func addTrip(name: String, startDate: Date, endDate: Date) {
         addTrip(
             name: name,
@@ -157,7 +174,8 @@ final class TripStore: ObservableObject {
     func updateParticipant(_ participant: Participant, in tripID: TripPlan.ID) async {
         let trimmedParticipant = Participant(
             id: participant.id,
-            name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            accountID: participant.accountID
         )
         guard !trimmedParticipant.name.isEmpty else { return }
 
@@ -715,13 +733,15 @@ private struct CachedTrip: Codable {
 private struct CachedParticipant: Codable {
     var id: UUID
     var name: String
+    var accountID: UUID?
 
     init(participant: Participant) {
         id = participant.id
         name = participant.name
+        accountID = participant.accountID
     }
 
-    var participant: Participant { Participant(id: id, name: name) }
+    var participant: Participant { Participant(id: id, name: name, accountID: accountID) }
 }
 
 private struct CachedExpense: Codable {

@@ -72,4 +72,22 @@ final class TripExpenseCalculatorTests: XCTestCase {
         XCTAssertTrue(settlements.allSatisfy { $0.to == alex })
         XCTAssertEqual(settlements.reduce(0) { $0 + $1.amount }, 200)
     }
+
+    func testUpdatingParticipantNamePreservesAccountID() {
+        let participantID = UUID(uuidString: "00000000-0000-0000-0000-00000000A001")!
+        let accountID = UUID(uuidString: "00000000-0000-0000-0000-00000000A002")!
+        let viewModel = TripCalculatorViewModel(
+            tripName: "Austin Weekend",
+            calculator: TripExpenseCalculator(
+                participants: [Participant(id: participantID, name: "Alex", accountID: accountID)],
+                expenses: [],
+                payments: []
+            )
+        )
+
+        viewModel.updateParticipant(Participant(id: participantID, name: "Alex Rivera", accountID: accountID))
+
+        XCTAssertEqual(viewModel.calculator.participants.first?.name, "Alex Rivera")
+        XCTAssertEqual(viewModel.calculator.participants.first?.accountID, accountID)
+    }
 }

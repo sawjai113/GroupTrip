@@ -22,7 +22,7 @@ Safety rule: any future action that deletes, removes, revokes, logs out, leaves,
 
 ### 0. Implement selected Calm User Dashboard direction
 
-Status: Now
+Status: Done
 Area: Dashboard, Navigation, Expenses, Design system, Dark mode
 
 Decision:
@@ -41,8 +41,21 @@ Acceptance notes:
 - `Needs your attention` appears above money and summarizes items across all trips, including past trips, because the home page is a user-level dashboard.
 - Dashboard money shows user-specific outstanding amounts across all trips, not total trip spending.
 - Profile menu contains create/join/account actions.
-- Bottom navigation exposes Dashboard, Current, and All Trips.
+- Bottom navigation exposes Dashboard, a dynamic Current/Next shortcut, and All Trips.
 - Light and dark appearances preserve the same information hierarchy.
+
+Resolution:
+
+- Calm dashboard home sections are implemented with hero, all-trip `Needs your attention`, and all-trip `Your money`.
+- Home no longer duplicates current/future or past trip list sections because trip lists live behind bottom navigation and the All Trips sheet.
+- The primary trip shortcut shows `Current` when an active trip exists, otherwise `Next` when it opens the first upcoming trip.
+- Signed-in dashboard money resolves the current account to linked expense participants per trip and aggregates only real user-specific balances; nil or unmapped accounts keep the honest fallback.
+- Supabase `linked_user_id` now round-trips through the app participant model, participant rename preserves account linkage, and cached trips preserve account-linked participants.
+
+Follow-up notes:
+
+- Organizer/self participant linking still depends on rows carrying `linked_user_id`; future participant-claim or creator-linking UX should make this explicit.
+- Keep final visual review of light/dark/auto on device or simulator as polish before TestFlight.
 
 ### 1. Join Trip entry point polish
 

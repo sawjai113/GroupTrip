@@ -69,7 +69,8 @@ struct AuthGateView: View {
             TripDashboardView(
                 store: remoteTripStore,
                 modeBadge: .cloud,
-                appearance: appearanceBinding
+                appearance: appearanceBinding,
+                currentAccountID: authViewModel.currentUserID
             ) {
                 Task {
                     await authViewModel.signOut()
