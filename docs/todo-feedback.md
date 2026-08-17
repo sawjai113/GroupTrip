@@ -1,6 +1,6 @@
 # Wanderaid TODO / Feedback Backlog
 
-Last updated: 2026-07-08
+Last updated: 2026-08-17
 
 This is the lightweight git-tracked backlog for feedback, rough TODOs, and manual testing notes before they are promoted into detailed implementation plans or GitHub issues.
 
@@ -19,6 +19,30 @@ Safety rule: any future action that deletes, removes, revokes, logs out, leaves,
 ---
 
 ## Now
+
+### 0. Implement selected Calm User Dashboard direction
+
+Status: Now
+Area: Dashboard, Navigation, Expenses, Design system, Dark mode
+
+Decision:
+
+- Move forward with the selected Calm User Dashboard design direction.
+- Source mockups live in the GitHub Pages design repo:
+  - Light: https://sawjai113.github.io/wanderaid-designs/variants/001c-calm-user-dashboard/
+  - Dark: https://sawjai113.github.io/wanderaid-designs/variants/001d-calm-user-dashboard-dark/
+- Implementation spec is captured in `docs/plans/calm-user-dashboard-design-direction.md`.
+- GitHub issue: https://github.com/sawjai113/GroupTrip/issues/1
+
+Acceptance notes:
+
+- Home page is centered on the current user, not only the current trip.
+- Large current/future trip card remains but is vertically compact and fully tappable.
+- `Needs your attention` appears above money.
+- Dashboard money shows user-specific outstanding amounts, not total trip spending.
+- Profile menu contains create/join/account actions.
+- Bottom navigation exposes Dashboard, Current, and All Trips.
+- Light and dark appearances preserve the same information hierarchy.
 
 ### 1. Join Trip entry point polish
 
