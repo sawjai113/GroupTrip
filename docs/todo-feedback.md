@@ -38,8 +38,8 @@ Acceptance notes:
 
 - Home page is centered on the current user, not only the current trip.
 - Large current/future trip card remains but is vertically compact and fully tappable.
-- `Needs your attention` appears above money.
-- Dashboard money shows user-specific outstanding amounts, not total trip spending.
+- `Needs your attention` appears above money and summarizes items across all trips, including past trips, because the home page is a user-level dashboard.
+- Dashboard money shows user-specific outstanding amounts across all trips, not total trip spending.
 - Profile menu contains create/join/account actions.
 - Bottom navigation exposes Dashboard, Current, and All Trips.
 - Light and dark appearances preserve the same information hierarchy.
