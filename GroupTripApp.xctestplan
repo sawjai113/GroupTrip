@@ -1,0 +1,32 @@
+{
+  "configurations" : [
+    {
+      "id" : "E4F7B7A1-8BC5-4D26-AE1B-7F3B5C4A9D21",
+      "name" : "Default Test Configuration",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:GroupTripApp.xcodeproj",
+      "identifier" : "7B0000012C00000000000030",
+      "name" : "GroupTripApp"
+    }
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "skippedTests" : [
+
+      ],
+      "target" : {
+        "containerPath" : "container:GroupTripApp.xcodeproj",
+        "identifier" : "7B0000012C00000000000033",
+        "name" : "GroupTripAppTests"
+      }
+    }
+  ],
+  "version" : 1
+}

@@ -33,6 +33,7 @@ struct TripDashboardView: View {
     @State private var isShowingSignOutConfirmation = false
     @State private var pastTripsOpen = false
     var modeBadge: ModeBadge?
+    var appearance: Binding<AppAppearance> = .constant(.auto)
     var signOut: (() -> Void)?
 
     var body: some View {
@@ -40,6 +41,7 @@ struct TripDashboardView: View {
             VStack(spacing: 0) {
                 WaniHeader(
                     modeBadge: modeBadge,
+                    appearance: appearance,
                     signOut: signOut == nil ? nil : { isShowingSignOutConfirmation = true },
                     joinTrip: modeBadge == .cloud ? { isShowingJoinInvite = true } : nil
                 ) {
@@ -126,6 +128,7 @@ struct TripDashboardView: View {
 
 struct WaniHeader: View {
     var modeBadge: TripDashboardView.ModeBadge?
+    var appearance: Binding<AppAppearance>
     var signOut: (() -> Void)?
     var joinTrip: (() -> Void)?
     var createTrip: () -> Void
@@ -140,30 +143,57 @@ struct WaniHeader: View {
 
                 Spacer()
 
-                if let signOut {
-                    Button(action: signOut) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.headline)
+                Menu {
+                    Button {
+                        createTrip()
+                    } label: {
+                        Label("Create Trip", systemImage: "plus")
                     }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel(modeBadge == .demo ? "Exit demo" : "Sign out")
-                }
+                    .accessibilityLabel("Create a new trip")
 
-                if let joinTrip {
-                    Button(action: joinTrip) {
-                        Label("Join", systemImage: "link.badge.plus")
-                            .font(.subheadline.weight(.semibold))
+                    if let joinTrip {
+                        Button {
+                            joinTrip()
+                        } label: {
+                            Label("Join by Invite", systemImage: "link.badge.plus")
+                        }
+                        .accessibilityLabel("Join a trip with an invite code")
                     }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel("Join trip by invite code")
-                }
 
-                Button(action: createTrip) {
-                    Label("New", systemImage: "plus")
-                        .font(.subheadline.weight(.semibold))
+                    Divider()
+
+                    Picker("Appearance", selection: appearance) {
+                        ForEach(AppAppearance.allCases) { option in
+                            Label(option.displayName, systemImage: option.systemImage)
+                                .tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .accessibilityLabel("Appearance")
+                    .accessibilityValue(appearance.wrappedValue.displayName)
+
+                    if let signOut {
+                        Divider()
+
+                        Button(role: .destructive) {
+                            signOut()
+                        } label: {
+                            Label(
+                                modeBadge == .demo ? "Exit Demo" : "Sign Out",
+                                systemImage: "rectangle.portrait.and.arrow.right"
+                            )
+                        }
+                        .accessibilityLabel(modeBadge == .demo ? "Exit demo mode" : "Sign out of Wanderaid")
+                    }
+                } label: {
+                    Image(systemName: "person.crop.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(AppTheme.Editorial.forest)
+                        .frame(width: 36, height: 36)
+                        .background(AppTheme.Editorial.forest.opacity(0.12))
+                        .clipShape(Circle())
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(AppTheme.primary)
+                .accessibilityLabel("Profile menu")
             }
 
             HStack(spacing: AppTheme.Spacing.small) {

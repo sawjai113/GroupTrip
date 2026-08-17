@@ -9,6 +9,21 @@ struct AuthGateView: View {
     @StateObject private var remoteTripStore = TripStore(service: SupabaseTripService(), cacheStore: .standard)
     @StateObject private var demoTripStore = TripStore.sample
 
+    @AppStorage("wanderaid.appearance") private var appearanceRawValue = AppAppearance.auto.rawValue
+
+    /// Safe accessor for the persisted appearance; unknown stored values fall back to `.auto`.
+    private var appearance: AppAppearance {
+        get { AppAppearance(rawValue: appearanceRawValue) ?? .auto }
+        set { appearanceRawValue = newValue.rawValue }
+    }
+
+    private var appearanceBinding: Binding<AppAppearance> {
+        Binding(
+            get: { appearance },
+            set: { appearanceRawValue = $0.rawValue }
+        )
+    }
+
     var body: some View {
         Group {
             switch appSession.mode {
@@ -24,13 +39,18 @@ struct AuthGateView: View {
                     )
                 }
             case .demo:
-                TripDashboardView(store: demoTripStore, modeBadge: .demo) {
+                TripDashboardView(
+                    store: demoTripStore,
+                    modeBadge: .demo,
+                    appearance: appearanceBinding
+                ) {
                     appSession.returnToModePicker()
                 }
             case .signedIn:
                 signedInModeView
             }
         }
+        .preferredColorScheme(appearance.preferredColorScheme)
         .onAppear {
             appSession.restoreSignedInModeIfAuthenticated(authViewModel.isAuthenticated)
         }
@@ -46,7 +66,11 @@ struct AuthGateView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(AppTheme.background)
         } else if authViewModel.isAuthenticated {
-            TripDashboardView(store: remoteTripStore, modeBadge: .cloud) {
+            TripDashboardView(
+                store: remoteTripStore,
+                modeBadge: .cloud,
+                appearance: appearanceBinding
+            ) {
                 Task {
                     await authViewModel.signOut()
                 }

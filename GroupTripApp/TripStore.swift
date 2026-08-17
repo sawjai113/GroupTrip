@@ -56,6 +56,14 @@ final class TripStore: ObservableObject {
         return futureTrips
     }
 
+    /// Tested dashboard summary derived from the current trip list.
+    /// The participant ID is passed in by the view/app layer when a mapping
+    /// from the signed-in user to a trip participant is known; this store
+    /// does not decide who the signed-in user is.
+    func dashboardSummary(currentParticipantID: Participant.ID? = nil) -> DashboardSummary {
+        DashboardTripSummaryBuilder.summary(from: trips, currentParticipantID: currentParticipantID)
+    }
+
     func addTrip(name: String, startDate: Date, endDate: Date) {
         addTrip(
             name: name,
