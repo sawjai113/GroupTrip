@@ -5,6 +5,9 @@ DerivedData/
 *.xcuserstate
 .DS_Store
 
+# Local Hermes plans/session artifacts
+.hermes/
+
 # Local Supabase/project secrets
 .env
 .env.*
