@@ -32,14 +32,15 @@ struct TripDashboardView: View {
     @State private var isShowingJoinInvite = false
     @State private var isShowingSignOutConfirmation = false
     @State private var isShowingAllTrips = false
-    @State private var isShowingNoCurrentTrip = false
-    @State private var pastTripsOpen = false
+    @State private var isShowingNoFocusedTrip = false
     var modeBadge: ModeBadge?
     var appearance: Binding<AppAppearance> = .constant(.auto)
     var signOut: (() -> Void)?
 
     var body: some View {
         let summary = store.dashboardSummary(currentParticipantID: nil)
+        let bottomNavTrip = summary.currentTrips.first ?? summary.futureTrips.first
+        let bottomNavTripIsNext = summary.currentTrips.isEmpty && !summary.futureTrips.isEmpty
 
         NavigationStack {
             VStack(spacing: 0) {
@@ -75,18 +76,6 @@ struct TripDashboardView: View {
 
                             DashboardMoneySection(money: summary.money)
 
-                            if !summary.currentTrips.isEmpty || !summary.futureTrips.isEmpty {
-                                CurrentFutureTripsSection(
-                                    currentTrips: summary.currentTrips,
-                                    futureTrips: summary.futureTrips,
-                                    store: store
-                                )
-                            }
-
-                            if !summary.pastTrips.isEmpty {
-                                PastTripsSection(trips: summary.pastTrips, store: store, isOpen: $pastTripsOpen)
-                            }
-
                             if summary.featuredTrips.isEmpty && summary.pastTrips.isEmpty {
                                 EmptyFeatureCard(title: "All your trips are in the past", subtitle: "Create a new one to start planning again.")
                             }
@@ -98,10 +87,11 @@ struct TripDashboardView: View {
                 }
 
                 DashboardBottomNav(
-                    activeTrip: summary.currentTrips.first ?? summary.futureTrips.first,
+                    primaryTrip: bottomNavTrip,
+                    isShowingNextTrip: bottomNavTripIsNext,
                     store: store,
                     showAllTrips: { isShowingAllTrips = true },
-                    showNoCurrentTrip: { isShowingNoCurrentTrip = true }
+                    showNoFocusedTrip: { isShowingNoFocusedTrip = true }
                 )
             }
             .background(AppTheme.Editorial.background)
@@ -118,11 +108,11 @@ struct TripDashboardView: View {
             .task {
                 await store.loadTrips()
             }
-            .alert("No active trips yet", isPresented: $isShowingNoCurrentTrip) {
+            .alert("No active or upcoming trips yet", isPresented: $isShowingNoFocusedTrip) {
                 Button("Create Trip") { isShowingNewTrip = true }
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("Create a trip to use the Current shortcut.")
+                Text("Create a trip to use this shortcut.")
             }
             .alert(
                 "Trip Sync Error",
@@ -259,24 +249,33 @@ struct WaniHeader: View {
 }
 
 private struct DashboardBottomNav: View {
-    let activeTrip: TripPlan?
+    let primaryTrip: TripPlan?
+    let isShowingNextTrip: Bool
     @ObservedObject var store: TripStore
     var showAllTrips: () -> Void
-    var showNoCurrentTrip: () -> Void
+    var showNoFocusedTrip: () -> Void
+
+    private var primaryTripTitle: String {
+        isShowingNextTrip ? "Next" : "Current"
+    }
+
+    private var primaryTripSystemImage: String {
+        isShowingNextTrip ? "calendar" : "location.fill"
+    }
 
     var body: some View {
         HStack(spacing: 8) {
             BottomNavItem(title: "Dashboard", systemImage: "rectangle.grid.1x2.fill", isSelected: true) { }
 
-            if let activeTrip {
+            if let primaryTrip {
                 NavigationLink {
-                    TripSummaryView(trip: activeTrip, store: store)
+                    TripSummaryView(trip: primaryTrip, store: store)
                 } label: {
-                    BottomNavLabel(title: "Current", systemImage: "location.fill", isSelected: false)
+                    BottomNavLabel(title: primaryTripTitle, systemImage: primaryTripSystemImage, isSelected: false)
                 }
                 .buttonStyle(.plain)
             } else {
-                BottomNavItem(title: "Current", systemImage: "location", isSelected: false, action: showNoCurrentTrip)
+                BottomNavItem(title: primaryTripTitle, systemImage: "location", isSelected: false, action: showNoFocusedTrip)
             }
 
             BottomNavItem(title: "All Trips", systemImage: "list.bullet.rectangle", isSelected: false, action: showAllTrips)
@@ -820,31 +819,6 @@ private struct MoneyMetric: View {
     }
 }
 
-private struct CurrentFutureTripsSection: View {
-    let currentTrips: [TripPlan]
-    let futureTrips: [TripPlan]
-    @ObservedObject var store: TripStore
-
-    private var trips: [TripPlan] { currentTrips + futureTrips }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            DashboardSectionTitle("Current & future trips")
-
-            VStack(spacing: 12) {
-                ForEach(trips) { trip in
-                    NavigationLink {
-                        TripSummaryView(trip: trip, store: store)
-                    } label: {
-                        CompactTripCard(trip: trip)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-}
-
 private struct DashboardSectionTitle: View {
     let title: String
 
@@ -875,110 +849,6 @@ private struct DashboardCardModifier: ViewModifier {
 private extension View {
     func dashboardCard() -> some View {
         modifier(DashboardCardModifier())
-    }
-}
-
-struct PastTripsSection: View {
-    let trips: [TripPlan]
-    @ObservedObject var store: TripStore
-    @Binding var isOpen: Bool
-    @State private var tripPendingArchive: TripPlan?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button {
-                withAnimation(.snappy) {
-                    isOpen.toggle()
-                }
-            } label: {
-                HStack {
-                    Text("Past Trips")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Spacer()
-                    Text("\(trips.count)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Image(systemName: isOpen ? "chevron.up" : "chevron.down")
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
-            }
-            .buttonStyle(.plain)
-
-            if isOpen {
-                VStack(spacing: 16) {
-                    ForEach(trips) { trip in
-                        PastTripSwipeRow(
-                            trip: trip,
-                            store: store,
-                            actionTitle: store.supportsCloudSync ? "Archive" : "Remove",
-                            actionSystemImage: store.supportsCloudSync ? "archivebox" : "trash"
-                        ) {
-                            tripPendingArchive = trip
-                        }
-                    }
-                }
-                .clipped()
-                .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
-            }
-        }
-        .confirmationDialog(
-            store.supportsCloudSync ? "Archive this past trip?" : "Remove this past trip?",
-            isPresented: Binding(
-                get: { tripPendingArchive != nil },
-                set: { isPresented in
-                    if !isPresented { tripPendingArchive = nil }
-                }
-            ),
-            titleVisibility: .visible,
-            presenting: tripPendingArchive
-        ) { trip in
-            Button(store.supportsCloudSync ? "Archive Trip" : "Remove Trip", role: .destructive) {
-                Task { await archivePastTrip(trip) }
-            }
-            Button("Cancel", role: .cancel) { tripPendingArchive = nil }
-        } message: { trip in
-            Text(store.supportsCloudSync ? "This hides \(trip.viewModel.tripName) from active trip lists for everyone without deleting trip data." : "This removes \(trip.viewModel.tripName) from this local demo only. Shared cloud data is not affected.")
-        }
-    }
-
-    @MainActor
-    private func archivePastTrip(_ trip: TripPlan) async {
-        await store.archiveTrip(trip.id)
-        if !store.trips.contains(where: { $0.id == trip.id }) {
-            tripPendingArchive = nil
-        }
-    }
-}
-
-private struct PastTripSwipeRow: View {
-    let trip: TripPlan
-    @ObservedObject var store: TripStore
-    let actionTitle: String
-    let actionSystemImage: String
-    var requestAction: () -> Void
-    @State private var isNavigating = false
-
-    var body: some View {
-        SwipeRevealActionRow(
-            actionTitle: actionTitle,
-            actionSystemImage: actionSystemImage,
-            actionAccessibilityLabel: "\(actionTitle) past trip"
-        ) {
-            requestAction()
-        } content: {
-            CompactTripCard(trip: trip)
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    isNavigating = true
-                }
-                .accessibilityAddTraits(.isButton)
-                .accessibilityHint("Opens trip details")
-                .navigationDestination(isPresented: $isNavigating) {
-                    TripSummaryView(trip: trip, store: store)
-                }
-        }
     }
 }
 
