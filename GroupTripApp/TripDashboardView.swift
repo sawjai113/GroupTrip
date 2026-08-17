@@ -31,6 +31,7 @@ struct TripDashboardView: View {
     @State private var isShowingNewTrip = false
     @State private var isShowingJoinInvite = false
     @State private var isShowingSignOutConfirmation = false
+    @State private var isShowingAccount = false
     @State private var isShowingAllTrips = false
     @State private var isShowingNoFocusedTrip = false
     var modeBadge: ModeBadge?
@@ -48,7 +49,7 @@ struct TripDashboardView: View {
                 WaniHeader(
                     modeBadge: modeBadge,
                     appearance: appearance,
-                    signOut: signOut == nil ? nil : { isShowingSignOutConfirmation = true },
+                    openAccount: signOut == nil ? nil : { isShowingAccount = true },
                     joinTrip: modeBadge == .cloud ? { isShowingJoinInvite = true } : nil
                 ) {
                     isShowingNewTrip = true
@@ -106,6 +107,18 @@ struct TripDashboardView: View {
             .sheet(isPresented: $isShowingAllTrips) {
                 AllTripsSheet(summary: summary, store: store)
             }
+            .sheet(isPresented: $isShowingAccount) {
+                AccountSettingsView(
+                    modeBadge: modeBadge,
+                    currentAccountID: currentAccountID,
+                    requestSignOut: {
+                        isShowingAccount = false
+                        DispatchQueue.main.async {
+                            isShowingSignOutConfirmation = true
+                        }
+                    }
+                )
+            }
             .task {
                 await store.loadTrips()
             }
@@ -136,11 +149,11 @@ struct TripDashboardView: View {
                 Text(store.syncError ?? "Something went wrong.")
             }
             .confirmationDialog(
-                modeBadge == .demo ? "Exit demo mode?" : "Sign out of Wanderaid?",
+                modeBadge == .demo ? "Exit demo mode?" : "Log out of Wanderaid?",
                 isPresented: $isShowingSignOutConfirmation,
                 titleVisibility: .visible
             ) {
-                Button(modeBadge == .demo ? "Exit Demo" : "Sign Out", role: .destructive) {
+                Button(modeBadge == .demo ? "Exit Demo" : "Log Out", role: .destructive) {
                     signOut?()
                 }
                 Button("Cancel", role: .cancel) { }
@@ -154,97 +167,218 @@ struct TripDashboardView: View {
 struct WaniHeader: View {
     var modeBadge: TripDashboardView.ModeBadge?
     var appearance: Binding<AppAppearance>
-    var signOut: (() -> Void)?
+    var openAccount: (() -> Void)?
     var joinTrip: (() -> Void)?
     var createTrip: () -> Void
 
+    private var syncStatusText: String {
+        switch modeBadge {
+        case .cloud:
+            return "Cloud synced"
+        case .demo:
+            return "Demo mode"
+        case nil:
+            return "Ready"
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                WanderaidLogoMark(size: 30)
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    Text("Wanderaid")
+                        .font(.custom("Georgia", size: 25).weight(.semibold))
+                        .tracking(-0.75)
+                        .foregroundStyle(AppTheme.Editorial.primaryText)
 
-                Text("Wanderaid")
-                    .font(.title2.weight(.semibold))
+                    Text(".")
+                        .font(.custom("Georgia", size: 25).weight(.semibold))
+                        .tracking(-0.75)
+                        .foregroundStyle(AppTheme.Editorial.forest)
+                }
 
-                Spacer()
+                HStack(spacing: 4) {
+                    Text("Good morning ·")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
 
-                Menu {
+                    Text(syncStatusText)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(AppTheme.Editorial.forest)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Good morning, \(syncStatusText)")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Menu {
+                Button {
+                    createTrip()
+                } label: {
+                    Label("Create Trip", systemImage: "plus")
+                }
+                .accessibilityLabel("Create a new trip")
+
+                if let joinTrip {
                     Button {
-                        createTrip()
+                        joinTrip()
                     } label: {
-                        Label("Create Trip", systemImage: "plus")
+                        Label("Join by Invite", systemImage: "link.badge.plus")
                     }
-                    .accessibilityLabel("Create a new trip")
+                    .accessibilityLabel("Join a trip with an invite code")
+                }
 
-                    if let joinTrip {
-                        Button {
-                            joinTrip()
-                        } label: {
-                            Label("Join by Invite", systemImage: "link.badge.plus")
-                        }
-                        .accessibilityLabel("Join a trip with an invite code")
+                Divider()
+
+                Picker("Appearance", selection: appearance) {
+                    ForEach(AppAppearance.allCases) { option in
+                        Label(option.displayName, systemImage: option.systemImage)
+                            .tag(option)
                     }
+                }
+                .pickerStyle(.menu)
+                .accessibilityLabel("Appearance")
+                .accessibilityValue(appearance.wrappedValue.displayName)
 
+                if let openAccount {
                     Divider()
 
-                    Picker("Appearance", selection: appearance) {
-                        ForEach(AppAppearance.allCases) { option in
-                            Label(option.displayName, systemImage: option.systemImage)
-                                .tag(option)
-                        }
+                    Button {
+                        openAccount()
+                    } label: {
+                        Label("Account", systemImage: "person.crop.circle")
                     }
-                    .pickerStyle(.menu)
-                    .accessibilityLabel("Appearance")
-                    .accessibilityValue(appearance.wrappedValue.displayName)
-
-                    if let signOut {
-                        Divider()
-
-                        Button(role: .destructive) {
-                            signOut()
-                        } label: {
-                            Label(
-                                modeBadge == .demo ? "Exit Demo" : "Sign Out",
-                                systemImage: "rectangle.portrait.and.arrow.right"
-                            )
-                        }
-                        .accessibilityLabel(modeBadge == .demo ? "Exit demo mode" : "Sign out of Wanderaid")
+                    .accessibilityLabel("Open account settings")
+                }
+            } label: {
+                Text("S")
+                    .font(.subheadline.weight(.heavy))
+                    .foregroundStyle(AppTheme.Editorial.forestDeep)
+                    .frame(width: 40, height: 40)
+                    .background(AppTheme.Editorial.border.opacity(0.62))
+                    .clipShape(Circle())
+                    .overlay {
+                        Circle()
+                            .stroke(AppTheme.Editorial.card.opacity(0.9), lineWidth: 2)
                     }
-                } label: {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(AppTheme.Editorial.forest)
-                        .frame(width: 36, height: 36)
-                        .background(AppTheme.Editorial.forest.opacity(0.12))
-                        .clipShape(Circle())
-                }
-                .accessibilityLabel("Profile menu")
+                    .shadow(color: AppTheme.Editorial.primaryText.opacity(0.08), radius: 12, x: 0, y: 6)
             }
-
-            HStack(spacing: AppTheme.Spacing.small) {
-                Text("Plan trips with friends")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
-                if let modeBadge {
-                    Text(modeBadge.title)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, AppTheme.Spacing.small)
-                        .padding(.vertical, AppTheme.Spacing.xSmall)
-                        .background(modeBadge.tint)
-                        .clipShape(Capsule())
-                        .accessibilityLabel("\(modeBadge.title): \(modeBadge.subtitle)")
-                }
-            }
+            .accessibilityLabel("Profile menu")
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 14)
-        .padding(.bottom, 12)
+        .padding(.horizontal, 18)
+        .padding(.top, 18)
+        .padding(.bottom, 18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial)
-        .overlay(alignment: .bottom) {
-            Divider()
+        .background(AppTheme.Editorial.background)
+    }
+}
+
+private struct AccountSettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    let modeBadge: TripDashboardView.ModeBadge?
+    let currentAccountID: UUID?
+    var requestSignOut: () -> Void
+
+    @State private var displayName = ""
+    @State private var username = ""
+    @State private var email = ""
+    @State private var password = ""
+    @State private var accountMessage: String?
+
+    private var signOutTitle: String {
+        modeBadge == .demo ? "Exit Demo" : "Log Out"
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(spacing: 14) {
+                        Text("S")
+                            .font(.title3.weight(.heavy))
+                            .foregroundStyle(AppTheme.Editorial.forestDeep)
+                            .frame(width: 48, height: 48)
+                            .background(AppTheme.Editorial.border.opacity(0.62))
+                            .clipShape(Circle())
+
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(displayName.isEmpty ? "Your account" : displayName)
+                                .font(.headline)
+                            Text(modeBadge?.title ?? "Account")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                Section {
+                    TextField("Name", text: $displayName)
+                        .textContentType(.name)
+                    TextField("Username", text: $username)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    TextField("Email", text: $email)
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                    Button("Save Profile") {
+                        accountMessage = "Profile editing is staged in the account screen. The next backend step is saving these fields to Supabase profiles."
+                    }
+                } header: {
+                    Text("Profile")
+                } footer: {
+                    Text("Profile editing is staged here for the account settings flow; cloud save wiring can connect this to Supabase profiles next.")
+                }
+
+                Section {
+                    SecureField("New password", text: $password)
+                        .textContentType(.newPassword)
+                    Button("Update Password") {
+                        accountMessage = "Password update controls now live in Account. Provider-specific password update wiring can be connected next."
+                    }
+                        .disabled(password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                } header: {
+                    Text("Security")
+                } footer: {
+                    Text("Password updates are available for email/password accounts. Google and Apple sign-ins manage passwords with their provider.")
+                }
+
+                if let currentAccountID {
+                    Section("Account ID") {
+                        Text(currentAccountID.uuidString)
+                            .font(.footnote.monospaced())
+                            .textSelection(.enabled)
+                    }
+                }
+
+                Section {
+                    Button(role: .destructive) {
+                        requestSignOut()
+                    } label: {
+                        Label(signOutTitle, systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                } footer: {
+                    Text(modeBadge == .demo ? "You’ll return to mode selection. Demo changes are local only." : "You’ll return to the sign-in screen. Cloud trips stay saved and can be loaded again after signing in.")
+                }
+            }
+            .navigationTitle("Account")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .alert("Account", isPresented: Binding(
+                get: { accountMessage != nil },
+                set: { isPresented in
+                    if !isPresented { accountMessage = nil }
+                }
+            )) {
+                Button("OK", role: .cancel) { accountMessage = nil }
+            } message: {
+                Text(accountMessage ?? "")
+            }
         }
     }
 }
