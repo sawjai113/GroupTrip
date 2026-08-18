@@ -31,7 +31,7 @@ Decision:
 - Source mockups live in the GitHub Pages design repo:
   - Light: https://sawjai113.github.io/wanderaid-designs/variants/001c-calm-user-dashboard/
   - Dark: https://sawjai113.github.io/wanderaid-designs/variants/001d-calm-user-dashboard-dark/
-- Implementation spec is captured in `docs/plans/calm-user-dashboard-design-direction.md`.
+- App-wide implementation spec is captured in `docs/plans/calm-user-dashboard-design-direction.md`.
 - GitHub issue: https://github.com/sawjai113/GroupTrip/issues/1
 
 Acceptance notes:
@@ -41,8 +41,9 @@ Acceptance notes:
 - `Needs your attention` appears above money and summarizes items across all trips, including past trips, because the home page is a user-level dashboard.
 - Dashboard money shows user-specific outstanding amounts across all trips, not total trip spending.
 - Profile menu contains create/join/account actions.
-- Bottom navigation exposes Dashboard, a dynamic Current/Next shortcut, and All Trips.
+- Bottom navigation exposes Dashboard, Current, and All Trips.
 - Light and dark appearances preserve the same information hierarchy.
+- The same Calm Editorial visual language extends to current trip, all trips, expenses, people, places, itinerary/planning, create/join/invite, and confirmation surfaces over time.
 
 Resolution:
 

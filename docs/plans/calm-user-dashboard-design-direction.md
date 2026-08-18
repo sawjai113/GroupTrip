@@ -1,6 +1,6 @@
-# Calm User Dashboard Design Direction
+# Calm Editorial App Design Direction
 
-Status: Selected direction for the next dashboard/home redesign
+Status: Selected direction for dashboard/home and future app-wide redesign
 Last updated: 2026-08-17
 
 Implementation issue: https://github.com/sawjai113/GroupTrip/issues/1
@@ -39,6 +39,78 @@ Use the selected **Calm Editorial** style:
 - Low-noise UI: fewer persistent buttons, more tappable surfaces.
 
 Dark mode should preserve the same hierarchy as light mode, not become a separate layout.
+
+## App-wide direction
+
+The same Calm Editorial design ideas should extend across the rest of the app, not stop at the dashboard.
+
+This means future page redesigns should feel like they belong to one Wanderaid system:
+
+- Warm editorial tone without becoming decorative or hard to scan.
+- Clear user-centered hierarchy: surface what the current user needs to know or do next.
+- Large emotional anchors where useful, especially for trip-level screens.
+- Compact, low-noise action placement: fewer repeated primary buttons, more tappable cards/rows and contextual menus.
+- Consistent rounded cards, soft borders, restrained shadows, and semantic accent colors.
+- Light and dark variants for every core pattern.
+- “Future trips” wording for upcoming trips beyond the current trip.
+- Destructive/removal/account-ending actions remain confirmed and visually distinct.
+
+### Page-level implications
+
+Apply the design direction in phases:
+
+1. **Dashboard / Home**
+   - Selected mockup source of truth for the first implementation pass.
+   - Establish shared tokens, card shells, section headers, bottom navigation, profile menu, and light/dark behavior.
+
+2. **Current Trip / Trip Detail**
+   - Should feel like the focused version of the dashboard’s featured trip card.
+   - Keep the trip photo/title/date as the emotional anchor.
+   - Surface user-specific next actions, group decisions, balances, and key sections.
+   - Avoid turning trip detail into a generic settings/list page.
+
+3. **All Trips**
+   - Should make current, future, and past trips easy to scan.
+   - Use the same card/list language as the dashboard.
+   - Preserve easy past-trip discovery without making history dominate the dashboard.
+
+4. **Expenses / Balances**
+   - Should prioritize what the current user owes or is owed.
+   - Use drill-in cards/rows that match the dashboard money summary.
+   - Keep raw group totals available but secondary to user-specific settlement clarity.
+
+5. **People / Participants**
+   - Should feel collaborative and calm, not admin-heavy.
+   - Use profile/participant cards, subtle roles/statuses, and clear ownership/guest labels.
+
+6. **Places / Itinerary / Planning**
+   - Should use editorial cards for places and timeline-like groupings for days/plans.
+   - Important plans or decisions should feed back into `Needs your attention`.
+
+7. **Create / Join / Invite flows**
+   - Should use the same calm card/sheet language as the profile dropdown actions.
+   - Keep join/create discoverable through the profile menu and any appropriate empty states.
+
+8. **Confirmations and destructive flows**
+   - Should use the eventual Wanderaid confirmation component rather than scattered platform defaults where copy needs more space.
+   - Preserve all existing confirmation safety rules.
+
+### Design-system implications
+
+Before or during implementation, prefer adding reusable presentational pieces only where they clearly repeat:
+
+- App shell / bottom navigation.
+- Profile menu.
+- Calm card surface with light/dark tokens.
+- Section header.
+- Tappable hero card.
+- Attention/action row.
+- Money summary card and money row.
+- Trip row/card.
+- Empty state card.
+- Confirmation component for destructive flows.
+
+Avoid a large premature component framework; build small reusable primitives as each redesigned page needs them.
 
 ## Selected dashboard structure
 
