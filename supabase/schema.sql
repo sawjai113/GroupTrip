@@ -102,6 +102,10 @@ $$;
 
 grant execute on function public.is_trip_member(uuid) to authenticated;
 grant execute on function public.is_trip_owner(uuid) to authenticated;
+revoke all on function public.is_trip_member(uuid) from public;
+revoke all on function public.is_trip_member(uuid) from anon;
+revoke all on function public.is_trip_owner(uuid) from public;
+revoke all on function public.is_trip_owner(uuid) from anon;
 
 -- ============================================================
 -- PROFILES
@@ -254,6 +258,8 @@ end;
 $$;
 
 grant execute on function public.archive_trip(uuid) to authenticated;
+revoke all on function public.archive_trip(uuid) from public;
+revoke all on function public.archive_trip(uuid) from anon;
 
 -- ============================================================
 -- TRIP MEMBERS
@@ -420,6 +426,8 @@ end;
 $$;
 
 grant execute on function public.leave_trip(uuid) to authenticated;
+revoke all on function public.leave_trip(uuid) from public;
+revoke all on function public.leave_trip(uuid) from anon;
 
 -- ============================================================
 -- TRIP PARTICIPANTS
@@ -716,6 +724,7 @@ end;
 $$;
 
 revoke all on function public.accept_trip_invite(text) from public;
+revoke all on function public.accept_trip_invite(text) from anon;
 grant execute on function public.accept_trip_invite(text) to authenticated;
 
 -- ============================================================
@@ -913,6 +922,41 @@ begin
   return new;
 end;
 $$;
+
+-- ============================================================
+-- FUNCTION ACL LOCKDOWN
+-- ============================================================
+-- Security posture: anon/public must be able to execute ONLY
+-- lookup_active_trip_invite. Trigger helpers and auth hooks are not
+-- user-invocable; revoke the implicit PUBLIC grant and grant explicitly
+-- to the roles that can fire them (authenticated DML; supabase_auth_admin
+-- and service_role for the auth.users hook). Re-verified by the
+-- wanderaid-security-testing pass (2026-08-20).
+revoke all on function public.set_updated_at() from public;
+revoke all on function public.set_updated_at() from anon;
+grant execute on function public.set_updated_at() to authenticated;
+
+revoke all on function public.assert_attribution_columns_current_user() from public;
+revoke all on function public.assert_attribution_columns_current_user() from anon;
+grant execute on function public.assert_attribution_columns_current_user() to authenticated;
+
+revoke all on function public.assert_expense_participant_matches_trip() from public;
+revoke all on function public.assert_expense_participant_matches_trip() from anon;
+grant execute on function public.assert_expense_participant_matches_trip() to authenticated;
+
+revoke all on function public.assert_expense_split_participant_matches_trip() from public;
+revoke all on function public.assert_expense_split_participant_matches_trip() from anon;
+grant execute on function public.assert_expense_split_participant_matches_trip() to authenticated;
+
+revoke all on function public.assert_direct_payment_participants_match_trip() from public;
+revoke all on function public.assert_direct_payment_participants_match_trip() from anon;
+grant execute on function public.assert_direct_payment_participants_match_trip() to authenticated;
+
+revoke all on function public.handle_new_user() from public;
+revoke all on function public.handle_new_user() from anon;
+grant execute on function public.handle_new_user() to authenticated;
+grant execute on function public.handle_new_user() to supabase_auth_admin;
+grant execute on function public.handle_new_user() to service_role;
 
 -- ============================================================
 -- TRIP EXPENSES

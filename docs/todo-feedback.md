@@ -246,6 +246,19 @@ From the cross-platform portability audit of the M3 range (`37aafb8..HEAD`). Ver
 - TripStatus `tint` moved out of model files: Done (2026-08-19) — `TripModels.swift` no longer imports SwiftUI; the Color mapping lives in the view layer (`SharedViews.swift`) with regression tests.
 - RPC signature reference doc: deferred until Android/Kotlin service work begins; RPC names are already enumerated in `docs/qa/qa-report-milestone-2.md`. Note for that work: any trip member can set `linked_user_id` on create and update — the future participant-claim UX should enforce link authorization on both paths.
 
+### 25. Security testing pass follow-ups (2026-08-20)
+
+Status: Now
+Area: Security, Compliance
+
+From the first full `wanderaid-security-testing` pass (adversarial, OWASP-aligned). Verdict: PASS WITH NOTES — no bypass achieved against any RLS policy, trigger, or RPC role gate. Findings:
+
+- RPC/function ACL drift (anon EXECUTE on accept_trip_invite, archive_trip, leave_trip, is_trip_member, is_trip_owner, and the trigger helpers): Done (2026-08-20) — explicit revokes added to schema.sql (FUNCTION ACL LOCKDOWN section), applied live, verified anon/public execute now covers ONLY lookup_active_trip_invite, and trigger smoke passed (auth hook + authenticated DML still work).
+- `linked_user_id` settable by any trip member: tracked in item 8 — keep until the participant-claim UX enforces link authorization.
+- Leftover `kv_store_e2e444bd` table (0 policies, RLS on, inert): drop it — needs confirmation since it's a destructive drop.
+- `PrivacyInfo.xcprivacy` missing and no privacy policy/support URL in docs: required for App Store — add before TestFlight/App Store Connect submission.
+- Accepted infos: no app-level rate limit on invite lookup (entropy mitigates), PostgREST `select=*` over-selection (explicit column lists are best practice), unencrypted UserDefaults trip cache (non-credential), no cert pinning (future hardening), profiles readable by all authenticated (by design).
+
 ---
 
 ## Later
