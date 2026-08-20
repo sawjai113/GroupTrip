@@ -6,8 +6,8 @@ extension TripStatus {
     var tint: Color {
         switch self {
         case .past: .secondary
-        case .current: AppTheme.success
-        case .future: AppTheme.primary
+        case .current: AppTheme.Editorial.forest
+        case .future: AppTheme.Editorial.forestDeep
         }
     }
 }
@@ -227,25 +227,6 @@ struct SwipeRevealActionRow<Content: View>: View {
     }
 }
 
-struct WaniSectionHeader: View {
-    let title: String
-    var subtitle: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
-            Text(title)
-                .font(.title2.weight(.semibold))
-
-            if let subtitle {
-                Text(subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
 // MARK: - Calm Editorial shared primitives (variant 004)
 
 struct EditorialSectionHeader: View {
@@ -274,11 +255,22 @@ struct EditorialTripRow: View {
     var subtitle: String?
     var meta: String?
     var status: TripStatus?
-    var action: () -> Void
+    var action: (() -> Void)?
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: AppTheme.Spacing.medium) {
+        Group {
+            if let action {
+                Button(action: action) { rowContent }
+                    .buttonStyle(.plain)
+            } else {
+                rowContent
+            }
+        }
+        .accessibilityLabel(trip.viewModel.tripName)
+    }
+
+    private var rowContent: some View {
+        HStack(spacing: AppTheme.Spacing.medium) {
                 Text(trip.emoji)
                     .font(.title)
                     .frame(width: 48, height: 48)
@@ -333,9 +325,6 @@ struct EditorialTripRow: View {
                 RoundedRectangle(cornerRadius: AppTheme.Radius.large, style: .continuous)
                     .stroke(AppTheme.Editorial.border, lineWidth: 1)
             )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(trip.viewModel.tripName)
     }
 }
 
@@ -390,7 +379,7 @@ struct WaniPreviewRow: View {
     let title: String
     var subtitle: String?
     var status: String?
-    var tint: Color = AppTheme.primary
+    var tint: Color = AppTheme.Editorial.forest
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.small) {
@@ -400,7 +389,7 @@ struct WaniPreviewRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.subheadline.weight(subtitle == nil ? .regular : .medium))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(AppTheme.Editorial.primaryText)
                     .lineLimit(1)
 
                 if let subtitle {
@@ -425,7 +414,7 @@ struct WaniPreviewRow: View {
 struct WaniPrimaryActionButton: View {
     let title: String
     var systemImage: String?
-    var tint: Color = AppTheme.primary
+    var tint: Color = AppTheme.Editorial.forest
     var action: () -> Void
 
     var body: some View {
@@ -467,7 +456,7 @@ struct ActionCard: View {
                 Spacer()
 
                 Image(systemName: "chevron.right")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
             }
         }
     }
@@ -565,7 +554,7 @@ struct RemoteTripImage: View {
                 switch phase {
                 case .empty:
                     Rectangle()
-                        .fill(AppTheme.card)
+                        .fill(AppTheme.Editorial.card)
                         .overlay {
                             ProgressView()
                         }
@@ -576,14 +565,14 @@ struct RemoteTripImage: View {
                         .frame(width: proxy.size.width, height: proxy.size.height)
                 case .failure:
                     Rectangle()
-                        .fill(AppTheme.primary.opacity(0.15))
+                        .fill(AppTheme.Editorial.forest.opacity(0.15))
                         .overlay {
                             Image(systemName: "photo")
                                 .font(.title2)
-                                .foregroundStyle(AppTheme.primary)
+                                .foregroundStyle(AppTheme.Editorial.forest)
                         }
                 @unknown default:
-                    Rectangle().fill(AppTheme.card)
+                    Rectangle().fill(AppTheme.Editorial.card)
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
@@ -602,7 +591,7 @@ struct AvatarCluster: View {
             ForEach(Array(participants.prefix(maxVisible).enumerated()), id: \.element.id) { index, participant in
                 AvatarInitial(name: participant.name, size: size, color: avatarColor(index))
                     .overlay {
-                        Circle().stroke(AppTheme.background, lineWidth: 2)
+                        Circle().stroke(AppTheme.Editorial.background, lineWidth: 2)
                     }
             }
 

@@ -11,11 +11,12 @@ Convert every existing Wanderaid page from the legacy shell to the Calm Editoria
 
 ## Current state (2026-08-20)
 
-- Converted: TripDashboardView (header, hero carousel, attention, money, bottom nav, account) — still has 11 legacy-token refs to sweep.
-- Legacy: TripSummaryView, ExpenseViews, PeopleViews, TripPlacesView, TripPlanningView, AuthViews, TripForms, SharedViews primitives (WaniCard etc.), AllTripsSheet.
-- Shared primitives to build/extend: Editorial card shell, section header, trip row, money row, attention row, empty-state card, confirmation component.
+- Converted (all shipped on main, 67229ea..00eb15b + closeout polish): TripDashboardView, TripSummaryView, ExpenseViews, PeopleViews, TripPlacesView, TripPlanningView, AuthViews, TripForms, SharedViews primitives (calm card, EditorialSectionHeader, EditorialTripRow, calm confirmation surface), AllTripsSheet (now uses EditorialTripRow).
+- Deferred from this pass (tracked in todo-feedback): MoneyRow + EditorialEmptyState + WaniConfirmationDialog full pattern (pages use per-page rows/EmptyFeatureCard and native confirmations — all safety rules preserved), user-first money on trip-level screens (needs currentAccountID threading), organizer/traveler grouping on People (uses flat sorted list), places shortlist/timeline groupings (flat lists), FeatureColor palette refinement (places/chat/map accents), Calendar View placeholder.
 
 ## Phases
+
+**Status: ALL PHASES DONE 2026-08-20** — 8 commits on main (67229ea..00eb15b). Build green, 97/97 tests green, whitespace clean. Remaining follow-ups: light/dark/auto visual review on device/simulator; user-first money on trip-level screens (needs currentAccountID threading); FeatureColor palette refinement (places/chat/map accents still use legacy feature colors); Calendar View placeholder still future work.
 
 ### Phase 1 — Shared primitives (design-system layer)
 

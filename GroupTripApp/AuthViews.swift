@@ -117,7 +117,7 @@ private struct ModeSelectionView: View {
                         title: "Sign in / Create account",
                         subtitle: "Use your cloud-backed trips and collaboration features.",
                         systemImage: "person.crop.circle.badge.checkmark",
-                        tint: AppTheme.primary,
+                        tint: AppTheme.Editorial.forest,
                         action: chooseSignedInMode
                     )
                 }

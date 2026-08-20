@@ -1573,22 +1573,22 @@ final class TripStatusTintTests: XCTestCase {
         XCTAssertNotEqual(past.1, current.1)
     }
 
-    func testCurrentTripTintIsSuccessAccent() {
+    func testCurrentTripTintUsesForestAccent() {
         let current = rgba(TripStatus.current.tint)
-        let success = rgba(AppTheme.success)
+        let forest = rgba(AppTheme.Editorial.forest)
 
-        XCTAssertEqual(current.0, success.0, accuracy: 0.001)
-        XCTAssertEqual(current.1, success.1, accuracy: 0.001)
-        XCTAssertEqual(current.2, success.2, accuracy: 0.001)
+        XCTAssertEqual(current.0, forest.0, accuracy: 0.001)
+        XCTAssertEqual(current.1, forest.1, accuracy: 0.001)
+        XCTAssertEqual(current.2, forest.2, accuracy: 0.001)
     }
 
-    func testFutureTripTintIsPrimaryAccent() {
+    func testFutureTripTintUsesForestDeepAccent() {
         let future = rgba(TripStatus.future.tint)
-        let primary = rgba(AppTheme.primary)
+        let forestDeep = rgba(AppTheme.Editorial.forestDeep)
 
-        XCTAssertEqual(future.0, primary.0, accuracy: 0.001)
-        XCTAssertEqual(future.1, primary.1, accuracy: 0.001)
-        XCTAssertEqual(future.2, primary.2, accuracy: 0.001)
+        XCTAssertEqual(future.0, forestDeep.0, accuracy: 0.001)
+        XCTAssertEqual(future.1, forestDeep.1, accuracy: 0.001)
+        XCTAssertEqual(future.2, forestDeep.2, accuracy: 0.001)
     }
 }
 

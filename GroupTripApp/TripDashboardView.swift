@@ -502,19 +502,29 @@ private struct AllTripsGroup: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            DashboardSectionTitle(title)
+            EditorialSectionHeader(title: title)
 
             VStack(spacing: 12) {
                 ForEach(trips) { trip in
                     NavigationLink {
                         TripSummaryView(trip: trip, store: store)
                     } label: {
-                        CompactTripCard(trip: trip)
+                        EditorialTripRow(
+                            trip: trip,
+                            meta: tripMeta(trip),
+                            status: trip.status
+                        )
                     }
                     .buttonStyle(.plain)
                 }
             }
         }
+    }
+
+    private func tripMeta(_ trip: TripPlan) -> String {
+        let travelers = trip.viewModel.calculator.participants.count
+        let openPlans = trip.planningItems.filter { !$0.isDone }.count
+        return "\\(travelers) travelers · \\(openPlans) open plans"
     }
 }
 
@@ -647,7 +657,7 @@ struct JoinTripInviteView: View {
                 }
                 .padding(AppTheme.Spacing.large)
             }
-            .background(AppTheme.background)
+            .background(AppTheme.Editorial.background)
             .navigationTitle("Invite Code")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -984,51 +994,5 @@ private struct DashboardCardModifier: ViewModifier {
 private extension View {
     func dashboardCard() -> some View {
         modifier(DashboardCardModifier())
-    }
-}
-
-struct CompactTripCard: View {
-    let trip: TripPlan
-    @ObservedObject private var viewModel: TripCalculatorViewModel
-
-    init(trip: TripPlan) {
-        self.trip = trip
-        _viewModel = ObservedObject(wrappedValue: trip.viewModel)
-    }
-
-    var body: some View {
-        HStack(spacing: 12) {
-            RemoteTripImage(urlString: trip.imageURL)
-                .frame(width: 120, height: 108)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text(viewModel.tripName)
-                    .font(.headline)
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                Text(trip.destination)
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.Editorial.secondaryText)
-                    .lineLimit(1)
-
-                HStack {
-                    Label(trip.dateRangeText, systemImage: "calendar")
-                    Spacer(minLength: 4)
-                    Text(viewModel.calculator.totalExpenses.wholeCurrencyText)
-                        .fontWeight(.semibold)
-                }
-                .font(.caption2)
-                .foregroundStyle(AppTheme.Editorial.secondaryText)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(12)
-        .background(AppTheme.Editorial.card)
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(AppTheme.Editorial.border, lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

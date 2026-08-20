@@ -259,6 +259,19 @@ From the first full `wanderaid-security-testing` pass (adversarial, OWASP-aligne
 - `PrivacyInfo.xcprivacy` missing and no privacy policy/support URL in docs: required for App Store — manifest + draft policy created (2026-08-20, `GroupTripApp/PrivacyInfo.xcprivacy`, `docs/privacy-policy.md`); Xcode target wiring pending the in-flight M3 pbxproj commit; support URL/TBD placeholders to fill before submission.
 - Accepted infos: no app-level rate limit on invite lookup (entropy mitigates), PostgREST `select=*` over-selection (explicit column lists are best practice), unencrypted UserDefaults trip cache (non-credential), no cert pinning (future hardening), profiles readable by all authenticated (by design).
 
+### 26. Calm Editorial app-wide rollout (variant 004) — done + follow-ups
+
+Status: Done
+Area: Design, App-wide
+
+App-wide conversion to the Calm Editorial system from `004-calm-app-screens` shipped on main (8 phases, 67229ea..00eb15b + closeout polish): all pages converted (trip detail, expenses/balances, people, places, itinerary, auth/create/join, all-trips), shared primitives added (calm card, EditorialSectionHeader, EditorialTripRow), confirmations preserved (QA-verified: all 8 destructive flows byte-identical). Follow-ups:
+
+- Light/dark/auto visual review on device/simulator before TestFlight (final polish gate).
+- User-first money on trip-level screens: needs currentAccountID threaded into TripSummaryView/ExpenseTrackerView (dashboard already does this).
+- FeatureColor palette refinement: places/chat/map feature accents still use legacy palette entries.
+- People organizer/traveler grouping and places shortlist / itinerary timeline groupings (flat lists today; direction sketches in 004).
+- Calendar View remains a placeholder (future calendar integration work).
+
 ---
 
 ## Later
