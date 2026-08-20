@@ -62,10 +62,11 @@ struct TripSummaryView: View {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
                                 Text(viewModel.tripName)
-                                    .font(.title2.weight(.semibold))
+                                    .font(.system(size: 30, weight: .semibold, design: .serif))
+                                    .foregroundStyle(AppTheme.Editorial.primaryText)
                                 Text(trip.destination)
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(AppTheme.Editorial.secondaryText)
                             }
 
                             Spacer()
@@ -83,7 +84,7 @@ struct TripSummaryView: View {
 
                         Text(trip.fullDateRangeText)
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
 
                         if store.supportsCloudSync, store.isLoading {
                             WaniCard(padding: AppTheme.Spacing.medium, radius: AppTheme.Radius.medium) {
@@ -91,7 +92,7 @@ struct TripSummaryView: View {
                                     ProgressView()
                                     Text("Syncing latest trip updates…")
                                         .font(.caption)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                                 }
                             }
                         }
@@ -105,12 +106,13 @@ struct TripSummaryView: View {
                     }
 
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
-                        Text("Trip Overview")
-                            .font(.headline)
+                        EditorialSectionHeader(title: "Trip sections", subtitle: "Tap a card to manage that part of the trip.")
 
-                        Text("Tap a card to manage that part of the trip.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        TripGlanceCard(
+                            openPlans: trip.planningItems.filter { !$0.isDone }.count,
+                            places: trip.places.count,
+                            travelers: viewModel.calculator.participants.count
+                        )
 
                         NavigationLink {
                             PeopleFeatureView(
@@ -229,7 +231,7 @@ struct TripSummaryView: View {
                 .padding(AppTheme.Spacing.large)
             }
         }
-        .background(AppTheme.background)
+        .background(AppTheme.Editorial.background)
         .toolbar(.hidden, for: .navigationBar)
         .confirmationDialog(
             "Leave this trip?",
@@ -307,7 +309,7 @@ private struct ArchiveTripCard: View {
                             .font(.subheadline.weight(.semibold))
                         Text("Owners can hide this shared trip from active lists without deleting trip data.")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                     }
 
                     Spacer()
@@ -344,7 +346,7 @@ private struct LeaveTripCard: View {
                             .font(.subheadline.weight(.semibold))
                         Text("Remove this trip from your account without deleting it for anyone else.")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                     }
 
                     Spacer()
@@ -388,7 +390,7 @@ private struct InvitePeopleCard: View {
                             .font(.subheadline.weight(.semibold))
                         Text("Create a code friends can use to join this trip.")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                     }
 
                     Spacer()
@@ -410,14 +412,14 @@ private struct InvitePeopleCard: View {
                         }
                         .font(.caption.weight(.semibold))
                         .buttonStyle(.bordered)
-                        .tint(didCopyInviteCode ? AppTheme.success : AppTheme.primary)
+                        .tint(didCopyInviteCode ? AppTheme.success : AppTheme.Editorial.forest)
                         .accessibilityLabel(didCopyInviteCode ? "Invite code copied" : "Copy invite code")
                     }
                 }
 
                 Button(inviteForTrip == nil ? "Create Invite Code" : "Create Another Code", action: createInvite)
                     .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.success)
+                    .tint(AppTheme.Editorial.forest)
             }
         }
     }
@@ -451,10 +453,10 @@ private struct PeoplePreviewCard: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(participants.count) \(participants.count == 1 ? "traveler" : "travelers")")
                             .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(AppTheme.Editorial.primaryText)
                         Text(previewNames)
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                             .lineLimit(1)
                     }
                 }
@@ -488,7 +490,7 @@ private struct PlanningPreviewCard: View {
                     if items.count > previewItems.count {
                         Text("+\(items.count - previewItems.count) more")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                     }
                 }
             }
@@ -521,7 +523,7 @@ private struct PlacesPreviewCard: View {
                     if places.count > previewPlaces.count {
                         Text("+\(places.count - previewPlaces.count) more")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                     }
                 }
             }
@@ -538,14 +540,51 @@ private struct ExpenseSnapshotCard: View {
         SummaryPreviewCard(title: "Expense Snapshot", systemImage: "receipt.fill", tint: AppTheme.FeatureColor.expenses) {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
                 Text(totalExpenses.currencyText)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .font(.system(size: 26, weight: .semibold, design: .serif))
+                    .foregroundStyle(AppTheme.Editorial.primaryText)
                 Text("\(expenseCount) \(expenseCount == 1 ? "expense" : "expenses") • \(settlementHint)")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
                     .lineLimit(2)
             }
         }
+    }
+}
+
+private struct TripGlanceCard: View {
+    let openPlans: Int
+    let places: Int
+    let travelers: Int
+
+    var body: some View {
+        WaniCard(padding: AppTheme.Spacing.medium, radius: AppTheme.Radius.medium) {
+            HStack(spacing: 0) {
+                glanceStat(value: "\(openPlans)", label: "Open plans")
+                glanceDivider
+                glanceStat(value: "\(places)", label: "Saved places")
+                glanceDivider
+                glanceStat(value: "\(travelers)", label: "Travelers")
+            }
+        }
+    }
+
+    private func glanceStat(value: String, label: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.system(size: 22, weight: .semibold, design: .serif))
+                .foregroundStyle(AppTheme.Editorial.primaryText)
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(AppTheme.Editorial.secondaryText)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var glanceDivider: some View {
+        Rectangle()
+            .fill(AppTheme.Editorial.border)
+            .frame(width: 1, height: 32)
+            .padding(.horizontal, AppTheme.Spacing.small)
     }
 }
 
@@ -562,7 +601,7 @@ private struct SummaryPreviewCard<Content: View>: View {
                     WaniIconBadge(systemImage: systemImage, tint: tint, size: AppTheme.IconSize.small, cornerRadius: AppTheme.Radius.small)
                     Text(title)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(AppTheme.Editorial.primaryText)
                     Spacer()
                     Text("View details")
                         .font(.caption.weight(.semibold))
@@ -584,6 +623,6 @@ private struct PreviewEmptyRow: View {
     var body: some View {
         Text(text)
             .font(.subheadline)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(AppTheme.Editorial.secondaryText)
     }
 }
