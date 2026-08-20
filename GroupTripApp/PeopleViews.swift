@@ -15,7 +15,7 @@ struct PeopleTabView: View {
                     .padding(.vertical, 14)
             }
             .buttonStyle(.borderedProminent)
-            .tint(AppTheme.primary)
+            .tint(AppTheme.Editorial.forest)
 
             if viewModel.calculator.participants.isEmpty {
                 EmptyFeatureCard(title: "No people yet", subtitle: "Add travelers before tracking shared expenses.")
@@ -139,7 +139,7 @@ struct PersonCard: View {
                     .font(.body.weight(.semibold))
                 Text("\(expenseCount) expenses paid")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
             }
 
             Spacer()
@@ -158,8 +158,12 @@ struct PersonCard: View {
             .buttonStyle(.borderless)
         }
         .padding(16)
-        .background(AppTheme.paper)
+        .background(AppTheme.Editorial.card)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+        )
     }
 }
 
@@ -168,9 +172,7 @@ struct BalanceCards: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Individual Balances")
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            EditorialSectionHeader(title: "Balances")
 
             if balances.isEmpty {
                 EmptyFeatureCard(title: "Add people to see balances", subtitle: "Balances appear after travelers and expenses are added.")
@@ -189,20 +191,24 @@ struct BalanceCards: View {
                                 Text(balance.net.signedCurrencyText)
                                     .font(.headline)
                                     .monospacedDigit()
-                                    .foregroundStyle(balance.net > 0 ? AppTheme.success : balance.net < 0 ? AppTheme.error : .secondary)
+                                    .foregroundStyle(balance.net > 0 ? AppTheme.Editorial.forest : balance.net < 0 ? AppTheme.error : .secondary)
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 6)
-                                    .background((balance.net > 0 ? AppTheme.success : balance.net < 0 ? AppTheme.error : Color.secondary).opacity(0.12))
+                                    .background((balance.net > 0 ? AppTheme.Editorial.forest : balance.net < 0 ? AppTheme.error : Color.secondary).opacity(0.12))
                                     .clipShape(Capsule())
                             }
 
                             Text(balanceStatusText(for: balance.net))
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(AppTheme.Editorial.secondaryText)
                         }
                         .padding(14)
-                        .background(AppTheme.paper)
+                        .background(AppTheme.Editorial.card)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+                        )
                     }
                 }
             }
@@ -227,9 +233,7 @@ struct SettlementCards: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Suggested Settlements")
-                .font(.headline)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            EditorialSectionHeader(title: "Suggested settlements")
 
             if settlements.isEmpty {
                 EmptyFeatureCard(title: emptyTitle, subtitle: emptySubtitle)
@@ -239,7 +243,7 @@ struct SettlementCards: View {
                         HStack(spacing: 10) {
                             AvatarInitial(name: settlement.from.name)
                             Image(systemName: "arrow.right")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(AppTheme.Editorial.secondaryText)
                             AvatarInitial(name: settlement.to.name)
 
                             Text("\(settlement.from.name) pays \(settlement.to.name)")
@@ -250,12 +254,16 @@ struct SettlementCards: View {
 
                             Text(settlement.amount.currencyText)
                                 .font(.headline)
-                                .foregroundStyle(AppTheme.primary)
+                                .foregroundStyle(AppTheme.Editorial.forest)
                                 .monospacedDigit()
                         }
                         .padding(14)
-                        .background(AppTheme.paper)
+                        .background(AppTheme.Editorial.card)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+                        )
                     }
                 }
             }
@@ -362,7 +370,7 @@ struct SettlementSection: View {
                 ForEach(settlements) { settlement in
                     HStack(spacing: 12) {
                         Image(systemName: "arrow.right.circle.fill")
-                            .foregroundStyle(AppTheme.primary)
+                            .foregroundStyle(AppTheme.Editorial.forest)
 
                         Text("\(settlement.from.name) pays \(settlement.to.name)")
                             .font(.body.weight(.semibold))
