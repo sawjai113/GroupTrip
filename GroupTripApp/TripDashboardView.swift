@@ -418,7 +418,7 @@ private struct DashboardBottomNav: View {
         .padding(.horizontal, 14)
         .padding(.top, 10)
         .padding(.bottom, 12)
-        .background(.regularMaterial)
+        .background(AppTheme.Editorial.card)
         .overlay(alignment: .top) {
             Divider()
         }
@@ -571,7 +571,7 @@ struct JoinTripInviteView: View {
                                 }
                             }
                             .buttonStyle(.borderedProminent)
-                            .tint(AppTheme.primary)
+                            .tint(AppTheme.Editorial.forest)
                             .disabled(trimmedCode.isEmpty || isLookingUp || isJoining || didJoinTrip)
                         }
                     }
@@ -639,7 +639,7 @@ struct JoinTripInviteView: View {
                                     }
                                 }
                                 .buttonStyle(.borderedProminent)
-                                .tint(AppTheme.success)
+                                .tint(AppTheme.Editorial.forest)
                                 .disabled(isLookingUp || isJoining || didJoinTrip)
                             }
                         }

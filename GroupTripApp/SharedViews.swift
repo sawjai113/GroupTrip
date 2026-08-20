@@ -39,8 +39,12 @@ struct WaniCard<Content: View>: View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(AppTheme.paper)
+            .background(AppTheme.Editorial.card)
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .stroke(AppTheme.Editorial.border, lineWidth: 1)
+            )
     }
 }
 
@@ -87,12 +91,13 @@ private struct DestructiveConfirmationOverlayModifier<Item: Identifiable>: ViewM
                             VStack(spacing: AppTheme.Spacing.small) {
                                 Text(title)
                                     .font(.title3.weight(.semibold))
+                                    .foregroundStyle(AppTheme.Editorial.primaryText)
                                     .multilineTextAlignment(.center)
                                     .frame(maxWidth: .infinity)
 
                                 Text(message(item))
                                     .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(AppTheme.Editorial.secondaryText)
                                     .multilineTextAlignment(.center)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
@@ -117,8 +122,12 @@ private struct DestructiveConfirmationOverlayModifier<Item: Identifiable>: ViewM
                         }
                         .padding(AppTheme.Spacing.large)
                         .frame(maxWidth: 380)
-                        .background(AppTheme.paper)
+                        .background(AppTheme.Editorial.raisedCard)
                         .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.xLarge, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: AppTheme.Radius.xLarge, style: .continuous)
+                                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+                        )
                         .shadow(color: .black.opacity(0.18), radius: 24, y: 12)
                         .padding(.horizontal, AppTheme.Spacing.large)
                     }
@@ -234,6 +243,99 @@ struct WaniSectionHeader: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Calm Editorial shared primitives (variant 004)
+
+struct EditorialSectionHeader: View {
+    let title: String
+    var subtitle: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
+            Text(title.uppercased())
+                .font(.caption.weight(.semibold))
+                .kerning(1.2)
+                .foregroundStyle(AppTheme.Editorial.secondaryText)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct EditorialTripRow: View {
+    let trip: TripPlan
+    var subtitle: String?
+    var meta: String?
+    var status: TripStatus?
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: AppTheme.Spacing.medium) {
+                Text(trip.emoji)
+                    .font(.title)
+                    .frame(width: 48, height: 48)
+                    .background(AppTheme.Editorial.raisedCard)
+                    .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.medium, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppTheme.Radius.medium, style: .continuous)
+                            .stroke(AppTheme.Editorial.border, lineWidth: 1)
+                    )
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(trip.viewModel.tripName)
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(AppTheme.Editorial.primaryText)
+                            .lineLimit(1)
+
+                        if let status, let badge = status.badgeText {
+                            Text(badge)
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(status.tint)
+                                .clipShape(Capsule())
+                        }
+                    }
+
+                    Text(subtitle ?? trip.dateRangeText)
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
+                        .lineLimit(1)
+
+                    if let meta {
+                        Text(meta)
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
+            }
+            .padding(AppTheme.Spacing.medium)
+            .background(AppTheme.Editorial.card)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.large, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.Radius.large, style: .continuous)
+                    .stroke(AppTheme.Editorial.border, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(trip.viewModel.tripName)
     }
 }
 
