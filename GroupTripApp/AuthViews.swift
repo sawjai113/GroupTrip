@@ -31,7 +31,7 @@ struct AuthGateView: View {
                 if authViewModel.isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(AppTheme.background)
+                        .background(AppTheme.Editorial.background)
                 } else {
                     ModeSelectionView(
                         chooseDemoMode: appSession.chooseDemoMode,
@@ -64,7 +64,7 @@ struct AuthGateView: View {
         if authViewModel.isLoading {
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(AppTheme.background)
+                .background(AppTheme.Editorial.background)
         } else if authViewModel.isAuthenticated {
             TripDashboardView(
                 store: remoteTripStore,
@@ -95,11 +95,12 @@ private struct ModeSelectionView: View {
                     WanderaidLogoMark(size: 72)
 
                     Text("Wanderaid")
-                        .font(.largeTitle.weight(.bold))
+                        .font(.system(size: 34, weight: .bold, design: .serif))
+                        .foregroundStyle(AppTheme.Editorial.primaryText)
 
                     Text("Choose how you want to plan right now.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                         .multilineTextAlignment(.center)
                 }
 
@@ -124,7 +125,7 @@ private struct ModeSelectionView: View {
                 Spacer()
             }
             .padding(AppTheme.Spacing.xLarge)
-            .background(AppTheme.background)
+            .background(AppTheme.Editorial.background)
         }
     }
 }
@@ -145,17 +146,17 @@ private struct ModeChoiceCard: View {
                     VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
                         Text(title)
                             .font(.headline)
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(AppTheme.Editorial.primaryText)
                         Text(subtitle)
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                             .multilineTextAlignment(.leading)
                     }
 
                     Spacer(minLength: 0)
 
                     Image(systemName: "chevron.right")
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                 }
             }
         }
@@ -179,11 +180,12 @@ private struct LoginView: View {
                     WanderaidLogoMark(size: 68)
 
                     Text("Wanderaid")
-                        .font(.largeTitle.weight(.bold))
+                        .font(.system(size: 34, weight: .bold, design: .serif))
+                        .foregroundStyle(AppTheme.Editorial.primaryText)
 
                     Text("Sign in with Google or Apple, or use a magic link to save and sync cloud trips.")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                         .multilineTextAlignment(.center)
                 }
 
@@ -216,7 +218,7 @@ private struct LoginView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.primary)
+                    .tint(AppTheme.Editorial.forest)
                     .disabled(viewModel.isLoading)
 
                     SignInWithAppleButton(.continue) { request in
@@ -238,7 +240,7 @@ private struct LoginView: View {
 
                         Text("Or sign in with a magic link:")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                     }
 
                     TextField("Email", text: $email)
@@ -247,14 +249,22 @@ private struct LoginView: View {
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .padding(12)
-                        .background(AppTheme.paper)
+                        .background(AppTheme.Editorial.card)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+                        )
 
                     TextField("Display name", text: $displayName)
                         .textContentType(.name)
                         .padding(12)
-                        .background(AppTheme.paper)
+                        .background(AppTheme.Editorial.card)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+                        )
 
                     Button {
                         Task {
@@ -272,12 +282,12 @@ private struct LoginView: View {
                         }
                     }
                     .buttonStyle(.borderedProminent)
-                    .tint(AppTheme.warning)
+                    .tint(AppTheme.Editorial.sand)
                     .disabled(!canSubmit || viewModel.isLoading)
 
                     Text("No password needed. Supabase will email a secure sign-in link.")
                         .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                         .multilineTextAlignment(.center)
 
                     Button(action: exitToModePicker) {
@@ -291,7 +301,7 @@ private struct LoginView: View {
                 Spacer()
             }
             .padding(24)
-            .background(AppTheme.background)
+            .background(AppTheme.Editorial.background)
         }
     }
 

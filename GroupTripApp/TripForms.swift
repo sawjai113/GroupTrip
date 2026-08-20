@@ -42,7 +42,7 @@ struct NewTripView: View {
                                     .frame(height: 82)
                                     .overlay {
                                         RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .stroke(selectedImageURL == image.url && customImageURL.isEmpty ? AppTheme.primary : .clear, lineWidth: 3)
+                                            .stroke(selectedImageURL == image.url && customImageURL.isEmpty ? AppTheme.Editorial.forest : .clear, lineWidth: 3)
                                     }
                                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                             }
@@ -142,7 +142,7 @@ struct AddPersonView: View {
                             .overlay(alignment: .topLeading) {
                                 if names.isEmpty {
                                     Text("Alex\nSam\nTaylor")
-                                        .foregroundStyle(.tertiary)
+                                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                                         .padding(.top, 8)
                                         .padding(.leading, 5)
                                         .allowsHitTesting(false)
