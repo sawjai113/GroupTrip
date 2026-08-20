@@ -63,7 +63,7 @@ struct ExpenseTrackerView: View {
                 .padding(16)
             }
         }
-        .background(AppTheme.background)
+        .background(AppTheme.Editorial.background)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
@@ -128,7 +128,7 @@ struct ExpenseHeader: View {
                 if !destination.isEmpty {
                     Text(destination)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                         .lineLimit(1)
                 }
             }
@@ -139,7 +139,7 @@ struct ExpenseHeader: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(.regularMaterial)
+        .background(AppTheme.Editorial.card)
         .overlay(alignment: .bottom) {
             Divider()
         }
@@ -156,8 +156,12 @@ struct ExpenseStatsCard: View {
             CompactMetric(systemImage: "chart.line.uptrend.xyaxis", label: "Per Person", value: perPersonText)
         }
         .padding(16)
-        .background(AppTheme.paper)
+        .background(AppTheme.Editorial.card)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+        )
     }
 
     private var perPersonText: String {
@@ -175,10 +179,10 @@ struct CompactMetric: View {
         VStack(spacing: 5) {
             Image(systemName: systemImage)
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.primary)
+                .foregroundStyle(AppTheme.Editorial.forest)
             Text(label)
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppTheme.Editorial.secondaryText)
             Text(value)
                 .font(.headline)
                 .lineLimit(1)
@@ -211,13 +215,13 @@ struct ExpenseTabView: View {
                     .padding(.vertical, 14)
             }
             .buttonStyle(.borderedProminent)
-            .tint(AppTheme.primary)
+            .tint(AppTheme.Editorial.forest)
             .disabled(!hasParticipants)
 
             if !hasParticipants {
                 Text("Add at least one person before logging shared expenses.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button(action: addPeople) {
@@ -305,13 +309,13 @@ struct ExpenseCard: View {
                     .font(.body.weight(.semibold))
                 Text("Paid by \(paidBy) • \(expense.participants.count) people")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
                 Text("Shared")
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .background(AppTheme.lightBlue)
+                    .background(AppTheme.Editorial.forest)
                     .clipShape(Capsule())
             }
 
@@ -319,7 +323,7 @@ struct ExpenseCard: View {
 
             Text(expense.amount.currencyText)
                 .font(.headline)
-                .foregroundStyle(AppTheme.primary)
+                .foregroundStyle(AppTheme.Editorial.forest)
                 .monospacedDigit()
 
             Button(action: editExpense) {
@@ -336,8 +340,12 @@ struct ExpenseCard: View {
             .buttonStyle(.borderless)
         }
         .padding(14)
-        .background(AppTheme.paper)
+        .background(AppTheme.Editorial.card)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+        )
     }
 }
 
@@ -360,13 +368,13 @@ struct BalancesTabView: View {
                     .padding(.vertical, 14)
             }
             .buttonStyle(.borderedProminent)
-            .tint(AppTheme.primary)
+            .tint(AppTheme.Editorial.forest)
             .disabled(viewModel.calculator.participants.count < 2)
 
             if viewModel.calculator.participants.count < 2 {
                 Text("Add at least two people to record a direct payment between travelers.")
                     .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -429,9 +437,9 @@ struct DirectPaymentCard: View {
         HStack(spacing: 12) {
             Image(systemName: "arrow.left.arrow.right")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.primary)
+                .foregroundStyle(AppTheme.Editorial.forest)
                 .frame(width: 34, height: 34)
-                .background(AppTheme.primary.opacity(0.12))
+                .background(AppTheme.Editorial.forest.opacity(0.12))
                 .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 5) {
@@ -439,14 +447,14 @@ struct DirectPaymentCard: View {
                     .font(.body.weight(.semibold))
                 Text("\(fromName) paid \(toName)")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
             }
 
             Spacer()
 
             Text(payment.amount.currencyText)
                 .font(.headline)
-                .foregroundStyle(AppTheme.primary)
+                .foregroundStyle(AppTheme.Editorial.forest)
                 .monospacedDigit()
 
             Button(action: editPayment) {
@@ -457,7 +465,11 @@ struct DirectPaymentCard: View {
             .accessibilityLabel("Edit \(payment.title)")
         }
         .padding(14)
-        .background(AppTheme.paper)
+        .background(AppTheme.Editorial.card)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+        )
     }
 }
