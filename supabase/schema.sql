@@ -484,10 +484,19 @@ on public.trip_participants for delete
 to authenticated
 using (public.is_trip_member(trip_id));
 
+drop function if exists public.rename_trip_participant(uuid, uuid, text);
+
+-- Renames a participant's display name and (when provided) syncs the
+-- account link. p_linked_user_id is optional: when null the existing link is
+-- preserved (rename-only call), so legacy callers cannot wipe linked_user_id.
+-- An explicit unlink needs a future dedicated RPC. Note: mirroring the
+-- create path's semantics, any trip member may set a link here; the future
+-- participant-claim UX should enforce link authorization on both paths.
 create or replace function public.rename_trip_participant(
   p_participant_id uuid,
   p_trip_id uuid,
-  p_display_name text
+  p_display_name text,
+  p_linked_user_id uuid default null
 )
 returns void
 language plpgsql
@@ -510,7 +519,8 @@ begin
   end if;
 
   update public.trip_participants
-  set display_name = trimmed_display_name
+  set display_name = trimmed_display_name,
+      linked_user_id = coalesce(p_linked_user_id, linked_user_id)
   where id = p_participant_id
     and trip_id = p_trip_id;
 
@@ -520,9 +530,9 @@ begin
 end;
 $$;
 
-revoke all on function public.rename_trip_participant(uuid, uuid, text) from public;
-revoke all on function public.rename_trip_participant(uuid, uuid, text) from anon;
-grant execute on function public.rename_trip_participant(uuid, uuid, text) to authenticated;
+revoke all on function public.rename_trip_participant(uuid, uuid, text, uuid) from public;
+revoke all on function public.rename_trip_participant(uuid, uuid, text, uuid) from anon;
+grant execute on function public.rename_trip_participant(uuid, uuid, text, uuid) to authenticated;
 
 -- ============================================================
 -- TRIP INVITES

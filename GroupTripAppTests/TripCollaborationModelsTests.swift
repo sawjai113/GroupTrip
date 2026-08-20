@@ -1591,3 +1591,71 @@ final class TripStatusTintTests: XCTestCase {
         XCTAssertEqual(future.2, primary.2, accuracy: 0.001)
     }
 }
+
+final class SupabaseRenameParticipantParamsTests: XCTestCase {
+    func testRenameParamsEncodeLinkedUserIDWhenPresent() throws {
+        let params = SupabaseRenameTripParticipantParams(
+            participantID: UUID(uuidString: "00000000-0000-0000-0000-00000000B040")!,
+            tripID: UUID(uuidString: "00000000-0000-0000-0000-00000000B041")!,
+            displayName: "Alex Rivera",
+            linkedUserID: UUID(uuidString: "00000000-0000-0000-0000-00000000B042")!
+        )
+
+        let json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(params)) as? [String: Any]
+        )
+
+        XCTAssertEqual(json["p_participant_id"] as? String, "00000000-0000-0000-0000-00000000B040")
+        XCTAssertEqual(json["p_trip_id"] as? String, "00000000-0000-0000-0000-00000000B041")
+        XCTAssertEqual(json["p_display_name"] as? String, "Alex Rivera")
+        XCTAssertEqual(json["p_linked_user_id"] as? String, "00000000-0000-0000-0000-00000000B042")
+    }
+
+    func testRenameParamsOmitLinkedUserIDWhenNil() throws {
+        let params = SupabaseRenameTripParticipantParams(
+            participantID: UUID(uuidString: "00000000-0000-0000-0000-00000000B043")!,
+            tripID: UUID(uuidString: "00000000-0000-0000-0000-00000000B044")!,
+            displayName: "Sam",
+            linkedUserID: nil
+        )
+
+        let json = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(params)) as? [String: Any]
+        )
+
+        XCTAssertNil(json["p_linked_user_id"])
+        XCTAssertEqual(json["p_display_name"] as? String, "Sam")
+    }
+}
+
+final class TripStoreParticipantAccountIDTests: XCTestCase {
+    func testCloudStoreUpdateParticipantPreservesAccountIDThroughService() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B045")!
+        let accountID = UUID(uuidString: "00000000-0000-0000-0000-00000000B046")!
+        let alex = Participant(
+            id: UUID(uuidString: "00000000-0000-0000-0000-00000000B047")!,
+            name: "Alex",
+            accountID: accountID
+        )
+        var trip = TripPlan(
+            id: tripID,
+            destination: "Austin",
+            emoji: "🤠",
+            imageURL: "https://example.com/austin.jpg",
+            startDate: SupabaseDateFormatter.date(from: "2026-07-03")!,
+            endDate: SupabaseDateFormatter.date(from: "2026-07-06")!,
+            viewModel: TripCalculatorViewModel.empty(named: "Austin Weekend")
+        )
+        trip.viewModel.calculator.participants = [alex]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updateParticipant(Participant(id: alex.id, name: "Alex Rivera", accountID: accountID), in: tripID)
+
+        let request = try XCTUnwrap(service.updatedParticipantRequest)
+        XCTAssertEqual(request.participant.id, alex.id)
+        XCTAssertEqual(request.participant.name, "Alex Rivera")
+        XCTAssertEqual(request.participant.accountID, accountID)
+        XCTAssertNil(store.syncError)
+    }
+}

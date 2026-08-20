@@ -209,7 +209,8 @@ struct SupabaseTripService: TripSyncServicing {
                 params: SupabaseRenameTripParticipantParams(
                     participantID: trimmedParticipant.id,
                     tripID: tripID,
-                    displayName: trimmedParticipant.name
+                    displayName: trimmedParticipant.name,
+                    linkedUserID: trimmedParticipant.accountID
                 )
             )
             .execute()
@@ -670,11 +671,13 @@ struct SupabaseRenameTripParticipantParams: Encodable {
     var participantID: UUID
     var tripID: UUID
     var displayName: String
+    var linkedUserID: UUID?
 
     enum CodingKeys: String, CodingKey {
         case participantID = "p_participant_id"
         case tripID = "p_trip_id"
         case displayName = "p_display_name"
+        case linkedUserID = "p_linked_user_id"
     }
 }
 
