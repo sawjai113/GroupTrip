@@ -256,7 +256,7 @@ From the first full `wanderaid-security-testing` pass (adversarial, OWASP-aligne
 - RPC/function ACL drift (anon EXECUTE on accept_trip_invite, archive_trip, leave_trip, is_trip_member, is_trip_owner, and the trigger helpers): Done (2026-08-20) — explicit revokes added to schema.sql (FUNCTION ACL LOCKDOWN section), applied live, verified anon/public execute now covers ONLY lookup_active_trip_invite, and trigger smoke passed (auth hook + authenticated DML still work).
 - `linked_user_id` settable by any trip member: tracked in item 8 — keep until the participant-claim UX enforces link authorization.
 - Leftover `kv_store_e2e444bd` table (0 policies, RLS on, inert): drop it — needs confirmation since it's a destructive drop.
-- `PrivacyInfo.xcprivacy` missing and no privacy policy/support URL in docs: required for App Store — add before TestFlight/App Store Connect submission.
+- `PrivacyInfo.xcprivacy` missing and no privacy policy/support URL in docs: required for App Store — manifest + draft policy created (2026-08-20, `GroupTripApp/PrivacyInfo.xcprivacy`, `docs/privacy-policy.md`); Xcode target wiring pending the in-flight M3 pbxproj commit; support URL/TBD placeholders to fill before submission.
 - Accepted infos: no app-level rate limit on invite lookup (entropy mitigates), PostgREST `select=*` over-selection (explicit column lists are best practice), unencrypted UserDefaults trip cache (non-credential), no cert pinning (future hardening), profiles readable by all authenticated (by design).
 
 ---
