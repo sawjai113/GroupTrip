@@ -65,7 +65,7 @@ struct TripPlanningView: View {
             }
             .padding(AppTheme.Spacing.large)
         }
-        .background(AppTheme.background)
+        .background(AppTheme.Editorial.background)
         .navigationTitle("Itinerary")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -114,7 +114,7 @@ struct TripPlanningView: View {
     }
 
     private var header: some View {
-        WaniSectionHeader(
+        EditorialSectionHeader(
             title: "Itinerary",
             subtitle: "Planning items, bookings, dates, and schedule notes for this trip."
         )
@@ -131,7 +131,7 @@ struct TripPlanningView: View {
                             .font(.headline)
                         Text("Placeholder for a future native, third-party, or hybrid calendar integration.")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                     }
 
                     Spacer(minLength: 0)
@@ -210,16 +210,16 @@ private struct CalendarPreviewGrid: View {
                 ForEach(weekdays, id: \.self) { weekday in
                     Text(weekday)
                         .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                         .frame(maxWidth: .infinity)
                 }
 
                 ForEach(1...21, id: \.self) { day in
                     Text("\(day)")
                         .font(.caption.weight(highlightedDays.contains(day) ? .semibold : .regular))
-                        .foregroundStyle(highlightedDays.contains(day) ? .white : .secondary)
+                        .foregroundStyle(highlightedDays.contains(day) ? .white : AppTheme.Editorial.secondaryText)
                         .frame(maxWidth: .infinity, minHeight: 30)
-                        .background(highlightedDays.contains(day) ? AppTheme.FeatureColor.itinerary : AppTheme.background)
+                        .background(highlightedDays.contains(day) ? AppTheme.FeatureColor.itinerary : AppTheme.Editorial.background)
                         .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.small, style: .continuous))
                 }
             }
@@ -236,7 +236,7 @@ private struct TripPlanningItemCard: View {
     var edit: () -> Void
 
     private var itemTint: Color {
-        item.isDone ? AppTheme.success : AppTheme.FeatureColor.itinerary
+        item.isDone ? AppTheme.Editorial.forest : AppTheme.FeatureColor.itinerary
     }
 
     var body: some View {
@@ -252,8 +252,8 @@ private struct TripPlanningItemCard: View {
                     HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.small) {
                         Text(item.title)
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(item.isDone ? .secondary : .primary)
-                            .strikethrough(item.isDone, color: .secondary)
+                            .foregroundStyle(item.isDone ? AppTheme.Editorial.secondaryText : AppTheme.Editorial.primaryText)
+                            .strikethrough(item.isDone, color: AppTheme.Editorial.secondaryText)
 
                         Spacer(minLength: AppTheme.Spacing.small)
 
@@ -281,14 +281,14 @@ private struct TripPlanningItemCard: View {
                     if let note = item.displayNote {
                         Text(note)
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
 
                     if let date = item.date {
                         Label(Self.dateFormatter.string(from: date), systemImage: "calendar")
                             .font(.caption.weight(.medium))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                     }
                 }
             }
