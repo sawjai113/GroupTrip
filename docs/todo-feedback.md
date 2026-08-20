@@ -237,14 +237,14 @@ Feedback notes:
 
 ### 8. Android portability audit follow-ups (2026-08-19)
 
-Status: Next
+Status: Done
 Area: Architecture, Portability
 
 From the cross-platform portability audit of the M3 range (`37aafb8..HEAD`). Verdict: PASS — no blockers. Three follow-ups:
 
-- `rename_trip_participant` RPC cannot persist `linked_user_id`: the update path only carries name params (`SupabaseTripService.swift:669-679`) while fetch/create already round-trip the field. Extend the RPC (or add a link RPC) before the participant-link UI ships — one server-side change fixes both platforms.
+- `rename_trip_participant` RPC cannot persist `linked_user_id`: Done (2026-08-20) — RPC now accepts `p_linked_user_id` (null preserves the existing link; grants verified live: authenticated only) and the iOS update path sends the participant's `accountID` (`SupabaseTripService.swift`).
 - TripStatus `tint` moved out of model files: Done (2026-08-19) — `TripModels.swift` no longer imports SwiftUI; the Color mapping lives in the view layer (`SharedViews.swift`) with regression tests.
-- RPC signature reference doc: deferred until Android/Kotlin service work begins; RPC names are already enumerated in `docs/qa/qa-report-milestone-2.md`.
+- RPC signature reference doc: deferred until Android/Kotlin service work begins; RPC names are already enumerated in `docs/qa/qa-report-milestone-2.md`. Note for that work: any trip member can set `linked_user_id` on create and update — the future participant-claim UX should enforce link authorization on both paths.
 
 ---
 
