@@ -58,7 +58,7 @@ struct TripPlacesView: View {
             }
             .padding(AppTheme.Spacing.large)
         }
-        .background(AppTheme.background)
+        .background(AppTheme.Editorial.background)
         .navigationTitle("Places")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -107,9 +107,9 @@ struct TripPlacesView: View {
     }
 
     private var header: some View {
-        WaniSectionHeader(
-            title: "Places & Interests",
-            subtitle: "Saved restaurants, shops, attractions, and ideas for this trip."
+        EditorialSectionHeader(
+            title: "Saved places",
+            subtitle: "Restaurants, shops, attractions, and ideas for this trip."
         )
     }
 
@@ -163,7 +163,7 @@ private struct TripPlaceCard: View {
                     HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.small) {
                         Text(place.name)
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(AppTheme.Editorial.primaryText)
 
                         Spacer(minLength: AppTheme.Spacing.small)
 
@@ -190,7 +190,7 @@ private struct TripPlaceCard: View {
                     if let note = place.displayNote {
                         Text(note)
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
