@@ -1,4 +1,4 @@
-import SwiftUI
+import Foundation
 
 struct TripPlace: Identifiable, Hashable {
     let id: UUID
@@ -108,14 +108,6 @@ enum TripStatus {
         case .past: nil
         case .current: "NOW"
         case .future: "UPCOMING"
-        }
-    }
-
-    var tint: Color {
-        switch self {
-        case .past: .secondary
-        case .current: AppTheme.success
-        case .future: AppTheme.primary
         }
     }
 }

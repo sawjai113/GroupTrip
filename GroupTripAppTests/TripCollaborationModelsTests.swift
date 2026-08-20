@@ -1,4 +1,6 @@
 import XCTest
+import SwiftUI
+import UIKit
 @testable import GroupTripApp
 
 final class SupabaseDTOTests: XCTestCase {
@@ -1547,5 +1549,45 @@ final class TripCollaborationModelsTests: XCTestCase {
         XCTAssertEqual(collaboration.participants.count, 1)
         XCTAssertEqual(collaboration.participants[0].id, participantID)
         XCTAssertEqual(collaboration.participants[0].linkedMemberID, memberID)
+    }
+}
+
+final class TripStatusTintTests: XCTestCase {
+    private func rgba(_ color: Color) -> (CGFloat, CGFloat, CGFloat, CGFloat) {
+        let uiColor = UIColor(color)
+        var r: CGFloat = 0
+        var g: CGFloat = 0
+        var b: CGFloat = 0
+        var a: CGFloat = 0
+        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return (r, g, b, a)
+    }
+
+    func testTripStatusTintsAreDistinct() {
+        let past = rgba(TripStatus.past.tint)
+        let current = rgba(TripStatus.current.tint)
+        let future = rgba(TripStatus.future.tint)
+
+        XCTAssertNotEqual(past.0, current.0)
+        XCTAssertNotEqual(current.0, future.0)
+        XCTAssertNotEqual(past.1, current.1)
+    }
+
+    func testCurrentTripTintIsSuccessAccent() {
+        let current = rgba(TripStatus.current.tint)
+        let success = rgba(AppTheme.success)
+
+        XCTAssertEqual(current.0, success.0, accuracy: 0.001)
+        XCTAssertEqual(current.1, success.1, accuracy: 0.001)
+        XCTAssertEqual(current.2, success.2, accuracy: 0.001)
+    }
+
+    func testFutureTripTintIsPrimaryAccent() {
+        let future = rgba(TripStatus.future.tint)
+        let primary = rgba(AppTheme.primary)
+
+        XCTAssertEqual(future.0, primary.0, accuracy: 0.001)
+        XCTAssertEqual(future.1, primary.1, accuracy: 0.001)
+        XCTAssertEqual(future.2, primary.2, accuracy: 0.001)
     }
 }

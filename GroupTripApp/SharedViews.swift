@@ -1,5 +1,17 @@
 import SwiftUI
 
+// MARK: - TripStatus display mapping (view layer)
+
+extension TripStatus {
+    var tint: Color {
+        switch self {
+        case .past: .secondary
+        case .current: AppTheme.success
+        case .future: AppTheme.primary
+        }
+    }
+}
+
 struct BackButton: View {
     @Environment(\.dismiss) private var dismiss
 
