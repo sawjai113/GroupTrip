@@ -306,7 +306,7 @@ private struct AccountSettingsView: View {
                                 .font(.headline)
                             Text(modeBadge?.title ?? "Account")
                                 .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(AppTheme.Editorial.secondaryText)
                         }
                     }
                     .padding(.vertical, 4)
@@ -534,8 +534,8 @@ struct JoinTripInviteView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
-                    WaniSectionHeader(
-                        title: "Join a Trip",
+                    EditorialSectionHeader(
+                        title: "Join a trip",
                         subtitle: "Use a friend’s invite code to add the trip to your signed-in Wanderaid account."
                     )
 
@@ -544,10 +544,10 @@ struct JoinTripInviteView: View {
                             VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
                                 Label("Signed-in join", systemImage: "person.crop.circle.badge.checkmark")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(AppTheme.success)
+                                    .foregroundStyle(AppTheme.Editorial.forest)
                                 Text("You’ll join with this account, and Wanderaid will refresh your cloud trips after the invite is accepted.")
                                     .font(.footnote)
-                                    .foregroundStyle(.secondary)
+                                    .foregroundStyle(AppTheme.Editorial.secondaryText)
                                     .fixedSize(horizontal: false, vertical: true)
                             }
 
@@ -580,13 +580,13 @@ struct JoinTripInviteView: View {
                         WaniCard {
                             HStack(alignment: .top, spacing: AppTheme.Spacing.small) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(AppTheme.success)
+                                    .foregroundStyle(AppTheme.Editorial.forest)
                                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
                                     Text("Trip joined")
                                         .font(.subheadline.weight(.semibold))
                                     Text("Your cloud trips were refreshed. The joined trip is now on your dashboard.")
                                         .font(.footnote)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
                             }
@@ -617,10 +617,10 @@ struct JoinTripInviteView: View {
                                         .font(.title3.weight(.semibold))
                                     Text("Invite role: \(preview.role.rawValue.capitalized) collaborator")
                                         .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                                     Text("Because you’re signed in, this trip will stay linked to your account after relaunch.")
                                         .font(.footnote)
-                                        .foregroundStyle(.secondary)
+                                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                                         .fixedSize(horizontal: false, vertical: true)
                                 }
 
@@ -1009,7 +1009,7 @@ struct CompactTripCard: View {
                     .lineLimit(2)
                 Text(trip.destination)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
                     .lineLimit(1)
 
                 HStack {
@@ -1019,7 +1019,7 @@ struct CompactTripCard: View {
                         .fontWeight(.semibold)
                 }
                 .font(.caption2)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppTheme.Editorial.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
