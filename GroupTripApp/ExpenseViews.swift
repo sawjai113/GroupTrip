@@ -23,12 +23,12 @@ struct ExpenseTrackerView: View {
                 VStack(spacing: 16) {
                     ExpenseStatsCard(viewModel: viewModel)
 
-                    Picker("Expense view", selection: $selectedTab) {
-                        ForEach(ExpenseTab.allCases) { tab in
-                            Text(tab.title).tag(tab)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    EditorialSegmentedControl(
+                        options: ExpenseTab.allCases,
+                        selection: $selectedTab,
+                        display: { $0.title },
+                        accessibilityLabel: "Expense view"
+                    )
 
                     switch selectedTab {
                     case .expenses:

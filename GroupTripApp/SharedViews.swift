@@ -633,3 +633,302 @@ extension TripPlanDate {
         return formatter
     }()
 }
+
+// MARK: - Calm Editorial form controls (inputs & dropdowns)
+
+/// Shared label style for editorial form fields: uppercase caption with letterspacing.
+struct EditorialFieldLabel: View {
+    let title: String
+
+    var body: some View {
+        Text(title.uppercased())
+            .font(.caption.weight(.semibold))
+            .kerning(1.2)
+            .foregroundStyle(AppTheme.Editorial.secondaryText)
+    }
+}
+
+/// Card shell for a form control: raised surface, hairline border, soft radius.
+/// Pass `isHighlighted` (e.g. focused text input) for the forest emphasis ring.
+struct EditorialFieldCard<Content: View>: View {
+    var isHighlighted: Bool = false
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, AppTheme.Spacing.large)
+            .padding(.vertical, AppTheme.Spacing.medium)
+            .background(AppTheme.Editorial.raisedCard)
+            .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.medium, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: AppTheme.Radius.medium, style: .continuous)
+                    .stroke(
+                        isHighlighted ? AppTheme.Editorial.forest : AppTheme.Editorial.border,
+                        lineWidth: isHighlighted ? 1.5 : 1
+                    )
+            )
+    }
+}
+
+/// Text input matching the Calm Editorial language: optional uppercase label,
+/// raised card field, muted placeholder, forest focus ring.
+struct EditorialTextField: View {
+    var label: String? = nil
+    let placeholder: String
+    @Binding var text: String
+    var axis: Axis = .horizontal
+    var lineLimit: ClosedRange<Int>? = nil
+    var isSecure: Bool = false
+    var keyboardType: UIKeyboardType = .default
+    var textContentType: UITextContentType? = nil
+    var autocapitalization: TextInputAutocapitalization? = nil
+    var autocorrectionDisabled: Bool = false
+    var multilineTextAlignment: TextAlignment = .leading
+    var font: Font = .body
+
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
+            if let label {
+                EditorialFieldLabel(title: label)
+            }
+
+            EditorialFieldCard(isHighlighted: isFocused) {
+                ZStack(alignment: .leading) {
+                    if text.isEmpty {
+                        Text(placeholder)
+                            .font(font)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
+                            .multilineTextAlignment(multilineTextAlignment)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+
+                    inputControl
+                        .font(font)
+                        .focused($isFocused)
+                        .foregroundStyle(AppTheme.Editorial.primaryText)
+                        .tint(AppTheme.Editorial.forest)
+                        .keyboardType(keyboardType)
+                        .textContentType(textContentType)
+                        .textInputAutocapitalization(autocapitalization)
+                        .autocorrectionDisabled(autocorrectionDisabled)
+                        .multilineTextAlignment(multilineTextAlignment)
+                        .accessibilityLabel(label ?? placeholder)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var inputControl: some View {
+        if isSecure {
+            SecureField("", text: $text)
+        } else if let lineLimit {
+            TextField("", text: $text, axis: axis)
+                .lineLimit(lineLimit.lowerBound...lineLimit.upperBound)
+        } else {
+            TextField("", text: $text, axis: axis)
+        }
+    }
+}
+
+/// Dropdown matching the editorial field language: a menu with checkmark
+/// selection, shown as a raised card field with a chevron affordance.
+struct EditorialMenuField<Value: Hashable>: View {
+    let label: String?
+    let accessibilityLabel: String?
+    @Binding var selection: Value
+    let options: [Value]
+    let display: (Value) -> String
+
+    init(
+        _ label: String? = nil,
+        selection: Binding<Value>,
+        options: [Value],
+        display: @escaping (Value) -> String,
+        accessibilityLabel: String? = nil
+    ) {
+        self.label = label
+        self.accessibilityLabel = accessibilityLabel
+        self._selection = selection
+        self.options = options
+        self.display = display
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
+            if let label {
+                EditorialFieldLabel(title: label)
+            }
+
+            Menu {
+                ForEach(options, id: \.self) { option in
+                    Button {
+                        selection = option
+                    } label: {
+                        if option == selection {
+                            Label(display(option), systemImage: "checkmark")
+                        } else {
+                            Text(display(option))
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: AppTheme.Spacing.medium) {
+                    Text(display(selection))
+                        .font(.body)
+                        .foregroundStyle(AppTheme.Editorial.primaryText)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
+                }
+                .padding(.horizontal, AppTheme.Spacing.large)
+                .padding(.vertical, AppTheme.Spacing.medium)
+                .frame(maxWidth: .infinity)
+                .background(AppTheme.Editorial.raisedCard)
+                .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.medium, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: AppTheme.Radius.medium, style: .continuous)
+                        .stroke(AppTheme.Editorial.border, lineWidth: 1)
+                )
+            }
+            .accessibilityLabel(accessibilityLabel ?? label ?? "Selection")
+            .accessibilityValue(display(selection))
+        }
+    }
+}
+
+/// Date picker shown as an editorial field card (compact picker inside a raised card).
+struct EditorialDateField: View {
+    let label: String?
+    @Binding var selection: Date
+    var displayedComponents: DatePickerComponents = .date
+    var inRange: ClosedRange<Date>? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
+            if let label {
+                EditorialFieldLabel(title: label)
+            }
+
+            EditorialFieldCard {
+                HStack(spacing: AppTheme.Spacing.medium) {
+                    Image(systemName: "calendar")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.Editorial.forest)
+                        .accessibilityHidden(true)
+
+                    Spacer(minLength: 0)
+
+                    Group {
+                        if let inRange {
+                            DatePicker("", selection: $selection, in: inRange, displayedComponents: displayedComponents)
+                        } else {
+                            DatePicker("", selection: $selection, displayedComponents: displayedComponents)
+                        }
+                    }
+                    .labelsHidden()
+                    .tint(AppTheme.Editorial.forest)
+                    .foregroundStyle(AppTheme.Editorial.primaryText)
+                    .accessibilityLabel(label ?? "Date")
+                }
+            }
+        }
+    }
+}
+
+/// Toggle row for editorial card lists (e.g. split-among participants).
+struct EditorialToggleRow: View {
+    let title: String
+    var subtitle: String? = nil
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.medium) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(AppTheme.Editorial.primaryText)
+
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .tint(AppTheme.Editorial.forest)
+                .accessibilityLabel(title)
+        }
+    }
+}
+
+/// Capsule segmented control in editorial colors (raised card shell, forest active pill).
+struct EditorialSegmentedControl<Value: Hashable>: View {
+    let options: [Value]
+    @Binding var selection: Value
+    var display: (Value) -> String
+    var accessibilityLabel: String? = nil
+
+    var body: some View {
+        HStack(spacing: AppTheme.Spacing.xSmall) {
+            ForEach(options, id: \.self) { option in
+                let isSelected = option == selection
+                Button {
+                    withAnimation(.snappy) {
+                        selection = option
+                    }
+                } label: {
+                    Text(display(option))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(isSelected ? AppTheme.Editorial.forestDeep : AppTheme.Editorial.secondaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, AppTheme.Spacing.small)
+                        .background(isSelected ? AppTheme.Editorial.forest.opacity(0.14) : .clear)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(isSelected ? .isSelected : AccessibilityTraits())
+            }
+        }
+        .padding(AppTheme.Spacing.xSmall)
+        .background(AppTheme.Editorial.raisedCard)
+        .clipShape(Capsule())
+        .overlay(
+            Capsule().stroke(AppTheme.Editorial.border, lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilityLabel ?? "")
+    }
+}
+
+extension View {
+    /// Strips a Form's stock grouped chrome so rows read as editorial cards
+    /// floating on the warm paper background. Pair with the paper background:
+    /// `.editorialForm().background(AppTheme.Editorial.background)`.
+    func editorialForm() -> some View {
+        self
+            .scrollContentBackground(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(
+                EdgeInsets(
+                    top: AppTheme.Spacing.small,
+                    leading: AppTheme.Spacing.large,
+                    bottom: AppTheme.Spacing.small,
+                    trailing: AppTheme.Spacing.large
+                )
+            )
+    }
+}

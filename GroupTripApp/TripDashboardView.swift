@@ -293,62 +293,102 @@ private struct AccountSettingsView: View {
         NavigationStack {
             Form {
                 Section {
-                    HStack(spacing: 14) {
-                        Text("S")
-                            .font(.title3.weight(.heavy))
-                            .foregroundStyle(AppTheme.Editorial.forestDeep)
-                            .frame(width: 48, height: 48)
-                            .background(AppTheme.Editorial.border.opacity(0.62))
-                            .clipShape(Circle())
+                    EditorialFieldCard {
+                        HStack(spacing: 14) {
+                            Text("S")
+                                .font(.title3.weight(.heavy))
+                                .foregroundStyle(AppTheme.Editorial.forestDeep)
+                                .frame(width: 48, height: 48)
+                                .background(AppTheme.Editorial.border.opacity(0.62))
+                                .clipShape(Circle())
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(displayName.isEmpty ? "Your account" : displayName)
-                                .font(.headline)
-                            Text(modeBadge?.title ?? "Account")
-                                .font(.subheadline)
-                                .foregroundStyle(AppTheme.Editorial.secondaryText)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(displayName.isEmpty ? "Your account" : displayName)
+                                    .font(.headline)
+                                    .foregroundStyle(AppTheme.Editorial.primaryText)
+                                Text(modeBadge?.title ?? "Account")
+                                    .font(.subheadline)
+                                    .foregroundStyle(AppTheme.Editorial.secondaryText)
+                            }
                         }
                     }
-                    .padding(.vertical, 4)
                 }
 
                 Section {
-                    TextField("Name", text: $displayName)
-                        .textContentType(.name)
-                    TextField("Username", text: $username)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.emailAddress)
-                    Button("Save Profile") {
-                        accountMessage = "Profile editing is staged in the account screen. The next backend step is saving these fields to Supabase profiles."
+                    VStack(spacing: AppTheme.Spacing.medium) {
+                        EditorialTextField(
+                            label: "Name",
+                            placeholder: "Your name",
+                            text: $displayName,
+                            textContentType: .name
+                        )
+
+                        EditorialTextField(
+                            label: "Username",
+                            placeholder: "username",
+                            text: $username,
+                            autocapitalization: .never,
+                            autocorrectionDisabled: true
+                        )
+
+                        EditorialTextField(
+                            label: "Email",
+                            placeholder: "you@example.com",
+                            text: $email,
+                            keyboardType: .emailAddress,
+                            textContentType: .emailAddress,
+                            autocapitalization: .never
+                        )
+
+                        Button("Save Profile") {
+                            accountMessage = "Profile editing is staged in the account screen. The next backend step is saving these fields to Supabase profiles."
+                        }
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.Editorial.forest)
                     }
                 } header: {
-                    Text("Profile")
+                    EditorialSectionHeader(title: "Profile")
                 } footer: {
                     Text("Profile editing is staged here for the account settings flow; cloud save wiring can connect this to Supabase profiles next.")
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                 }
 
                 Section {
-                    SecureField("New password", text: $password)
-                        .textContentType(.newPassword)
-                    Button("Update Password") {
-                        accountMessage = "Password update controls now live in Account. Provider-specific password update wiring can be connected next."
-                    }
+                    VStack(spacing: AppTheme.Spacing.medium) {
+                        EditorialTextField(
+                            label: "New password",
+                            placeholder: "••••••••",
+                            text: $password,
+                            isSecure: true,
+                            textContentType: .newPassword
+                        )
+
+                        Button("Update Password") {
+                            accountMessage = "Password update controls now live in Account. Provider-specific password update wiring can be connected next."
+                        }
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .buttonStyle(.borderedProminent)
+                        .tint(AppTheme.Editorial.forest)
                         .disabled(password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    }
                 } header: {
-                    Text("Security")
+                    EditorialSectionHeader(title: "Security")
                 } footer: {
                     Text("Password updates are available for email/password accounts. Google and Apple sign-ins manage passwords with their provider.")
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                 }
 
                 if let currentAccountID {
-                    Section("Account ID") {
+                    Section {
                         Text(currentAccountID.uuidString)
                             .font(.footnote.monospaced())
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
                             .textSelection(.enabled)
+                    } header: {
+                        EditorialSectionHeader(title: "Account ID")
                     }
                 }
 
@@ -360,8 +400,11 @@ private struct AccountSettingsView: View {
                     }
                 } footer: {
                     Text(modeBadge == .demo ? "You’ll return to mode selection. Demo changes are local only." : "You’ll return to the sign-in screen. Cloud trips stay saved and can be loaded again after signing in.")
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                 }
             }
+            .editorialForm()
+            .background(AppTheme.Editorial.background)
             .navigationTitle("Account")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -561,10 +604,13 @@ struct JoinTripInviteView: View {
                                     .fixedSize(horizontal: false, vertical: true)
                             }
 
-                            TextField("Invite code", text: $inviteCode)
-                                .textInputAutocapitalization(.characters)
-                                .autocorrectionDisabled()
-                                .textFieldStyle(.roundedBorder)
+                            EditorialTextField(
+                                label: "Invite code",
+                                placeholder: "e.g. ABCD-1234",
+                                text: $inviteCode,
+                                autocapitalization: .characters,
+                                autocorrectionDisabled: true
+                            )
 
                             Button {
                                 Task { await lookupInvite() }

@@ -16,44 +16,76 @@ struct NewTripView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Trip Name", text: $name)
-                    TextField("Destination", text: $destination)
-                    TextField("Emoji", text: $emoji)
-                        .font(.title2)
-                        .multilineTextAlignment(.center)
+                    VStack(spacing: AppTheme.Spacing.medium) {
+                        EditorialTextField(
+                            label: "Trip name",
+                            placeholder: "e.g. Summer in Lisbon",
+                            text: $name
+                        )
+
+                        EditorialTextField(
+                            label: "Destination",
+                            placeholder: "e.g. Lisbon, Portugal",
+                            text: $destination
+                        )
+
+                        EditorialTextField(
+                            label: "Emoji",
+                            placeholder: "✈️",
+                            text: $emoji,
+                            multilineTextAlignment: .center,
+                            font: .title2
+                        )
                         .onChange(of: emoji) { _, newValue in
                             emoji = String(newValue.prefix(2))
                         }
-                }
-
-                Section("Dates") {
-                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
-                    DatePicker("End Date", selection: $endDate, in: startDate..., displayedComponents: .date)
-                }
-
-                Section("Cover Image") {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                        ForEach(CoverImage.defaultOptions) { image in
-                            Button {
-                                selectedImageURL = image.url
-                                customImageURL = ""
-                            } label: {
-                                RemoteTripImage(urlString: image.url)
-                                    .frame(height: 82)
-                                    .overlay {
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                            .stroke(selectedImageURL == image.url && customImageURL.isEmpty ? AppTheme.Editorial.forest : .clear, lineWidth: 3)
-                                    }
-                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(image.title)
-                        }
                     }
+                }
 
-                    TextField("Or paste custom image URL", text: $customImageURL)
-                        .textInputAutocapitalization(.never)
-                        .keyboardType(.URL)
+                Section {
+                    VStack(spacing: AppTheme.Spacing.medium) {
+                        EditorialDateField(label: "Start date", selection: $startDate)
+                        EditorialDateField(
+                            label: "End date",
+                            selection: $endDate,
+                            inRange: startDate...Date.distantFuture
+                        )
+                    }
+                } header: {
+                    EditorialSectionHeader(title: "Dates")
+                }
+
+                Section {
+                    VStack(spacing: AppTheme.Spacing.medium) {
+                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                            ForEach(CoverImage.defaultOptions) { image in
+                                Button {
+                                    selectedImageURL = image.url
+                                    customImageURL = ""
+                                } label: {
+                                    RemoteTripImage(urlString: image.url)
+                                        .frame(height: 82)
+                                        .overlay {
+                                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                                .stroke(selectedImageURL == image.url && customImageURL.isEmpty ? AppTheme.Editorial.forest : .clear, lineWidth: 3)
+                                        }
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(image.title)
+                            }
+                        }
+
+                        EditorialTextField(
+                            label: "Custom image URL",
+                            placeholder: "Or paste a custom image URL",
+                            text: $customImageURL,
+                            keyboardType: .URL,
+                            autocapitalization: .never
+                        )
+                    }
+                } header: {
+                    EditorialSectionHeader(title: "Cover image")
                 }
 
                 if let syncError = store.syncError {
@@ -64,6 +96,8 @@ struct NewTripView: View {
                     }
                 }
             }
+            .editorialForm()
+            .background(AppTheme.Editorial.background)
             .navigationTitle("Create New Trip")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -137,24 +171,33 @@ struct AddPersonView: View {
             Form {
                 Section {
                     if existingParticipant == nil {
-                        TextEditor(text: $names)
-                            .frame(minHeight: 140)
-                            .overlay(alignment: .topLeading) {
-                                if names.isEmpty {
-                                    Text("Alex\nSam\nTaylor")
-                                        .foregroundStyle(AppTheme.Editorial.secondaryText)
-                                        .padding(.top, 8)
-                                        .padding(.leading, 5)
-                                        .allowsHitTesting(false)
+                        EditorialFieldCard {
+                            TextEditor(text: $names)
+                                .frame(minHeight: 140)
+                                .scrollContentBackground(.hidden)
+                                .foregroundStyle(AppTheme.Editorial.primaryText)
+                                .tint(AppTheme.Editorial.forest)
+                                .overlay(alignment: .topLeading) {
+                                    if names.isEmpty {
+                                        Text("Alex\nSam\nTaylor")
+                                            .foregroundStyle(AppTheme.Editorial.secondaryText)
+                                            .padding(.top, 8)
+                                            .padding(.leading, 5)
+                                            .allowsHitTesting(false)
+                                            .accessibilityHidden(true)
+                                    }
                                 }
-                            }
+                        }
                     } else {
-                        TextField("Name", text: $names)
+                        EditorialTextField(label: "Name", placeholder: "Name", text: $names)
                     }
                 } footer: {
                     Text(existingParticipant == nil ? "Enter one person per line." : "Renaming keeps this person's expense and payment history linked.")
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                 }
             }
+            .editorialForm()
+            .background(AppTheme.Editorial.background)
             .navigationTitle(existingParticipant == nil ? "Add People" : "Edit Person")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -222,29 +265,57 @@ struct AddExpenseView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Description", text: $title)
-                    TextField("Amount", text: $amount)
-                        .keyboardType(.decimalPad)
+                    VStack(spacing: AppTheme.Spacing.medium) {
+                        EditorialTextField(
+                            label: "Description",
+                            placeholder: "e.g. Dinner at the tasca",
+                            text: $title
+                        )
+
+                        EditorialTextField(
+                            label: "Amount",
+                            placeholder: "0.00",
+                            text: $amount,
+                            keyboardType: .decimalPad
+                        )
+                    }
                 }
 
-                Section("Paid By") {
-                    Picker("Paid By", selection: paidByBinding) {
-                        ForEach(viewModel.calculator.participants) { participant in
-                            Text(participant.name).tag(Optional(participant.id))
+                Section {
+                    EditorialMenuField(
+                        "Paid by",
+                        selection: paidByBinding,
+                        options: viewModel.calculator.participants.map(\.id),
+                        display: participantName
+                    )
+                } header: {
+                    EditorialSectionHeader(title: "Paid by")
+                }
+
+                Section {
+                    EditorialFieldCard {
+                        VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                            Button("Select Everyone") {
+                                selectedParticipants = Set(viewModel.calculator.participants.map(\.id))
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppTheme.Editorial.forest)
+                            .buttonStyle(.plain)
+
+                            ForEach(viewModel.calculator.participants) { participant in
+                                EditorialToggleRow(
+                                    title: participant.name,
+                                    isOn: participantBinding(for: participant.id)
+                                )
+                            }
                         }
                     }
-                }
-
-                Section("Split Among") {
-                    Button("Select Everyone") {
-                        selectedParticipants = Set(viewModel.calculator.participants.map(\.id))
-                    }
-
-                    ForEach(viewModel.calculator.participants) { participant in
-                        Toggle(participant.name, isOn: participantBinding(for: participant.id))
-                    }
+                } header: {
+                    EditorialSectionHeader(title: "Split among")
                 }
             }
+            .editorialForm()
+            .background(AppTheme.Editorial.background)
             .navigationTitle(existingExpense == nil ? "Add Expense" : "Edit Expense")
             .onAppear {
                 if let existingExpense, title.isEmpty {
@@ -309,6 +380,10 @@ struct AddExpenseView: View {
         )
     }
 
+    private func participantName(for id: Participant.ID) -> String {
+        viewModel.calculator.participants.first { $0.id == id }?.name ?? "Unknown"
+    }
+
     private var parsedAmount: Decimal {
         Decimal(string: amount.filter { $0 != "$" && $0 != "," }) ?? 0
     }
@@ -350,25 +425,44 @@ struct AddPaymentView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Payment name", text: $title)
-                    TextField("Amount", text: $amount)
-                        .keyboardType(.decimalPad)
+                    VStack(spacing: AppTheme.Spacing.medium) {
+                        EditorialTextField(
+                            label: "Payment name",
+                            placeholder: "e.g. Taxi to the airport",
+                            text: $title
+                        )
+
+                        EditorialTextField(
+                            label: "Amount",
+                            placeholder: "0.00",
+                            text: $amount,
+                            keyboardType: .decimalPad
+                        )
+                    }
                 }
 
-                Section("People") {
-                    Picker("From", selection: fromBinding) {
-                        ForEach(viewModel.calculator.participants) { participant in
-                            Text(participant.name).tag(Optional(participant.id))
-                        }
-                    }
+                Section {
+                    VStack(spacing: AppTheme.Spacing.medium) {
+                        EditorialMenuField(
+                            "From",
+                            selection: fromBinding,
+                            options: viewModel.calculator.participants.map(\.id),
+                            display: participantName
+                        )
 
-                    Picker("To", selection: toBinding) {
-                        ForEach(viewModel.calculator.participants) { participant in
-                            Text(participant.name).tag(Optional(participant.id))
-                        }
+                        EditorialMenuField(
+                            "To",
+                            selection: toBinding,
+                            options: viewModel.calculator.participants.map(\.id),
+                            display: participantName
+                        )
                     }
+                } header: {
+                    EditorialSectionHeader(title: "People")
                 }
             }
+            .editorialForm()
+            .background(AppTheme.Editorial.background)
             .navigationTitle(existingPayment == nil ? "Add Payment" : "Edit Payment")
             .onAppear {
                 if let existingPayment, title.isEmpty {
@@ -432,6 +526,10 @@ struct AddPaymentView: View {
             get: { from ?? viewModel.calculator.participants.first?.id ?? UUID() },
             set: { from = $0 }
         )
+    }
+
+    private func participantName(for id: Participant.ID) -> String {
+        viewModel.calculator.participants.first { $0.id == id }?.name ?? "Unknown"
     }
 
     private var toBinding: Binding<Participant.ID> {

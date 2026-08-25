@@ -222,16 +222,38 @@ private struct AddTripPlaceView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Place") {
-                    TextField("Name", text: $name)
-                    TextField("Category (optional)", text: $category)
+                Section {
+                    VStack(spacing: AppTheme.Spacing.medium) {
+                        EditorialTextField(
+                            label: "Name",
+                            placeholder: "e.g. Praça do Comércio",
+                            text: $name
+                        )
+
+                        EditorialTextField(
+                            label: "Category",
+                            placeholder: "Optional, e.g. Landmark",
+                            text: $category
+                        )
+                    }
+                } header: {
+                    EditorialSectionHeader(title: "Place")
                 }
 
-                Section("Notes") {
-                    TextField("Note (optional)", text: $note, axis: .vertical)
-                        .lineLimit(3...6)
+                Section {
+                    EditorialTextField(
+                        label: "Notes",
+                        placeholder: "Optional",
+                        text: $note,
+                        axis: .vertical,
+                        lineLimit: 3...6
+                    )
+                } header: {
+                    EditorialSectionHeader(title: "Notes")
                 }
             }
+            .editorialForm()
+            .background(AppTheme.Editorial.background)
             .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

@@ -243,28 +243,20 @@ private struct LoginView: View {
                             .foregroundStyle(AppTheme.Editorial.secondaryText)
                     }
 
-                    TextField("Email", text: $email)
-                        .textContentType(.emailAddress)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .padding(12)
-                        .background(AppTheme.Editorial.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(AppTheme.Editorial.border, lineWidth: 1)
-                        )
+                    EditorialTextField(
+                        placeholder: "Email",
+                        text: $email,
+                        keyboardType: .emailAddress,
+                        textContentType: .emailAddress,
+                        autocapitalization: .never,
+                        autocorrectionDisabled: true
+                    )
 
-                    TextField("Display name", text: $displayName)
-                        .textContentType(.name)
-                        .padding(12)
-                        .background(AppTheme.Editorial.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .stroke(AppTheme.Editorial.border, lineWidth: 1)
-                        )
+                    EditorialTextField(
+                        placeholder: "Display name",
+                        text: $displayName,
+                        textContentType: .name
+                    )
 
                     Button {
                         Task {

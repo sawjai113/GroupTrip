@@ -594,3 +594,25 @@ Follow-up:
 
 - Keep this in the backlog temporarily as context for auth troubleshooting.
 - Remove from this file once Google auth has been stable through the next milestone.
+
+### Calm Editorial form controls (inputs & dropdowns)
+
+Status: Done
+Area: Design system, Forms, Expenses, Auth, UX
+
+Decision:
+
+- Extend the selected Calm Editorial direction (issue sawjai113/GroupTrip#1) to form controls: input pages and dropdowns should no longer read as stock Apple grouped forms.
+- Mockups 001c/001d contain no form controls, so primitives derive from the established editorial tokens (raisedCard fields, border hairlines, forest accents, uppercase letter-spaced labels).
+
+Resolution:
+
+- New shared primitives in `SharedViews.swift`: `EditorialTextField` (muted placeholder, forest focus ring, secure/multiline/URL variants), `EditorialMenuField` (dropdown as a raised field card with checkmark menu selection), `EditorialDateField`, `EditorialToggleRow`, `EditorialSegmentedControl` (capsule with forest active pill), and `editorialForm()` (strips Form's grouped chrome: hidden scroll background, clear rows, hidden separators).
+- Replaced stock `Picker` rows (Paid By, From, To) with editorial dropdown fields; replaced stock `.segmented` picker in the expense tracker; restyled all input sheets (create trip, add people, add expense, add payment, add place, planning item, account settings, invite code, login magic-link fields).
+- Section headers and footers now use editorial styling; primary action buttons inside account settings tint forest.
+- All bindings, validation, navigation, and confirmation flows preserved; `xcodebuild` build succeeds and all 97 unit tests pass.
+
+Follow-up:
+
+- Remaining stock-Apple surfaces for a later pass: system nav bar/scroll edge materials, `Alert`/`confirmationDialog` defaults, and any DatePicker popover styling.
+- Visual review of light/dark/auto in the simulator recommended before the next milestone.

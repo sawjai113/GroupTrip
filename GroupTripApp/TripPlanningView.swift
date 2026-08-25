@@ -339,23 +339,42 @@ private struct AddTripPlanningItemView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Planning Item") {
-                    TextField("Title", text: $title)
+                Section {
+                    EditorialTextField(
+                        label: "Title",
+                        placeholder: "e.g. Surf lesson",
+                        text: $title
+                    )
+                } header: {
+                    EditorialSectionHeader(title: "Planning item")
                 }
 
-                Section("Notes") {
-                    TextField("Note (optional)", text: $note, axis: .vertical)
-                        .lineLimit(3...6)
+                Section {
+                    EditorialTextField(
+                        label: "Notes",
+                        placeholder: "Optional",
+                        text: $note,
+                        axis: .vertical,
+                        lineLimit: 3...6
+                    )
+                } header: {
+                    EditorialSectionHeader(title: "Notes")
                 }
 
-                Section("Date") {
-                    Toggle("Add date", isOn: $hasDate)
+                Section {
+                    VStack(spacing: AppTheme.Spacing.medium) {
+                        EditorialToggleRow(title: "Add date", isOn: $hasDate)
 
-                    if hasDate {
-                        DatePicker("Date", selection: $date, displayedComponents: .date)
+                        if hasDate {
+                            EditorialDateField(label: "Date", selection: $date)
+                        }
                     }
+                } header: {
+                    EditorialSectionHeader(title: "Date")
                 }
             }
+            .editorialForm()
+            .background(AppTheme.Editorial.background)
             .navigationTitle(navTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
