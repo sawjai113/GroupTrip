@@ -41,6 +41,29 @@ A basecamp works for two kinds of people, and so must every screen:
 
 **Design principle: glance first, contribute second.** Every screen should communicate "here's where things stand" in the top moments, and only then offer actions. The dashboard is the lurker's home.
 
+### Room spec: The Map Wall (Places) — v0.1 (2026-08-20)
+
+**The job:** Replaces the user's current workflow — a shared Google Map where everyone drops points of interest for the trip. Wanderaid's map wall does that *better*, with signal.
+
+**The current workflow being replaced:**
+1. Find interesting places → add as POIs on a shared map for the trip.
+2. Share the map → everyone adds their own POIs.
+3. During the trip: pull up the map, see what's nearby, hit places up; also use the map to decide which area to go to for the day.
+4. **The pain:** POIs have no priority or weight. Any point can go on, but there's no signal for how much anyone actually wants to go.
+
+**The vision (user's words, developed):**
+- **Weight on every POI** — "I can put a weight on it so others know if I really want to go to it or not. Then others can vote or put their own weight on it as well — that way we get a more prioritized list of places that people are interested in."
+- **Pinning** — "a way to pin certain POIs so they become more of a must-go even without any voting."
+- **Google Maps relationship:** not a full replacement — "hooked up to Google map if possible." Open-in-Maps is the minimum; deeper integration (places search, import from a shared Google Map) is the ambition.
+
+**Design decisions to make (open):**
+- Weight scale: per-person 1–5? Lighter (want / meh / no)? Aggregate = count + own weight?
+- Who can pin: anyone, or trip owner/creator only?
+- Google Maps depth: open-in-Maps (M4) → places search → shared-map import (later).
+- During-trip modes: "nearby now" and "pick an area for the day" — the map wall serves BOTH before (collect + prioritize) and during (decide + navigate). Lifecycle home: Before + During.
+
+**Staging thought:** list + open-in-Maps already exists (M4 polish). Weight/vote/pin is the differentiated core — build it as a proper M4/M5 workstream (TDD: weight model, aggregation, RLS on votes).
+
 ### Dashboard first-open experience (user spec, finalized 2026-08-20)
 
 1. **Upcoming trip + live countdown** — future trips only (current/past trips show no countdown). Days, hours, minutes, seconds — **live ticking** (seeing it tick is more fun than a static banner). The emotional number: large serif hero. "Excited to go," literal.
@@ -73,6 +96,7 @@ A basecamp works for two kinds of people, and so must every screen:
 
 ## Inbox
 
+- 2026-08-20 — MAP WALL vision (detailed): replaces the shared-Google-Map workflow; POIs with per-person weight + votes → prioritized list; pinning = must-go without voting; during-trip modes (nearby, pick an area); hooked up to Google Maps where possible. → developed into Room spec: Map Wall v0.1. (raw → developed)
 - 2026-08-20 — "Countdown should only be for future trips. Days, hours, minutes, seconds — seeing it tick can be more fun than a static '5 days until' banner." → developed: live ticking countdown, future trips only, serif hero. (raw → developed)
 - 2026-08-20 — "A feed is a more fitting feel" (for updates) → developed: dashboard activity feed adopted (needs `trip_activity` data layer). (raw → developed)
 - 2026-08-20 — "No need for a lurker mode — if the app is well designed to surface info, a lurker can see everything easily while the actionable items are still there and easy to use." → developed: no separate browse mode; glance-first in-place design is sufficient. (raw → developed)
