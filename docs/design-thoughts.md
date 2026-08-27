@@ -11,7 +11,7 @@
 
 ---
 
-## Draft: Cohesive Frame — v0.3 (2026-08-20, basecamp adopted)
+## Draft: Cohesive Frame — v0.4 (2026-08-20, dashboard spec finalized)
 
 **Working idea:** *A trip with people you like is a story you're still writing — dreamed before, lived during, told after. Wanderaid is the trip's basecamp: one collaborative space where the whole story lives — plan it, live it, remember it — and where anyone can either contribute or just stop by to see what's going on.*
 
@@ -41,10 +41,11 @@ A basecamp works for two kinds of people, and so must every screen:
 
 **Design principle: glance first, contribute second.** Every screen should communicate "here's where things stand" in the top moments, and only then offer actions. The dashboard is the lurker's home.
 
-### Dashboard first-open experience (user spec, 2026-08-20)
+### Dashboard first-open experience (user spec, finalized 2026-08-20)
 
-1. **Upcoming trip + countdown** — see if there's an upcoming trip and how far away it is. A **countdown clock** ("might be fun and exciting") — this is the emotional number, a serif moment. The "excited to go" feeling, literal.
-2. **Updates at a glance** — see if there are any updates to any of the trips, without opening them. (Needs an updates/activity signal — minimal version: per-trip "what changed since I last looked" using updated_at + a last-seen marker; richer version: an activity log.)
+1. **Upcoming trip + live countdown** — future trips only (current/past trips show no countdown). Days, hours, minutes, seconds — **live ticking** (seeing it tick is more fun than a static banner). The emotional number: large serif hero. "Excited to go," literal.
+2. **Updates feed** — an activity feed on the dashboard (not per-trip badges). "Sam added a place to Kyoto · Maya settled up." Leans into the story/basecamp feel. Implication: needs a real activity log — new `trip_activity` table (RLS, attribution, service-layer writes), or derive from existing `updated_at` + attribution where possible. MVP feed = recent events across the user's trips.
+3. **No separate lurker mode** — resolved: if the app is well designed to surface info, lurkers see everything easily while actionable items stay visible and usable. Glance-first in-place is enough; no browse/observer posture needed.
 
 ### The trip lifecycle (from v0.2, still standing)
 
@@ -71,6 +72,10 @@ A basecamp works for two kinds of people, and so must every screen:
 ---
 
 ## Inbox
+
+- 2026-08-20 — "Countdown should only be for future trips. Days, hours, minutes, seconds — seeing it tick can be more fun than a static '5 days until' banner." → developed: live ticking countdown, future trips only, serif hero. (raw → developed)
+- 2026-08-20 — "A feed is a more fitting feel" (for updates) → developed: dashboard activity feed adopted (needs `trip_activity` data layer). (raw → developed)
+- 2026-08-20 — "No need for a lurker mode — if the app is well designed to surface info, a lurker can see everything easily while the actionable items are still there and easy to use." → developed: no separate browse mode; glance-first in-place design is sufficient. (raw → developed)
 
 - 2026-08-20 — "I think the basecamp analogy best fits what I'm looking for. It should be a collaborative space that everyone can contribute to and also get an idea of what's going on if they don't want to contribute but just want to keep up to speed." → developed: basecamp adopted as THE metaphor; sections map to camp rooms; two participation modes (contributor + lurker) → "glance first, contribute second" principle. (raw → developed)
 - 2026-08-20 — "When the user first opens the app: see if they have an upcoming trip and how far away it is (a countdown clock might be fun and exciting), and see if there are any updates to any of the trips." → developed: dashboard first-open spec (countdown = emotional serif moment; updates-at-a-glance = per-trip change signal). M4 dashboard scope. (raw → developed)
