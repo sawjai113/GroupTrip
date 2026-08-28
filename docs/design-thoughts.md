@@ -23,14 +23,13 @@ The sections as camp:
 
 | Section | Camp room | Answers |
 |---|---|---|
-| Home / Dashboard | The camp overview / front of camp | "What's going on?" |
-| Current Trip | The camp itself | "What is this trip?" |
-| Places | The map wall / shortlist board | "Where should we go?" |
-| Itinerary / Planning | The schedule board | "What are we doing, when?" |
-| People | The crew | "Who's in this?" |
-| Money | The kitty / the pot | "Who owes what?" |
-| Invite / Join | The welcome desk | "Come along." |
-| Memories (new) | The journal / campfire stories | "Remember when…?" |
+| Home / Dashboard | The camp overview / front of camp | "What's going on across my trips?" |
+| Welcome Desk (per trip) | The trip's lobby — the front door | "What is this trip? What's happening in it?" |
+| Map Wall | The map wall / shortlist board | "Where should we go?" |
+| Schedule Board | The schedule board | "What are we doing, when?" |
+| Crew | The dorm hall + rooms | "Who's in this?" |
+| Kitty | The kitty / the pot | "Who owes what?" |
+| Journal (new) | The journal / campfire stories | "Remember when…?" |
 
 ### The two participation modes (the big insight)
 
@@ -140,11 +139,29 @@ A basecamp works for two kinds of people, and so must every screen:
 
 **Current state vs vision:** today People = flat list (edit/delete) + balances + settlements. The hall exists in skeleton; rooms are new.
 
+### Room spec: The Welcome Desk (per-trip landing / lobby) — v0.1 (2026-08-20)
+
+**The job:** The trip's front door — a gathering lobby that IS the trip's dashboard. The central glance place before moving into specific rooms (map wall, schedule, crew, kitty). **Absorbs the old "Current Trip" anchor and the invite/join threshold.**
+
+**The vision (user's words, developed):**
+- "The welcome desk is the dashboard of the whole trip and should feel like a gathering lobby for the group, as well as serve as the central place for the user to get a quick glance of the trip before moving into specific parts to find out more."
+- **Top: the trip's countdown clock** (per-trip — connects to the home dashboard countdown, but this one is THIS trip) + obvious basics: place, date.
+- **Quick-glance items:** who's going on this trip (crew preview), the group chat for the trip (entry point), and the trip's activity feed.
+- **Invite/join lives here too** — the lobby is where people are welcomed in (create/copy invite code, see who's coming).
+
+**Current state vs vision:** today the trip landing = TripSummaryView (photo hero, name/dates, trip sections, invite card). The lobby reframes it: countdown + basics + who's going + chat + feed as the glance layer, with the rooms as the "walk further in" layer. Glance-first, embodied.
+
+### Cross-cutting: feed grouping + action-needed calls (2026-08-20)
+
+1. **Grouped feed.** Feed events batch by actor + action so one person adding 15 POIs shows as ONE line — "Sam added 15 places" — instead of flooding the feed. Applies to the trip feed (welcome desk) and the home dashboard feed.
+2. **Call-for-vote / call-for-input on items.** When adding an item (POI, hotel booking, etc.), the adder can **call for feedback** — "want the group's take on this" or "confirming: does anyone else need to be in this hotel room?" Unanswered calls surface in the **action-needed area** on the user's home dashboard ("items you need to address"). Generalizes to any item type; the Map Wall vote UI is one instance. Open: what else lands in action-needed (invite confirmations? settlement approvals?).
+
 ### Dashboard first-open experience (user spec, finalized 2026-08-20)
 
 1. **Upcoming trip + live countdown** — future trips only (current/past trips show no countdown). Days, hours, minutes, seconds — **live ticking** (seeing it tick is more fun than a static banner). The emotional number: large serif hero. "Excited to go," literal.
-2. **Updates feed** — an activity feed on the dashboard (not per-trip badges). "Sam added a place to Kyoto · Maya settled up." Leans into the story/basecamp feel. Implication: needs a real activity log — new `trip_activity` table (RLS, attribution, service-layer writes), or derive from existing `updated_at` + attribution where possible. MVP feed = recent events across the user's trips.
-3. **No separate lurker mode** — resolved: if the app is well designed to surface info, lurkers see everything easily while actionable items stay visible and usable. Glance-first in-place is enough; no browse/observer posture needed.
+2. **Updates feed** — an activity feed on the dashboard (not per-trip badges). "Sam added a place to Kyoto · Maya settled up." Leans into the story/basecamp feel. Implication: needs a real activity log — new `trip_activity` table (RLS, attribution, service-layer writes), or derive from existing `updated_at` + attribution where possible. MVP feed = recent events across the user's trips. **Feed events are GROUPED** (see cross-cutting: "Sam added 15 places" = one line).
+3. **Action-needed area** — calls for your input: votes called on POIs, hotel-inclusion confirmations, anything awaiting a decision. Feeds into the existing "Needs your attention" dashboard section.
+4. **No separate lurker mode** — resolved: if the app is well designed to surface info, lurkers see everything easily while actionable items stay visible and usable. Glance-first in-place is enough; no browse/observer posture needed.
 
 ### The trip lifecycle (from v0.2, still standing)
 
@@ -171,6 +188,8 @@ A basecamp works for two kinds of people, and so must every screen:
 ---
 
 ## Inbox
+
+- 2026-08-20 — WELCOME DESK reframe: it IS the trip's dashboard — a gathering lobby; central glance place before moving into rooms. Top: per-trip countdown + basics (place/date). Quick glances: who's going, group chat, trip activity feed. ABSORBS the old Current Trip anchor + invite/join. Also: feeds should be GROUPED ("Sam added 15 places" = one line); item adders can CALL FOR VOTE/INPUT (POI feedback, hotel inclusion confirm) → unanswered calls surface in an ACTION-NEEDED area on the home dashboard. → developed into Welcome Desk room spec + cross-cutting: feed grouping + action-needed calls. (raw → developed)
 
 - 2026-08-20 — CROSS-CUTTING: items should have common tags (food, hotel, flight, show, museum, custom, + others) for quick recognition, and a "who is participating / has participated" field for filtering and per-person calendars. Noted: expenses already require participant sets. → developed into Cross-cutting layer: item tags + participation. Key principle: participating ≠ added-by. (raw → developed)
 
