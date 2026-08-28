@@ -139,6 +139,20 @@ A basecamp works for two kinds of people, and so must every screen:
 
 **Current state vs vision:** today People = flat list (edit/delete) + balances + settlements. The hall exists in skeleton; rooms are new.
 
+### Room spec: The Kitty (Money) — v0.1 (2026-08-20)
+
+**The job:** The fair ledger — a place where a user AND the group can quickly see all expenses for the trip, add expenses quickly on the go, and at the end see what they owe and how to repay easily. **The existing expense calculator is the backbone** — "most of this should already be in the existing expense page."
+
+**The vision (user's words, developed):**
+- Quick group + user overview of all expenses (exists: expense list, balances, settlements).
+- **Add expenses quickly and easily ON THE GO** — the gap: current add flow is form-y; on-the-go quick-add = minimal fields (amount, who paid, split) with smart defaults (equal split already the default).
+- **End of trip: what I owe + how to repay easily** — user-first: "You owe Sam $42 · Maya owes you $18" + a clean repayment view (settlements exist; make repayment steps explicit — who to pay, how much, mark as paid → direct payment).
+- User-first framing ties to dashboard money (account-aware, honest fallback when unmapped).
+
+**Existing coverage (validated):** expense CRUD, participant splits, balances, suggested settlements, direct payments, cloud sync. Remaining work = speed (quick-add), user-first "what you owe" framing in-trip, repayment guidance view.
+
+**Cross-links:** tags + participant sets (already native to expenses — the pattern's origin); Crew room "their expenses" = person's expense footprint; Journal (after): "settled up" closeout.
+
 ### Room spec: The Welcome Desk (per-trip landing / lobby) — v0.1 (2026-08-20)
 
 **The job:** The trip's front door — a gathering lobby that IS the trip's dashboard. The central glance place before moving into specific rooms (map wall, schedule, crew, kitty). **Absorbs the old "Current Trip" anchor and the invite/join threshold.**
@@ -158,10 +172,13 @@ A basecamp works for two kinds of people, and so must every screen:
 
 ### Dashboard first-open experience (user spec, finalized 2026-08-20)
 
-1. **Upcoming trip + live countdown** — future trips only (current/past trips show no countdown). Days, hours, minutes, seconds — **live ticking** (seeing it tick is more fun than a static banner). The emotional number: large serif hero. "Excited to go," literal.
+**Simplification (2026-08-20): Home = the USER's lens; Welcome Desk = the TRIP's lens.** Home is user-specific at a quick glance, with quick access to the next/current trip. Trip-level detail lives in the welcome desk. No overlap: home answers "what's going on with ME and my trips," welcome desk answers "what's happening in THIS trip."
+
+1. **Upcoming trip + live countdown** — future trips only (current/past trips show no countdown). Days, hours, minutes, seconds — **live ticking** (seeing it tick is more fun than a static banner). The emotional number: large serif hero. "Excited to go," literal. **Quick access to the next/current trip from here.**
 2. **Updates feed** — an activity feed on the dashboard (not per-trip badges). "Sam added a place to Kyoto · Maya settled up." Leans into the story/basecamp feel. Implication: needs a real activity log — new `trip_activity` table (RLS, attribution, service-layer writes), or derive from existing `updated_at` + attribution where possible. MVP feed = recent events across the user's trips. **Feed events are GROUPED** (see cross-cutting: "Sam added 15 places" = one line).
 3. **Action-needed area** — calls for your input: votes called on POIs, hotel-inclusion confirmations, anything awaiting a decision. Feeds into the existing "Needs your attention" dashboard section.
-4. **No separate lurker mode** — resolved: if the app is well designed to surface info, lurkers see everything easily while actionable items stay visible and usable. Glance-first in-place is enough; no browse/observer posture needed.
+4. **User money glance** — "you owe $42 · you get back $18" (user-specific, existing dashboard money section).
+5. **No separate lurker mode** — resolved: if the app is well designed to surface info, lurkers see everything easily while actionable items stay visible and usable. Glance-first in-place is enough; no browse/observer posture needed.
 
 ### The trip lifecycle (from v0.2, still standing)
 
@@ -188,6 +205,8 @@ A basecamp works for two kinds of people, and so must every screen:
 ---
 
 ## Inbox
+
+- 2026-08-20 — HOME vs WELCOME DESK resolved: overlap is OK because home = user lens, welcome desk = trip lens. SIMPLIFY home to user-specific quick glance + quick access to next/current trip. KITTY: mostly mapped — calculator is the backbone; needs quick on-the-go expense add, user-first "what I owe," and easy end-of-trip repayment; most already exists in the expense page. → developed: dashboard simplification note + Room spec: The Kitty v0.1. (raw → developed)
 
 - 2026-08-20 — WELCOME DESK reframe: it IS the trip's dashboard — a gathering lobby; central glance place before moving into rooms. Top: per-trip countdown + basics (place/date). Quick glances: who's going, group chat, trip activity feed. ABSORBS the old Current Trip anchor + invite/join. Also: feeds should be GROUPED ("Sam added 15 places" = one line); item adders can CALL FOR VOTE/INPUT (POI feedback, hotel inclusion confirm) → unanswered calls surface in an ACTION-NEEDED area on the home dashboard. → developed into Welcome Desk room spec + cross-cutting: feed grouping + action-needed calls. (raw → developed)
 
