@@ -59,10 +59,31 @@ A basecamp works for two kinds of people, and so must every screen:
 **Resolved decisions (2026-08-20):**
 - **Voting scale — 3 states + abstain.** Yes / a middle that is *slightly more weight than abstaining* / No. Key principle: **abstaining (no vote) is null; the middle is a weak yes, not neutral.** Proposed weights: yes = +1, middle = +0.5, no = −1, abstain = 0 (null, not counted). Prioritized list = aggregate weight; vote counts shown separately so one strong yes ≠ group consensus.
 - **Pinning — anyone can pin.** Pinned ≠ must-go; it means "should be on everyone's radar" (attention tier).
-- **Committed tier (new concept, user-raised):** things that are *really* must-go — e.g., **prepurchased tickets**. Distinct from pinned. Open: does it live in the map wall as a special marker, or a separate area? (Also connects to itinerary — a ticket is a date-bound commitment.)
+- **Committed tier (resolved 2026-08-20):** things that are *really* must-go — e.g., **prepurchased tickets**. Distinct from pinned. **Resolved: bookings live on the Schedule Board** (they're date-bound); the map wall shows a "locked in" marker on committed POIs linking to the schedule board.
 - **Maps — in-room map view + tap-through.** The room shows a map; tapping a POI opens actual Google Maps for directions/info. **Decided (2026-08-20): MapKit** for the in-room view — free, native, iOS-only for now; tap-through to Google Maps for directions/info. Revisit Google Maps SDK if Android or richer map features arrive.
 
 **Staging thought:** list + open-in-Maps already exists (M4 polish). Weight/vote/pin is the differentiated core — build it as a proper M4/M5 workstream (TDD: weight model, aggregation, RLS on votes).
+
+### Room spec: The Schedule Board (Itinerary) — v0.1 (2026-08-20)
+
+**The job:** The trip's coordination spine — a day-grouped timeline where **everyone's commitments are overlaid** so the group can see how schedules line up and coordinate their own around them.
+
+**The vision (user's words, developed):**
+- **Group + individual at once** — "everyone can see how each other's schedule line up and the overall schedule for the group." One unified timeline; each item attributed to who it belongs to (avatar chip).
+- **Flights are visible** — "if someone has booked a flight, others can use it to coordinate their own." The killer coordination loop: Sam books a flight → Maya sees it and books hers to match.
+- **Hotel stays** — same treatment (date ranges, who's staying).
+- **Prebooked activities** — tickets/committed activities (the Map Wall's "committed tier") appear here as date-bound bookings.
+
+**Resolved (from this vision): the committed-tier placement.** The Map Wall's open question ("does committed live on the map wall or elsewhere?") answers itself: **bookings live on the schedule board** — they're date-bound. The map wall shows a "locked in" marker on committed POIs that links to the schedule board.
+
+**Cross-links:** a person's Crew room shows "their calendar" — the bookings they added (same records, second door). Arrival/departure windows on the Crew room feed from flights here.
+
+**Open questions (parked):**
+- **Who adds a booking?** Self-serve (each person adds their own) vs anyone-can-add-anyone (trip-wide trust). Lean: self-serve + organizer can add for others.
+- **Detail depth per booking:** flight = airline + number + times + confirmation? hotel = name + check-in/out? or light (who + when)?
+- **Coordination affordances:** pure visibility first ("Sam arrives 15:40"), or also tap-to-copy flight info / open booking in Maps? MVP = visibility + details.
+
+**Current state vs vision:** today Itinerary = flat checklist (title, note, optional date, done toggle). Day grouping, bookings, and attribution are new.
 
 ### Room spec: The Crew (People) — v0.1 (2026-08-20)
 
@@ -135,6 +156,8 @@ A basecamp works for two kinds of people, and so must every screen:
 ---
 
 ## Inbox
+
+- 2026-08-20 — SCHEDULE BOARD vision: everyone sees how each other's schedules line up + the overall group schedule; individual flights show up so others can coordinate their own; same for hotel stays and prebooked activities. → developed into Room spec: The Schedule Board v0.1. Also RESOLVED the Map Wall committed-tier question: bookings live on the schedule board (date-bound), map wall shows a locked-in marker. (raw → developed)
 
 - 2026-08-20 — DECIDED: **basic chat is in first-release scope** — trip channel + cross-trip DMs, text-only realtime MVP, minimal unread indication. Deferred: push notifications, typing indicators, read receipts, media, threads. Land before/alongside M5. (raw → decided)
 
