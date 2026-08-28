@@ -64,6 +64,31 @@ A basecamp works for two kinds of people, and so must every screen:
 
 **Staging thought:** list + open-in-Maps already exists (M4 polish). Weight/vote/pin is the differentiated core — build it as a proper M4/M5 workstream (TDD: weight model, aggregation, RLS on votes).
 
+### Room spec: The Crew (People) — v0.1 (2026-08-20)
+
+**The job:** The crew wing of the basecamp — a dorm hall. The landing page is the **hall**: a list of everyone on the trip, plus a way to add more people. Each person gets a **room** with their details.
+
+**The vision (user's words, developed):**
+- **The hall** — list all trip people + add-people affordance. Glance-first: who's in, who's new.
+- **Each room (person detail page):**
+  - Name
+  - Bring up the user's **profile**
+  - **Message the user directly**
+  - **Their places** — the POIs they've added to the map wall (connects to Map Wall)
+  - **Their expenses** — what they've paid / what they owe (connects to the Kitty)
+  - **Their calendar** — flights and hotels they've booked (connects to Schedule Board + the committed tier)
+  - "not sure what else" — open
+
+**The insight:** a person's room is their **footprint across the whole basecamp** — the cross-cutting view of one person's contribution to the trip. The crew room is what makes the basecamp feel like one place instead of five features.
+
+**Design questions (parked, not blocking):**
+- **Profile depth:** what's in a profile? Account-linked users (Google/Apple): name, email, photo. Guests: display name only. Is there an editable profile page? (M4 already has "account upgrade/link flow for guests" — this connects.)
+- **Messaging scope:** in-app chat is a big feature (roadmap: Trip Chat is a placeholder; user's groups live on Discord/WhatsApp). MVP option: "message" = handoff (open SMS/WhatsApp/Discord or contact sheet) vs in-app DM. Decide later.
+- **Bookings placement:** per-person flights/hotels — cross-listed in the person's room AND on the schedule board (a booking is date-bound), or room-only?
+- **What else could live in a room:** their votes on places, their role (organizer/traveler), money status at a glance, contact info, arrival/departure windows.
+
+**Current state vs vision:** today People = flat list (edit/delete) + balances + settlements. The hall exists in skeleton; rooms are new.
+
 ### Dashboard first-open experience (user spec, finalized 2026-08-20)
 
 1. **Upcoming trip + live countdown** — future trips only (current/past trips show no countdown). Days, hours, minutes, seconds — **live ticking** (seeing it tick is more fun than a static banner). The emotional number: large serif hero. "Excited to go," literal.
@@ -95,6 +120,8 @@ A basecamp works for two kinds of people, and so must every screen:
 ---
 
 ## Inbox
+
+- 2026-08-20 — CREW vision: dorm-hall landing page (list of everyone + add people); each person has a "room": name, profile, direct message, their places (POI list), their expenses, their calendar (flights/hotels booked) — "not sure what else." → developed into Room spec: The Crew v0.1. Key insight: a person's room = their footprint across the whole basecamp. (raw → developed)
 
 - 2026-08-20 — Map Wall maps decision: use **Apple MapKit** for the in-room map view (free, native, iOS-only for now); tap-through to Google Maps for directions/info stays. Revisit Google Maps SDK only if Android/richer maps arrive. (raw → decided)
 
