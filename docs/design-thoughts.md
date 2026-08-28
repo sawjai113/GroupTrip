@@ -221,6 +221,12 @@ A basecamp works for two kinds of people, and so must every screen:
 
 ---
 
+### Prototype feedback (2026-08-20) — durable principles
+
+1. **Internal names ≠ user-facing names.** The rooms (Map Wall, Schedule Board, Crew, Kitty, Welcome Desk, Journal) are designer language. Users see plain page names: Places, Itinerary, People, Money/Expenses, Trip Overview (or the trip name), Memories, Home. Keep the rooms concept internal.
+2. **Each trip gets a photo hero.** The trip page leads with a cover image (upload or online-image URL — the app already supports both in NewTripView) — it gives each trip its own feel. The design rollout removed the hero from the trip landing; the Welcome Desk spec must restore it.
+3. **Sections own their items.** A section header must clearly own everything under it: items live in ONE shared container with hairline dividers, not individual standout cards. Applies to Needs your attention, grouped feeds, and any multi-item section.
+
 ## Inbox
 
 - 2026-08-20 — JOURNAL vision: like a hotel guest book — one-liners to short paragraphs of trip feedback; NO rating system (friends, not reviews); a place to share pictures (external album links = MVP; hosting in-app uncertain but would enable fast easy sharing); mirror/link the trip chat for conversations. → developed into Room spec: The Journal v0.1. THE FRAME IS NOW COMPLETE — all 7 rooms specced. (raw → developed)
