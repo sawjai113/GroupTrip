@@ -82,7 +82,17 @@ A basecamp works for two kinds of people, and so must every screen:
   - **Money status at a glance** — "owes $42 · gets back $18" (connects to Kitty)
   - **Arrival / departure windows** — when they get in and leave (connects to Schedule Board)
 
-**Chat (decided direction, 2026-08-20):** basic in-app chat wanted — **one common chat per trip** (trip channel) + **direct chats between users that span across trips** (user-level DMs). Feasibility: text chat on Supabase Realtime is a well-trodden pattern (messages table + conversations table + RLS; realtime postgres_changes subscription in the supabase-swift SDK) — genuinely doable, roughly M2-collaboration-sized scope. The hard/expensive part is **push notifications** (APNs + edge function relay) — defer that; chat works in-app without it. Defer typing indicators, read receipts, media. MVP = text-only realtime chat.
+**Chat (decided: IN first release, 2026-08-20):** basic in-app chat is part of the first release — **one common chat per trip** (trip channel) + **direct chats between users that span across trips** (user-level DMs). Text-only MVP on Supabase Realtime (messages + conversations tables, RLS, postgres_changes subscription).
+
+**First-release scope (what we WILL build):**
+- Trip channel (one per trip, members only) + cross-trip DMs
+- Text messages, realtime delivery while app is open
+- Unread indication (badge/dot) — minimal
+- Entry points: trip detail (Trip Chat card becomes real), Crew room (message a person), chat list
+
+**Deferred (explicitly NOT first release):** push notifications (APNs + relay — separate workstream), typing indicators, read receipts, photos/media in chat, message editing/threads.
+
+**Milestone note:** chat joins first-release scope — land it before/alongside M5 (Real Trip Readiness / TestFlight dogfood). Roadmap file is the user's in-flight uncommitted doc — update its "Trip Chat placeholder" + milestone scope there when it's committed.
 
 **The insight:** a person's room is their **footprint across the whole basecamp** — the cross-cutting view of one person's contribution to the trip. The crew room is what makes the basecamp feel like one place instead of five features.
 
@@ -125,6 +135,8 @@ A basecamp works for two kinds of people, and so must every screen:
 ---
 
 ## Inbox
+
+- 2026-08-20 — DECIDED: **basic chat is in first-release scope** — trip channel + cross-trip DMs, text-only realtime MVP, minimal unread indication. Deferred: push notifications, typing indicators, read receipts, media, threads. Land before/alongside M5. (raw → decided)
 
 - 2026-08-20 — CREW room additions: accepted the four candidates — votes on places, role (organizer/traveler), money status at a glance, arrival/departure windows. Also: wants **basic in-app chat** (one trip-wide channel per trip + cross-trip DMs). Feasibility noted: text chat on Supabase Realtime = standard pattern, doable; push notifications = the hard part, defer; typing/read-receipts/media defer. (raw → developed)
 
