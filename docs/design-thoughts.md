@@ -64,6 +64,21 @@ A basecamp works for two kinds of people, and so must every screen:
 
 **Staging thought:** list + open-in-Maps already exists (M4 polish). Weight/vote/pin is the differentiated core — build it as a proper M4/M5 workstream (TDD: weight model, aggregation, RLS on votes).
 
+### Cross-cutting layer: item tags + participation (2026-08-20)
+
+**Every item in the basecamp carries two pieces of shared metadata:**
+
+1. **A tag (item type) from one common vocabulary** — food, hotel, flight, show, museum, custom, plus others (extensible). Purpose: instant recognition ("see what they are quickly and easily") and one set of filters that works across all rooms. The UI offers the relevant subset per item type (a place: food/show/museum…; a booking: flight/hotel/activity…), but it's ONE vocabulary, not per-room categories.
+2. **A participant set — who is participating (or has participated).** Generalizes the pattern expenses already require (participants are necessary for calculating splits). Enables: filtering by person everywhere, per-person calendar views ("things Sam is part of"), and the Crew room's "their calendar" as *derived data* (items where they participate, not just items they added).
+
+**Key principle: participating ≠ added-by.** A person's calendar shows everything they're part of, regardless of who added it.
+
+**Cross-room effects:**
+- Map Wall: place categories become the shared vocabulary (presets + custom).
+- Schedule Board: booking types use the same tags; bookings carry participant sets.
+- Crew: "their calendar" = items they participate in (flights, stays, activities, places).
+- Journal (later): "has participated" past tense feeds the after-trip story.
+
 ### Room spec: The Schedule Board (Itinerary) — v0.1 (2026-08-20)
 
 **The job:** The trip's coordination spine — a day-grouped timeline where **everyone's commitments are overlaid** so the group can see how schedules line up and coordinate their own around them.
@@ -156,6 +171,8 @@ A basecamp works for two kinds of people, and so must every screen:
 ---
 
 ## Inbox
+
+- 2026-08-20 — CROSS-CUTTING: items should have common tags (food, hotel, flight, show, museum, custom, + others) for quick recognition, and a "who is participating / has participated" field for filtering and per-person calendars. Noted: expenses already require participant sets. → developed into Cross-cutting layer: item tags + participation. Key principle: participating ≠ added-by. (raw → developed)
 
 - 2026-08-20 — SCHEDULE BOARD vision: everyone sees how each other's schedules line up + the overall group schedule; individual flights show up so others can coordinate their own; same for hotel stays and prebooked activities. → developed into Room spec: The Schedule Board v0.1. Also RESOLVED the Map Wall committed-tier question: bookings live on the schedule board (date-bound), map wall shows a locked-in marker. (raw → developed)
 
