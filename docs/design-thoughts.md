@@ -77,7 +77,12 @@ A basecamp works for two kinds of people, and so must every screen:
   - **Their places** — the POIs they've added to the map wall (connects to Map Wall)
   - **Their expenses** — what they've paid / what they owe (connects to the Kitty)
   - **Their calendar** — flights and hotels they've booked (connects to Schedule Board + the committed tier)
-  - "not sure what else" — open
+  - **Their votes on places** — which map-wall POIs they want/would/no (connects to Map Wall voting)
+  - **Their role** — organizer / traveler (connects to M4 "clarify members vs participants")
+  - **Money status at a glance** — "owes $42 · gets back $18" (connects to Kitty)
+  - **Arrival / departure windows** — when they get in and leave (connects to Schedule Board)
+
+**Chat (decided direction, 2026-08-20):** basic in-app chat wanted — **one common chat per trip** (trip channel) + **direct chats between users that span across trips** (user-level DMs). Feasibility: text chat on Supabase Realtime is a well-trodden pattern (messages table + conversations table + RLS; realtime postgres_changes subscription in the supabase-swift SDK) — genuinely doable, roughly M2-collaboration-sized scope. The hard/expensive part is **push notifications** (APNs + edge function relay) — defer that; chat works in-app without it. Defer typing indicators, read receipts, media. MVP = text-only realtime chat.
 
 **The insight:** a person's room is their **footprint across the whole basecamp** — the cross-cutting view of one person's contribution to the trip. The crew room is what makes the basecamp feel like one place instead of five features.
 
@@ -120,6 +125,8 @@ A basecamp works for two kinds of people, and so must every screen:
 ---
 
 ## Inbox
+
+- 2026-08-20 — CREW room additions: accepted the four candidates — votes on places, role (organizer/traveler), money status at a glance, arrival/departure windows. Also: wants **basic in-app chat** (one trip-wide channel per trip + cross-trip DMs). Feasibility noted: text chat on Supabase Realtime = standard pattern, doable; push notifications = the hard part, defer; typing/read-receipts/media defer. (raw → developed)
 
 - 2026-08-20 — CREW vision: dorm-hall landing page (list of everyone + add people); each person has a "room": name, profile, direct message, their places (POI list), their expenses, their calendar (flights/hotels booked) — "not sure what else." → developed into Room spec: The Crew v0.1. Key insight: a person's room = their footprint across the whole basecamp. (raw → developed)
 
