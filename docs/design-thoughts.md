@@ -139,6 +139,23 @@ A basecamp works for two kinds of people, and so must every screen:
 
 **Current state vs vision:** today People = flat list (edit/delete) + balances + settlements. The hall exists in skeleton; rooms are new.
 
+### Room spec: The Journal (Memories) — v0.1 (2026-08-20)
+
+**The job:** The after-story — the basecamp's guest book. Close out the trip's logistics (kitty handles money) and give the group a place to share memories and thoughts. The room that makes the trip feel *complete* instead of abandoned at the airport.
+
+**The vision (user's words, developed):**
+- **Like a hotel guest book** — quick one-liners to short paragraphs, each person leaving feedback/memories on the trip. Low-friction, personal, chronological.
+- **No rating system** — decided: ratings are for public review platforms; this is friends with each other. (A star rating would be weird between people who were on the trip together.)
+- **Pictures:** a place to share photos. **External album links (Google Photos etc.) are the MVP** — hosting albums in-app is uncertain ("not sure us hosting the albums makes any sense right now"), but in-app hosting *would* enable fast, easy image sharing. Open decision, deferred; Supabase Storage exists if we ever want it.
+- **Conversations:** mirror the trip chat or link back to it — the group's after-trip conversation lives in the trip chat; the journal links to it.
+
+**Open questions (parked):**
+- Guest book prompts? (e.g., "favorite moment", "one word for the trip") — light structure vs pure freeform.
+- In-app photo hosting: defer until real need (storage cost + moderation vs convenience).
+- Journal entry visibility: whole trip reads all entries (guest book = public to the group). Confirmed friends-only framing.
+
+**Cross-links:** "has participated" past-tense data (cross-cutting tags/participation) feeds entries; kitty "settled up" closeout; trip chat link for conversations.
+
 ### Room spec: The Kitty (Money) — v0.1 (2026-08-20)
 
 **The job:** The fair ledger — a place where a user AND the group can quickly see all expenses for the trip, add expenses quickly on the go, and at the end see what they owe and how to repay easily. **The existing expense calculator is the backbone** — "most of this should already be in the existing expense page."
@@ -205,6 +222,8 @@ A basecamp works for two kinds of people, and so must every screen:
 ---
 
 ## Inbox
+
+- 2026-08-20 — JOURNAL vision: like a hotel guest book — one-liners to short paragraphs of trip feedback; NO rating system (friends, not reviews); a place to share pictures (external album links = MVP; hosting in-app uncertain but would enable fast easy sharing); mirror/link the trip chat for conversations. → developed into Room spec: The Journal v0.1. THE FRAME IS NOW COMPLETE — all 7 rooms specced. (raw → developed)
 
 - 2026-08-20 — HOME vs WELCOME DESK resolved: overlap is OK because home = user lens, welcome desk = trip lens. SIMPLIFY home to user-specific quick glance + quick access to next/current trip. KITTY: mostly mapped — calculator is the backbone; needs quick on-the-go expense add, user-first "what I owe," and easy end-of-trip repayment; most already exists in the expense page. → developed: dashboard simplification note + Room spec: The Kitty v0.1. (raw → developed)
 
