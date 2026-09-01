@@ -564,6 +564,25 @@ Acceptance notes:
 
 ---
 
+### 27. Trip Overview back button overlaps the status pill on the photo hero
+
+Status: Later
+Area: Trip Overview, Navigation, UX, Gestures
+
+Feedback:
+
+- On the Trip Overview page (chunk 1 lobby), the top-left BackButton overlaps the status pill ("Upcoming"/"Current"/"Future") on the photo hero — the 40pt back circle sits on top of the pill in the same top-leading corner.
+- User preference direction: consider moving the back control elsewhere (e.g. below the hero, into a top bar) or relying more on swipe-back gestures / edge swipes than an explicit button. Handle per-page when we polish each page individually (not a chunk 1 blocker).
+
+Acceptance notes:
+
+- Back affordance never overlaps the hero status pill or photo content on Trip Overview (and any page reusing the hero + back pattern).
+- If moving: keep the interactive swipe-back gesture available where SwiftUI NavigationStack supports it (interactivePopGestureRecognizer is not default in NavigationStack — may need explicit edge-swipe support), or reposition the button to a non-overlapping spot.
+- Preserve accessibility: a back affordance must remain discoverable (VoiceOver label + reasonable tap target) even if visual placement changes.
+- Apply consistently across detail pages, not just Trip Overview.
+
+---
+
 ## Done / Recently Resolved
 
 ### Invite sharing affordance polish

@@ -229,6 +229,8 @@ A basecamp works for two kinds of people, and so must every screen:
 
 ## Inbox
 
+- 2026-09-01 — NAVIGATION PREFERENCE: user prefers swipes/gestures over explicit buttons where possible — back on Trip Overview overlaps the hero status pill; direction: move back controls out of the photo area or rely on edge swipes. Apply per-page during individual page polish (todo-feedback #27). (raw → developed: todo-feedback #27)
+
 - 2026-08-20 — JOURNAL vision: like a hotel guest book — one-liners to short paragraphs of trip feedback; NO rating system (friends, not reviews); a place to share pictures (external album links = MVP; hosting in-app uncertain but would enable fast easy sharing); mirror/link the trip chat for conversations. → developed into Room spec: The Journal v0.1. THE FRAME IS NOW COMPLETE — all 7 rooms specced. (raw → developed)
 
 - 2026-08-20 — HOME vs WELCOME DESK resolved: overlap is OK because home = user lens, welcome desk = trip lens. SIMPLIFY home to user-specific quick glance + quick access to next/current trip. KITTY: mostly mapped — calculator is the backbone; needs quick on-the-go expense add, user-first "what I owe," and easy end-of-trip repayment; most already exists in the expense page. → developed: dashboard simplification note + Room spec: The Kitty v0.1. (raw → developed)
