@@ -24,6 +24,7 @@ enum AppTheme {
         static let medium: CGFloat = 14
         static let large: CGFloat = 16
         static let xLarge: CGFloat = 18
+        static let hero: CGFloat = 28
     }
 
     enum IconSize {

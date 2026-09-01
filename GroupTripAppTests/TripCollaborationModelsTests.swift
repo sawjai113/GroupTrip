@@ -216,6 +216,35 @@ final class SupabaseDTOTests: XCTestCase {
     }
 }
 
+final class CountdownDurationTests: XCTestCase {
+    func testCountdownDurationBreaksIntervalIntoDaysHoursMinutesAndSeconds() {
+        let duration = CountdownDuration(from: 0, to: 2 * 86_400 + 3 * 3_600 + 4 * 60 + 5)
+
+        XCTAssertEqual(duration.days, 2)
+        XCTAssertEqual(duration.hours, 3)
+        XCTAssertEqual(duration.minutes, 4)
+        XCTAssertEqual(duration.seconds, 5)
+    }
+
+    func testCountdownDurationRollsOverAtUnitBoundaries() {
+        let duration = CountdownDuration(from: 0, to: 86_400 + 3_600 + 60 + 1)
+
+        XCTAssertEqual(duration.days, 1)
+        XCTAssertEqual(duration.hours, 1)
+        XCTAssertEqual(duration.minutes, 1)
+        XCTAssertEqual(duration.seconds, 1)
+    }
+
+    func testCountdownDurationClampsPastDatesToZero() {
+        let duration = CountdownDuration(from: 100, to: 40)
+
+        XCTAssertEqual(duration.days, 0)
+        XCTAssertEqual(duration.hours, 0)
+        XCTAssertEqual(duration.minutes, 0)
+        XCTAssertEqual(duration.seconds, 0)
+    }
+}
+
 @MainActor
 final class AuthViewModelTests: XCTestCase {
     func testRequestMagicLinkRejectsInvalidEmailWithoutCallingService() async {

@@ -751,7 +751,7 @@ struct FeaturedTripsCarousel: View {
                 .padding(.bottom, 32)
             }
         }
-        .frame(height: 302)
+        .frame(height: 336)
         .tabViewStyle(.page(indexDisplayMode: .automatic))
     }
 }
@@ -765,94 +765,30 @@ struct FeaturedTripCard: View {
         _viewModel = ObservedObject(wrappedValue: trip.viewModel)
     }
 
-    private var nextActionText: String {
-        if let planningItem = trip.planningItems.first(where: { !$0.isDone }) {
-            return planningItem.title
-        }
+    private var eyebrow: String {
+        trip.status == .current ? "Current trip" : "Next trip"
+    }
 
-        return "Tap to open trip details"
+    private var statusPill: String {
+        switch trip.status {
+        case .current: return "Current"
+        case .future: return "Next"
+        case .past: return "Past"
+        }
+    }
+
+    private var metadata: String {
+        "\(trip.dateRangeText) · Tap to open the trip"
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .bottomLeading) {
-                RemoteTripImage(urlString: trip.imageURL)
-                    .frame(height: 188)
-
-                LinearGradient(
-                    colors: [.black.opacity(0.05), .black.opacity(0.64)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(trip.status == .current ? "CURRENT TRIP" : "FUTURE TRIP")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(.white.opacity(0.18))
-                        .clipShape(Capsule())
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(viewModel.tripName)
-                            .font(.title2.weight(.bold))
-                            .foregroundStyle(.white)
-                            .lineLimit(2)
-
-                        Text("\(trip.dateRangeText) · \(trip.destination)")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundStyle(.white.opacity(0.88))
-                            .lineLimit(2)
-                    }
-                }
-                .padding(16)
-
-                if let badgeText = trip.status.badgeText {
-                    Text(badgeText)
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
-                        .background(trip.status.tint)
-                        .clipShape(Capsule())
-                        .padding(8)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
-                }
-            }
-
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "sparkle.magnifyingglass")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.Editorial.forest)
-                    .frame(width: 30, height: 30)
-                    .background(AppTheme.Editorial.forest.opacity(0.12))
-                    .clipShape(Circle())
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Next up")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(AppTheme.Editorial.secondaryText)
-                    Text(nextActionText)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(AppTheme.Editorial.primaryText)
-                        .lineLimit(2)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(AppTheme.Editorial.secondaryText)
-            }
-            .padding(14)
-        }
-        .background(AppTheme.Editorial.card)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(AppTheme.Editorial.border, lineWidth: 1)
-        }
+        TripPhotoHero(
+            trip: trip,
+            eyebrow: eyebrow,
+            title: viewModel.tripName,
+            metadata: metadata,
+            statusPill: statusPill
+        )
         .shadow(color: .black.opacity(0.10), radius: 14, y: 8)
         .accessibilityElement(children: .combine)
         .accessibilityHint("Opens trip details")

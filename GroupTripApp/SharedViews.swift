@@ -328,6 +328,201 @@ struct EditorialTripRow: View {
     }
 }
 
+struct CountdownDuration: Equatable {
+    let days: Int
+    let hours: Int
+    let minutes: Int
+    let seconds: Int
+
+    init(from start: Date, to end: Date) {
+        self.init(from: start.timeIntervalSince1970, to: end.timeIntervalSince1970)
+    }
+
+    init(from start: TimeInterval, to end: TimeInterval) {
+        let totalSeconds = max(0, Int(end.rounded(.down) - start.rounded(.down)))
+        days = totalSeconds / 86_400
+        hours = (totalSeconds % 86_400) / 3_600
+        minutes = (totalSeconds % 3_600) / 60
+        seconds = totalSeconds % 60
+    }
+
+    var accessibilityText: String {
+        [
+            unitText(days, singular: "day", plural: "days"),
+            unitText(hours, singular: "hour", plural: "hours"),
+            unitText(minutes, singular: "minute", plural: "minutes")
+        ].joined(separator: ", ")
+    }
+
+    private func unitText(_ value: Int, singular: String, plural: String) -> String {
+        "\(value) \(value == 1 ? singular : plural)"
+    }
+}
+
+struct CountdownView: View {
+    enum Variant {
+        case surface
+        case photoOverlay
+    }
+
+    let targetDate: Date
+    var title: String
+    var variant: Variant = .surface
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let duration = CountdownDuration(from: context.date, to: targetDate)
+
+            HStack(spacing: 0) {
+                countdownUnit(value: duration.days, label: "Days")
+                divider
+                countdownUnit(value: duration.hours, label: "Hrs")
+                divider
+                countdownUnit(value: duration.minutes, label: "Min")
+                divider
+                countdownUnit(value: duration.seconds, label: "Sec")
+            }
+            .padding(.top, 9)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+            .background(background)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(duration.accessibilityText) until \(title)")
+        }
+    }
+
+    private func countdownUnit(value: Int, label: String) -> some View {
+        VStack(spacing: 2) {
+            Text(String(format: "%02d", value))
+                .font(.system(size: 22, weight: .semibold, design: .serif))
+                .tracking(-1.0)
+                .foregroundStyle(numberColor)
+                .monospacedDigit()
+
+            Text(label.uppercased())
+                .font(.caption2.weight(.bold))
+                .tracking(1.0)
+                .foregroundStyle(labelColor)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+        .padding(.horizontal, 4)
+        .frame(maxWidth: .infinity)
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(dividerColor)
+            .frame(width: 1, height: 34)
+            .padding(.horizontal, 2)
+    }
+
+    private var background: some ShapeStyle {
+        switch variant {
+        case .surface: return AnyShapeStyle(AppTheme.Editorial.raisedCard)
+        case .photoOverlay: return AnyShapeStyle(.white.opacity(0.14))
+        }
+    }
+
+    private var borderColor: Color {
+        switch variant {
+        case .surface: return AppTheme.Editorial.border
+        case .photoOverlay: return .white.opacity(0.32)
+        }
+    }
+
+    private var dividerColor: Color {
+        switch variant {
+        case .surface: return AppTheme.Editorial.border.opacity(0.70)
+        case .photoOverlay: return .white.opacity(0.26)
+        }
+    }
+
+    private var numberColor: Color {
+        switch variant {
+        case .surface: return AppTheme.Editorial.forestDeep
+        case .photoOverlay: return Color(red: 1.0, green: 0.973, blue: 0.929)
+        }
+    }
+
+    private var labelColor: Color {
+        switch variant {
+        case .surface: return AppTheme.Editorial.secondaryText
+        case .photoOverlay: return .white.opacity(0.82)
+        }
+    }
+}
+
+struct TripPhotoHero: View {
+    let trip: TripPlan
+    var eyebrow: String
+    var title: String
+    var metadata: String
+    var statusPill: String?
+    var showsCountdown: Bool = true
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            RemoteTripImage(urlString: trip.imageURL)
+
+            LinearGradient(
+                colors: [.black.opacity(0.08), .black.opacity(0.22), .black.opacity(0.82)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            if let statusPill {
+                Text(statusPill)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(.white.opacity(0.18))
+                    .clipShape(Capsule())
+                    .padding(12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(eyebrow.uppercased())
+                    .font(.caption2.weight(.bold))
+                    .tracking(1.3)
+                    .foregroundStyle(AppTheme.Editorial.sand)
+
+                Text(title)
+                    .font(.system(size: 28, weight: .semibold, design: .serif))
+                    .tracking(-0.8)
+                    .foregroundStyle(Color(red: 1.0, green: 0.973, blue: 0.929))
+                    .lineLimit(2)
+
+                Text(metadata)
+                    .font(.subheadline)
+                    .foregroundStyle(.white.opacity(0.86))
+                    .lineLimit(2)
+
+                if showsCountdown, trip.status == .future {
+                    CountdownView(targetDate: trip.startDate, title: title, variant: .photoOverlay)
+                        .padding(.top, 7)
+                }
+            }
+            .padding(16)
+        }
+        .frame(minHeight: 240)
+        .frame(height: 292)
+        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.hero, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: AppTheme.Radius.hero, style: .continuous)
+                .stroke(.white.opacity(0.16), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct WanderaidLogoMark: View {
     var size: CGFloat
 

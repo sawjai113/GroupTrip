@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct PeopleTabView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
@@ -75,13 +78,20 @@ struct PeopleTabView: View {
 
 struct PeopleFeatureView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var tripID: TripPlan.ID?
+    var createdInvite: TripInvite?
     var saveParticipants: ([String]) async -> Void = { _ in }
     var updateParticipant: (Participant) async -> Void = { _ in }
+    var createInvite: () -> Void = { }
     var usesExternalPersistence: Bool = false
     @State private var activeSheet: ActiveSheet?
 
     var body: some View {
         List {
+            if usesExternalPersistence, let tripID {
+                InvitePeopleCard(tripID: tripID, createdInvite: createdInvite, createInvite: createInvite)
+            }
+
             PeopleSection(
                 viewModel: viewModel,
                 editParticipant: { participant in
@@ -120,6 +130,75 @@ struct PeopleFeatureView: View {
             case .expense, .payment:
                 EmptyView()
             }
+        }
+    }
+}
+
+private struct InvitePeopleCard: View {
+    let tripID: TripPlan.ID
+    let createdInvite: TripInvite?
+    var createInvite: () -> Void
+    @State private var didCopyInviteCode = false
+
+    private var inviteForTrip: TripInvite? {
+        guard createdInvite?.tripID == tripID else { return nil }
+        return createdInvite
+    }
+
+    var body: some View {
+        Section {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
+                HStack(spacing: AppTheme.Spacing.small) {
+                    WaniIconBadge(systemImage: "person.badge.plus", tint: AppTheme.success, size: AppTheme.IconSize.medium)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Invite People")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Create a code friends can use to join this trip.")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
+                    }
+
+                    Spacer()
+                }
+
+                if let inviteForTrip {
+                    HStack(spacing: AppTheme.Spacing.small) {
+                        Text(inviteForTrip.code)
+                            .font(.title3.monospaced().weight(.semibold))
+                            .padding(.vertical, AppTheme.Spacing.xSmall)
+                            .accessibilityLabel("Invite code \(inviteForTrip.code)")
+
+                        Spacer()
+
+                        Button {
+                            copyInviteCode(inviteForTrip.code)
+                        } label: {
+                            Label(didCopyInviteCode ? "Copied" : "Copy", systemImage: didCopyInviteCode ? "checkmark" : "doc.on.doc")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .buttonStyle(.bordered)
+                        .tint(didCopyInviteCode ? AppTheme.success : AppTheme.Editorial.forest)
+                        .accessibilityLabel(didCopyInviteCode ? "Invite code copied" : "Copy invite code")
+                    }
+                }
+
+                Button(inviteForTrip == nil ? "Create Invite Code" : "Create Another Code", action: createInvite)
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.Editorial.forest)
+            }
+            .padding(.vertical, AppTheme.Spacing.xSmall)
+        }
+    }
+
+    private func copyInviteCode(_ code: String) {
+        #if canImport(UIKit)
+        UIPasteboard.general.string = code
+        #endif
+        didCopyInviteCode = true
+        Task {
+            try? await Task.sleep(for: .seconds(2))
+            await MainActor.run { didCopyInviteCode = false }
         }
     }
 }
