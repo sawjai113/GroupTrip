@@ -48,6 +48,7 @@ Default workflow: start cheap in `general` for discovery/specification. Spawn or
 - Preserve user changes. Do not revert unrelated work.
 - Prefer small, reviewable changes over broad rewrites.
 - Keep feature logic close to its feature area unless it is clearly reusable.
+- **No overlapping interactive elements**: when layering views in a ZStack (buttons over heroes, pills over photos, dots over rows), never place a tappable control on top of a label/pill/badge/another tappable target in the same region — same-corner pins with similar paddings are the classic failure (BackButton over the hero status pill, todo-feedback #27). The QA gate (Step 5b) checks this on every UI diff.
 - Run a build after source changes:
 
 ```sh
