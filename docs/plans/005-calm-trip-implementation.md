@@ -1,6 +1,6 @@
 # 005 Calm Trip Design — App Implementation Brief (M4 + M5)
 
-**Status:** APPROVED with amendments (@architect 2026-09-01) — Chunk 1 ready for implementation; @design handoff delivered
+**Status:** Chunk 1 SHIPPED (commit `026773a`, 2026-09-01, QA PASS) — Chunk 2 scoping in progress (@architect)
 **Date:** 2026-09-01
 **Approved design:** `wanderaid-designs/variants/005-calm-prototype/` (commits `f2190a0` → `b1ab181` → `58ca81f`, pushed by @design)
 **Sources:** docs/design-thoughts.md (room specs), docs/plans/rooms-to-milestones.md, docs/product-roadmap.md (M4/M5), docs/todo-feedback.md
@@ -32,7 +32,7 @@ Implement the approved 005 prototype into the SwiftUI app: the user-facing room 
 ## Chunk plan (proposed sequencing — @architect to triage)
 
 ### Chunk 1 — Home countdown hero + Welcome Desk lobby reframe (M4 quick wins)
-Visible, motivating, **UI-only, no schema/RLS/service changes** (@architect confirmed). Uses existing data (trip.startDate/imageURL/participants; AvatarCluster at SharedViews.swift:584, FeaturedTripsCarousel at TripDashboardView.swift:738).
+**Status: SHIPPED 2026-09-01 (commit `026773a`, @review PASS, 100/100 tests).** User visual checkpoint on device in progress.
 - New reusable `CountdownView` (TimelineView ticker, serif numerals, glass panel variant for photo overlay, future-trips-only).
 - Home (TripDashboardView): FeaturedTripsCarousel hero → photo hero + "Current/Next" pill + live countdown overlay (future trips only), tappable into the trip. Matches prototype v3.1/v3.2.
 - Trip Overview (TripSummaryView): reframe as lobby — photo hero + compact countdown + place/date + who's-going (AvatarCluster) + trip sections grid (Places/Itinerary/People/Money + Memories/Chat placeholder entries) + activity feed TRUE empty state (no fake feed rows — trip_activity is M5) + "Open group chat" placeholder card (existing PlaceholderActionCard behavior).
@@ -50,9 +50,15 @@ Visible, motivating, **UI-only, no schema/RLS/service changes** (@architect conf
 - @review gate passed before commit.
 
 ### Chunk 2 — Cross-cutting foundation: tags + participant sets (M4, schema + TDD)
-The shared grammar everything else derives from.
-- One tag vocabulary (food/hotel/flight/show/museum/custom, extensible) on places + planning items; participant sets on places + planning items (expenses already have them).
-- Schema: new columns/tables + RLS + migrations; service + store + model updates; TDD.
+**Status: SCOPE APPROVED 2026-09-01 (@architect) — full spec in `docs/plans/005-chunk2-scope.md`.**
+- One `tag` column on places + planning items (rename `trip_places.category` → `tag`, values preserved); no lookup table/CHECK — vocabulary is a client-side `TripTag` type (custom tags spec'd). One tag per item.
+- Participant sets = join tables `trip_place_participants` + `trip_planning_item_participants` mirroring `trip_expense_splits` (composite PK, cascade FKs, participant_id index for M5 "their calendar"). NOT uuid[] (no FK integrity, full-row replace, no per-person RLS).
+- Migration: `supabase/migrations/002_item_tags_participant_sets.sql` + schema.sql append; apply live via `npx supabase db query --linked --file`, re-run proves idempotency (guarded DO block for the rename).
+- RLS: split-mirror policies on join tables; cross-trip integrity triggers; narrow security-definer RPCs `set_place_participants` / `set_planning_item_participants` (atomic replace, member-gated); tags ride existing UPDATE policies.
+- Expenses: participants already exist; expense tags deferred (zero consumer in M4/M5 — explicit scope decision).
+- **Hard gate: two-account rollback RLS smoke on LIVE Supabase (schema-first: apply + smoke green BEFORE Swift).**
+- Sequencing: schema-first → Swift six-file pattern (models + TripTag → DTOs/assembly → service → store → fake+tests) → verification rollup → @review gate.
+- Risk flags: create+link two-call window (syncError, no local mutation); rename touches view files mechanically (compile-only); participant-set persistence has no M4 UI consumer (exercised by tests + smoke until M5).
 
 ### Chunk 3 — Places (M4): tags UI + Google Maps tap-through
 - Category/tag chips in add/edit place (todo 14: one-tap common categories + custom).
