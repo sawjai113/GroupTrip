@@ -71,6 +71,14 @@ Implement the approved 005 prototype into the SwiftUI app: the user-facing room 
 - **Files:** TripModels.swift (+PlaceTagInput, filtered(by:), PlaceMapsLink — Foundation-pure, no pbxproj churn); TripPlacesView.swift (filter row + row redesign + AddTripPlaceView chip row + openURL env); tests in TripCollaborationModelsTests.swift (new TripPlacesLogicTests class).
 - **Sequencing:** logic-first at resume (zero design dep) → @design handoff lands in parallel → UI wiring → build + full suite + @review gate.
 - **Handoff notes for @coding:** chips row = separate section above list (no row overlays — QA 5b); confirm async openURL-Bool fallback compiles on iOS target (iOS 15+).
+
+**Interim chip UI spec (drafted by @general from approved prototype + design-system skill; @design to review/refine at resume — their handoff run hit the quota 429):**
+- Chip language from prototype (`variants/005-calm-prototype/index.html` `.chips`/`.chip`): horizontal scroll row, capsule chips, `.chip.active` = forest fill + white text. SwiftUI: `ScrollView(.horizontal, showsIndicators: false)` + HStack; capsule via `Capsule()` clip; chip = `Text` + `.padding(.horizontal, 11).padding(.vertical, 8)` + `.font(.caption.weight(.bold))` (prototype 11.5px/850); active: `AppTheme.Editorial.forest` bg + white text; inactive: `Editorial.card` bg + `Editorial.border` stroke + `Editorial.secondaryText`.
+- Tag chip row in AddTripPlaceView: chips from `TripTag.subset(for: .place)` + a `Custom` chip; custom chip selected → reveal `EditorialTextField` below the row; tap target ≥44pt; active custom chip shows forest fill while field is visible.
+- Filter chip row on list: same chip component, own section above list (`EditorialSectionHeader(title: "Filter")` optional — prototype uses plain chip row); All = no selection state.
+- Place row redesign: `HStack` — `WaniIconBadge(systemImage: "mappin", tint: FeatureColor.places)` thumb, name (`.body.weight(.semibold)`, primaryText), tag pill (`.pill`-style: capsule, `Editorial.border`, secondaryText, caption), trailing controls: pencil (`pencil` icon, forest) + trash (destructive). Row body `.contentShape(Rectangle())` + `.onTapGesture` → maps; `.buttonStyle(.plain)` on icon buttons (no nested Buttons inside the tap row).
+- Empty filter state: `EmptyFeatureCard`-style ("No places match this tag") with `Editorial.card` surface.
+- Contrast check (light+dark): forest-on-card active chip meets 4.5:1; secondaryText on card verified in existing tokens.
 - (Voting/weights/pins/MapKit = M5, chunk 6.)
 
 ### Chunk 4 — Itinerary (M4): day grouping + optional times
