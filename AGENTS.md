@@ -43,6 +43,8 @@ Use the cheaper `general` profile / DeepSeek lane for planning and research, and
 
 Default workflow: start cheap in `general` for discovery/specification. Spawn or switch to `coding` for implementation and QA. If unsure, do a short DeepSeek scoping pass first, then spend Codex on the smallest well-defined coding task.
 
+**Quota-aware dispatch (learned 2026-09-01):** the Codex-backed lanes (`coding` implementation, `review` gates) share the user's Codex quota, which resets on a ~5h rolling window. When exhausted, those profiles fail with HTTP 429 mid-run and messages to a mid-turn profile bounce `target_busy` until it finishes. Rules: (1) never start a chunk without its scope + design decisions recorded in `docs/plans/` first — that file is the durable channel that survives quota kills and bounced deliveries; (2) before dispatching a Codex-lane chunk, confirm quota is available; (3) if a lane dies mid-chunk (429), resume from the last committed state rather than restarting; (4) use the quota pause for non-Codex lanes (@architect scoping, @design handoff) so work is queued when quota returns.
+
 ## Global Rules
 
 - Preserve user changes. Do not revert unrelated work.
