@@ -168,7 +168,7 @@ struct PeopleFeatureView: View {
                     updateParticipant: updateParticipant,
                     usesExternalPersistence: usesExternalPersistence
                 )
-            case .expense, .payment:
+            case .expense:
                 EmptyView()
             }
         }
@@ -485,6 +485,9 @@ struct SettlementCards: View {
     let settlements: [Settlement]
     var participantCount: Int = 0
     var totalExpenses: Decimal = 0
+    /// Invoked when a suggested settlement row is tapped ("Pay Maya $42").
+    /// When nil the rows are informational (People hall read-only surface).
+    var onRecordSettlement: ((Settlement) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -495,34 +498,56 @@ struct SettlementCards: View {
             } else {
                 VStack(spacing: 10) {
                     ForEach(settlements) { settlement in
-                        HStack(spacing: 10) {
-                            AvatarInitial(name: settlement.from.name)
-                            Image(systemName: "arrow.right")
-                                .foregroundStyle(AppTheme.Editorial.secondaryText)
-                            AvatarInitial(name: settlement.to.name)
-
-                            Text("\(settlement.from.name) pays \(settlement.to.name)")
-                                .font(.subheadline.weight(.semibold))
-                                .lineLimit(2)
-
-                            Spacer()
-
-                            Text(settlement.amount.currencyText)
-                                .font(.headline)
-                                .foregroundStyle(AppTheme.Editorial.forest)
-                                .monospacedDigit()
-                        }
-                        .padding(14)
-                        .background(AppTheme.Editorial.card)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(AppTheme.Editorial.border, lineWidth: 1)
-                        )
+                        settlementRow(settlement)
                     }
                 }
             }
         }
+    }
+
+    private func settlementRow(_ settlement: Settlement) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                AvatarInitial(name: settlement.from.name)
+                Image(systemName: "arrow.right")
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
+                AvatarInitial(name: settlement.to.name)
+
+                Text("\(settlement.from.name) pays \(settlement.to.name)")
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+
+                Spacer()
+
+                Text(settlement.amount.currencyText)
+                    .font(.headline)
+                    .foregroundStyle(AppTheme.Editorial.forest)
+                    .monospacedDigit()
+            }
+
+            if let onRecordSettlement {
+                Button {
+                    onRecordSettlement(settlement)
+                } label: {
+                    Label(
+                        "Pay \(settlement.to.name) \(settlement.amount.wholeCurrencyText)",
+                        systemImage: "arrow.left.arrow.right"
+                    )
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                }
+                .buttonStyle(.bordered)
+                .tint(AppTheme.Editorial.forest)
+            }
+        }
+        .padding(14)
+        .background(AppTheme.Editorial.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+        )
     }
 
     private var emptyTitle: String {

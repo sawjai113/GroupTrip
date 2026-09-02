@@ -10,16 +10,28 @@ struct TripSummaryView: View {
     @State private var isLeavingTrip = false
     @State private var isShowingArchiveTripConfirmation = false
     @State private var isArchivingTrip = false
+    private let currentAccountID: UUID?
 
-    init(trip: TripPlan, store: TripStore) {
+    init(trip: TripPlan, store: TripStore, currentAccountID: UUID? = nil) {
         self.tripID = trip.id
         self.initialTrip = trip
+        self.currentAccountID = currentAccountID
         _store = ObservedObject(wrappedValue: store)
         _viewModel = ObservedObject(wrappedValue: trip.viewModel)
     }
 
     private var trip: TripPlan {
         store.trips.first { $0.id == tripID } ?? initialTrip
+    }
+
+    /// Resolved account-aware money status for the Money grid card (subtitle
+    /// copy only). Honest fallback: nil/unmapped keeps trip-relative framing.
+    private var userMoneyStatus: UserMoneyStatus {
+        UserMoneyResolver.resolve(
+            accountID: currentAccountID,
+            participants: viewModel.calculator.participants,
+            netByParticipantID: Dictionary(uniqueKeysWithValues: viewModel.calculator.balances().map { ($0.participant.id, $0.net) })
+        )
     }
 
     private var placesBinding: Binding<[TripPlace]> {
@@ -68,6 +80,7 @@ struct TripSummaryView: View {
                     openItineraryCount: trip.planningItems.filter { !$0.isDone }.count,
                     travelerCount: viewModel.calculator.participants.count,
                     expenseCount: viewModel.calculator.expenses.count,
+                    userMoneyStatus: userMoneyStatus,
                     placesDestination: AnyView(TripPlacesView(
                         places: placesBinding,
                         savePlace: { place in await store.savePlace(place, to: tripID) },
@@ -102,6 +115,7 @@ struct TripSummaryView: View {
                         tripName: viewModel.tripName,
                         destination: trip.destination,
                         viewModel: viewModel,
+                        currentAccountID: currentAccountID,
                         saveExpense: { title, paidBy, amount, participants in
                             await store.saveExpense(title: title, paidBy: paidBy, amount: amount, participants: participants, to: tripID)
                         },
@@ -210,6 +224,7 @@ private struct TripSectionsGrid: View {
     let openItineraryCount: Int
     let travelerCount: Int
     let expenseCount: Int
+    var userMoneyStatus: UserMoneyStatus = .unmapped
     let placesDestination: AnyView
     let itineraryDestination: AnyView
     let peopleDestination: AnyView
@@ -219,6 +234,19 @@ private struct TripSectionsGrid: View {
         GridItem(.flexible(), spacing: 10),
         GridItem(.flexible(), spacing: 10)
     ]
+
+    private var moneySubtitle: String {
+        switch userMoneyStatus {
+        case .unmapped:
+            return expenseCount == 0 ? "No expenses yet" : "\(expenseCount) logged"
+        case .settled:
+            return "All settled"
+        case let .youOwe(amount):
+            return "You owe \(amount.wholeCurrencyText)"
+        case let .youGetBack(amount):
+            return "You get back \(amount.wholeCurrencyText)"
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
@@ -261,7 +289,7 @@ private struct TripSectionsGrid: View {
                 NavigationLink(destination: moneyDestination) {
                     TripSectionGridCard(
                         title: "Money",
-                        subtitle: expenseCount == 0 ? "No expenses yet" : "\(expenseCount) logged",
+                        subtitle: moneySubtitle,
                         systemImage: "receipt.fill",
                         tint: AppTheme.FeatureColor.expenses,
                         showsUnreadDot: expenseCount > 0

@@ -69,11 +69,11 @@ struct TripDashboardView: View {
                             }
                         } else {
                             if !summary.featuredTrips.isEmpty {
-                                FeaturedTripsCarousel(trips: summary.featuredTrips, store: store)
+                                FeaturedTripsCarousel(trips: summary.featuredTrips, store: store, currentAccountID: currentAccountID)
                             }
 
                             if !summary.attentionItems.isEmpty {
-                                NeedsYourAttentionSection(items: summary.attentionItems, trips: store.trips, store: store)
+                                NeedsYourAttentionSection(items: summary.attentionItems, trips: store.trips, store: store, currentAccountID: currentAccountID)
                             }
 
                             DashboardMoneySection(money: summary.money)
@@ -92,6 +92,7 @@ struct TripDashboardView: View {
                     primaryTrip: bottomNavTrip,
                     isShowingNextTrip: bottomNavTripIsNext,
                     store: store,
+                    currentAccountID: currentAccountID,
                     showAllTrips: { isShowingAllTrips = true },
                     showNoFocusedTrip: { isShowingNoFocusedTrip = true }
                 )
@@ -105,7 +106,7 @@ struct TripDashboardView: View {
                 JoinTripInviteView(store: store)
             }
             .sheet(isPresented: $isShowingAllTrips) {
-                AllTripsSheet(summary: summary, store: store)
+                AllTripsSheet(summary: summary, store: store, currentAccountID: currentAccountID)
             }
             .sheet(isPresented: $isShowingAccount) {
                 AccountSettingsView(
@@ -430,6 +431,7 @@ private struct DashboardBottomNav: View {
     let primaryTrip: TripPlan?
     let isShowingNextTrip: Bool
     @ObservedObject var store: TripStore
+    var currentAccountID: UUID?
     var showAllTrips: () -> Void
     var showNoFocusedTrip: () -> Void
 
@@ -447,7 +449,7 @@ private struct DashboardBottomNav: View {
 
             if let primaryTrip {
                 NavigationLink {
-                    TripSummaryView(trip: primaryTrip, store: store)
+                    TripSummaryView(trip: primaryTrip, store: store, currentAccountID: currentAccountID)
                 } label: {
                     BottomNavLabel(title: primaryTripTitle, systemImage: primaryTripSystemImage, isSelected: false)
                 }
@@ -508,21 +510,22 @@ private struct AllTripsSheet: View {
     @Environment(\.dismiss) private var dismiss
     let summary: DashboardSummary
     @ObservedObject var store: TripStore
+    var currentAccountID: UUID?
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if !summary.currentTrips.isEmpty {
-                        AllTripsGroup(title: "Current", trips: summary.currentTrips, store: store)
+                        AllTripsGroup(title: "Current", trips: summary.currentTrips, store: store, currentAccountID: currentAccountID)
                     }
 
                     if !summary.futureTrips.isEmpty {
-                        AllTripsGroup(title: "Future", trips: summary.futureTrips, store: store)
+                        AllTripsGroup(title: "Future", trips: summary.futureTrips, store: store, currentAccountID: currentAccountID)
                     }
 
                     if !summary.pastTrips.isEmpty {
-                        AllTripsGroup(title: "Past", trips: summary.pastTrips, store: store)
+                        AllTripsGroup(title: "Past", trips: summary.pastTrips, store: store, currentAccountID: currentAccountID)
                     }
                 }
                 .padding(16)
@@ -542,6 +545,7 @@ private struct AllTripsGroup: View {
     let title: String
     let trips: [TripPlan]
     @ObservedObject var store: TripStore
+    var currentAccountID: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -550,7 +554,7 @@ private struct AllTripsGroup: View {
             VStack(spacing: 12) {
                 ForEach(trips) { trip in
                     NavigationLink {
-                        TripSummaryView(trip: trip, store: store)
+                        TripSummaryView(trip: trip, store: store, currentAccountID: currentAccountID)
                     } label: {
                         EditorialTripRow(
                             trip: trip,
@@ -738,12 +742,13 @@ struct JoinTripInviteView: View {
 struct FeaturedTripsCarousel: View {
     let trips: [TripPlan]
     @ObservedObject var store: TripStore
+    var currentAccountID: UUID?
 
     var body: some View {
         TabView {
             ForEach(trips) { trip in
                 NavigationLink {
-                    TripSummaryView(trip: trip, store: store)
+                    TripSummaryView(trip: trip, store: store, currentAccountID: currentAccountID)
                 } label: {
                     FeaturedTripCard(trip: trip)
                 }
@@ -799,6 +804,7 @@ private struct NeedsYourAttentionSection: View {
     let items: [DashboardAttentionItem]
     let trips: [TripPlan]
     @ObservedObject var store: TripStore
+    var currentAccountID: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -808,7 +814,7 @@ private struct NeedsYourAttentionSection: View {
                 ForEach(items) { item in
                     if let trip = trips.first(where: { $0.id == item.tripID }) {
                         NavigationLink {
-                            TripSummaryView(trip: trip, store: store)
+                            TripSummaryView(trip: trip, store: store, currentAccountID: currentAccountID)
                         } label: {
                             AttentionRow(item: item)
                         }

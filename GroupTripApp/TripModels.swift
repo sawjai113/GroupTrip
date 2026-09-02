@@ -229,6 +229,123 @@ enum TripShareTextBuilder {
     }
 }
 
+// MARK: - Chunk 6: user-first money + quick add + repayment guidance
+
+/// The signed-in user's money posture for one trip, resolved from their
+/// account-linked participant. Foundation-only — the view maps each case to
+/// text/tint. `.unmapped` is the honest fallback (demo / no linked
+/// participant): keep trip-relative framing in that case.
+enum UserMoneyStatus: Equatable {
+    case unmapped
+    case settled
+    case youOwe(Decimal)
+    case youGetBack(Decimal)
+
+    var amount: Decimal {
+        switch self {
+        case .unmapped, .settled:
+            return 0
+        case let .youOwe(amount), let .youGetBack(amount):
+            return amount
+        }
+    }
+
+    var displayText: String {
+        switch self {
+        case .unmapped, .settled:
+            return "All settled"
+        case let .youOwe(amount):
+            return "You owe \(amount.wholeCurrencyText)"
+        case let .youGetBack(amount):
+            return "You get back \(amount.wholeCurrencyText)"
+        }
+    }
+}
+
+enum UserMoneyResolver {
+    /// Resolves the signed-in user's status for one trip.
+    /// - Parameters:
+    ///   - accountID: the signed-in account (nil in demo mode).
+    ///   - participants: the trip's participants (foundation, non-optional).
+    ///   - netByParticipantID: `Balance.net` per participant id.
+    static func resolve(
+        accountID: UUID?,
+        participants: [Participant],
+        netByParticipantID: [UUID: Decimal]
+    ) -> UserMoneyStatus {
+        guard let accountID else { return .unmapped }
+        guard let me = participants.first(where: { $0.accountID == accountID }) else {
+            return .unmapped
+        }
+        let net = netByParticipantID[me.id] ?? 0
+        if net > 0 {
+            return .youGetBack(net)
+        } else if net < 0 {
+            return .youOwe(-net)
+        } else {
+            return .settled
+        }
+    }
+}
+
+/// Pure helpers for the 3-tap quick-add flow and repayment guidance.
+enum QuickAddMoney {
+    struct PaymentPrefill: Identifiable, Equatable {
+        let id = UUID()
+        var title: String
+        var from: UUID
+        var to: UUID
+        var amount: Decimal
+    }
+
+    private static let monthAbbreviations = [
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    ]
+
+    /// "Expense · Sep 2" — deterministic on a fixed Gregorian calendar so the
+    /// output is test-pinnable regardless of the device's calendar/locale.
+    static func autoTitle(for date: Date = Date()) -> String {
+        title(prefix: "Expense", for: date)
+    }
+
+    /// "Payment · Sep 2" — used when pre-filling a payment from a settlement.
+    static func paymentAutoTitle(for date: Date = Date()) -> String {
+        title(prefix: "Payment", for: date)
+    }
+
+    /// Equal split = ALL trip participants including the payer (deterministic).
+    /// A payer that is not a trip participant yields the empty set — the trip's
+    /// participant list is the only source of truth for who shares an expense.
+    static func equalSplitParticipants(
+        payerID: UUID,
+        allParticipants: [Participant]
+    ) -> Set<UUID> {
+        let ids = Set(allParticipants.map(\.id))
+        return ids.contains(payerID) ? ids : []
+    }
+
+    /// Pre-fills an AddPaymentView from a suggested settlement row. Amounts and
+    /// parties stay editable in the sheet; title is an auto-title so the store
+    /// guard (non-empty title) is never relaxed.
+    static func paymentPrefill(
+        from: UUID,
+        to: UUID,
+        amount: Decimal,
+        on date: Date = Date()
+    ) -> PaymentPrefill {
+        PaymentPrefill(title: paymentAutoTitle(for: date), from: from, to: to, amount: amount)
+    }
+
+    private static func title(prefix: String, for date: Date) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC") ?? calendar.timeZone
+        let comps = calendar.dateComponents([.year, .month, .day], from: date)
+        let month = monthAbbreviations[(comps.month ?? 1) - 1]
+        return "\(prefix) · \(month) \(comps.day ?? 1)"
+    }
+}
+
 struct TripTag: RawRepresentable, Hashable, Identifiable {
     enum ItemKind {
         case place

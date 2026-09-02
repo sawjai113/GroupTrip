@@ -4,6 +4,7 @@ struct ExpenseTrackerView: View {
     let tripName: String
     let destination: String
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var currentAccountID: UUID? = nil
     var saveExpense: (String, Participant.ID, Decimal, Set<Participant.ID>) async -> Void = { _, _, _, _ in }
     var updateExpense: (ExpenseItem) async -> Void = { _ in }
     var deleteExpense: (ExpenseItem.ID) async -> Void = { _ in }
@@ -14,6 +15,17 @@ struct ExpenseTrackerView: View {
     var usesExternalPersistence: Bool = false
     @State private var selectedTab: ExpenseTab = .expenses
     @State private var activeSheet: ActiveSheet?
+    @State private var isShowingQuickAdd = false
+
+    /// Resolved account-aware money status. `.unmapped` (demo or no linked
+    /// participant) keeps the existing trip-relative framing — honest fallback.
+    private var userMoneyStatus: UserMoneyStatus {
+        UserMoneyResolver.resolve(
+            accountID: currentAccountID,
+            participants: viewModel.calculator.participants,
+            netByParticipantID: Dictionary(uniqueKeysWithValues: viewModel.calculator.balances().map { ($0.participant.id, $0.net) })
+        )
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,7 +33,15 @@ struct ExpenseTrackerView: View {
 
             ScrollView {
                 VStack(spacing: 16) {
+                    if userMoneyStatus != .unmapped {
+                        UserMoneyHero(status: userMoneyStatus)
+                    }
+
                     ExpenseStatsCard(viewModel: viewModel)
+
+                    if !viewModel.calculator.participants.isEmpty {
+                        quickAddRow
+                    }
 
                     EditorialSegmentedControl(
                         options: ExpenseTab.allCases,
@@ -45,6 +65,7 @@ struct ExpenseTrackerView: View {
                     case .balances:
                         BalancesTabView(
                             viewModel: viewModel,
+                            currentAccountID: currentAccountID,
                             saveDirectPayment: saveDirectPayment,
                             updateDirectPayment: updateDirectPayment,
                             usesExternalPersistence: usesExternalPersistence
@@ -65,6 +86,14 @@ struct ExpenseTrackerView: View {
         }
         .background(AppTheme.Editorial.background)
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $isShowingQuickAdd) {
+            QuickAddExpenseSheet(
+                viewModel: viewModel,
+                defaultPayerID: quickAddDefaultPayerID
+            ) { amount, payerID, participants in
+                await saveExpense(QuickAddMoney.autoTitle(), payerID, amount, participants)
+            }
+        }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .person:
@@ -88,10 +117,129 @@ struct ExpenseTrackerView: View {
                     saveExpense: saveExpense,
                     usesExternalPersistence: usesExternalPersistence
                 )
-            case .payment:
-                AddPaymentView(viewModel: viewModel)
             }
         }
+    }
+
+    private var quickAddRow: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "bolt.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.white)
+                .frame(width: 34, height: 34)
+                .background(AppTheme.Editorial.forest)
+                .clipShape(Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Quick Add")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.Editorial.primaryText)
+                Text("Amount, who paid, done — split equally")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.Editorial.secondaryText)
+        }
+        .padding(AppTheme.Spacing.medium)
+        .background(AppTheme.Editorial.card)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isShowingQuickAdd = true
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("Quick Add Expense")
+    }
+
+    /// Default payer for the quick-add sheet: the account-linked participant
+    /// first (demo fallback: first participant — trip-relative framing intact).
+    private var quickAddDefaultPayerID: UUID? {
+        if let currentAccountID,
+           let me = viewModel.calculator.participants.first(where: { $0.accountID == currentAccountID }) {
+            return me.id
+        }
+        return viewModel.calculator.participants.first?.id
+    }
+}
+
+/// Account-aware hero: two metric cells (You owe / You get back) in the
+/// chunk-5 raised-card style. Only shown when the user is mapped to a trip
+/// participant; otherwise the trip-relative framing stays (honest fallback).
+struct UserMoneyHero: View {
+    let status: UserMoneyStatus
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            EditorialSectionHeader(title: "Your balance")
+
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
+                spacing: 10
+            ) {
+                metricCell(title: "You owe", amount: oweAmount, color: AppTheme.Editorial.owed, accessory: status)
+                metricCell(title: "You get back", amount: getBackAmount, color: AppTheme.Editorial.forestDeep, accessory: status)
+            }
+        }
+    }
+
+    private var oweAmount: Decimal {
+        if case let .youOwe(amount) = status { return amount }
+        return 0
+    }
+
+    private var getBackAmount: Decimal {
+        if case let .youGetBack(amount) = status { return amount }
+        return 0
+    }
+
+    private func metricCell(title: String, amount: Decimal, color: Color, accessory: UserMoneyStatus) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
+            Text(amount.wholeCurrencyText)
+                .font(.system(size: 23, weight: .semibold, design: .serif))
+                .tracking(-0.3)
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.Editorial.secondaryText)
+            if accessory == .settled {
+                Text("All settled")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
+            }
+        }
+        .padding(AppTheme.Spacing.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AppTheme.Editorial.raisedCard)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(AppTheme.Editorial.border, lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessoryText(title: title, amount: amount))
+    }
+
+    private func accessoryText(title: String, amount: Decimal) -> String {
+        if amount > 0 {
+            return "\(title) \(amount.wholeCurrencyText)"
+        }
+        if status == .settled {
+            return "\(title) none, all settled"
+        }
+        return "\(title) none"
     }
 }
 
@@ -107,6 +255,103 @@ enum ExpenseTab: String, CaseIterable, Identifiable {
         case .expenses: "Expenses"
         case .balances: "Balances"
         case .people: "People"
+        }
+    }
+}
+
+private struct QuickAddExpenseSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: TripCalculatorViewModel
+    let defaultPayerID: UUID?
+    var commit: (Decimal, UUID, Set<UUID>) async -> Void
+    @State private var amount = ""
+    @State private var payerID: UUID?
+    @State private var isSaving = false
+
+    private var participants: [Participant] {
+        viewModel.calculator.participants
+    }
+
+    private var parsedAmount: Decimal {
+        Decimal(string: amount.filter { $0 != "$" && $0 != "," }) ?? 0
+    }
+
+    private var payerBinding: Binding<UUID> {
+        Binding(
+            get: { payerID ?? defaultPayerID ?? participants.first?.id ?? UUID() },
+            set: { payerID = $0 }
+        )
+    }
+
+    private var canSave: Bool {
+        parsedAmount > 0 && (payerID ?? defaultPayerID ?? participants.first?.id) != nil && !participants.isEmpty
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                    EditorialTextField(
+                        label: "Amount",
+                        placeholder: "0.00",
+                        text: $amount,
+                        keyboardType: .decimalPad
+                    )
+
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
+                        EditorialMenuField(
+                            "Who paid?",
+                            selection: payerBinding,
+                            options: participants.map(\.id),
+                            display: { id in participants.first { $0.id == id }?.name ?? "Unknown" }
+                        )
+
+                        Text("Split equally among all \(participants.count) travelers")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.Editorial.secondaryText)
+                    }
+
+                    Button {
+                        save()
+                    } label: {
+                        Text("Add Expense")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, AppTheme.Spacing.medium)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(AppTheme.Editorial.forest)
+                    .disabled(!canSave || isSaving)
+                }
+                .padding(AppTheme.Spacing.large)
+            }
+            .background(AppTheme.Editorial.background)
+            .navigationTitle("Quick Add Expense")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .onAppear {
+                if payerID == nil {
+                    payerID = defaultPayerID ?? participants.first?.id
+                }
+            }
+        }
+    }
+
+    private func save() {
+        guard let resolvedPayer = payerID ?? defaultPayerID ?? participants.first?.id else { return }
+        let split = QuickAddMoney.equalSplitParticipants(
+            payerID: resolvedPayer,
+            allParticipants: participants
+        )
+        guard !split.isEmpty else { return }
+        isSaving = true
+        Task {
+            await commit(parsedAmount, resolvedPayer, split)
+            dismiss()
         }
     }
 }
@@ -351,38 +596,27 @@ struct ExpenseCard: View {
 
 struct BalancesTabView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
+    var currentAccountID: UUID? = nil
     var saveDirectPayment: (String, Participant.ID, Participant.ID, Decimal) async -> Void = { _, _, _, _ in }
     var updateDirectPayment: (DirectPayment) async -> Void = { _ in }
     var usesExternalPersistence: Bool = false
-    @State private var activeSheet: ActiveSheet?
     @State private var paymentBeingEdited: DirectPayment?
+    @State private var settlementBeingPaid: QuickAddMoney.PaymentPrefill?
 
     var body: some View {
         VStack(spacing: 14) {
-            Button {
-                activeSheet = .payment
-            } label: {
-                Label("Record Payment", systemImage: "arrow.left.arrow.right")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(AppTheme.Editorial.forest)
-            .disabled(viewModel.calculator.participants.count < 2)
-
-            if viewModel.calculator.participants.count < 2 {
-                Text("Add at least two people to record a direct payment between travelers.")
-                    .font(.footnote)
-                    .foregroundStyle(AppTheme.Editorial.secondaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
             BalanceCards(balances: viewModel.balances)
             SettlementCards(
                 settlements: viewModel.settlements,
                 participantCount: viewModel.calculator.participants.count,
-                totalExpenses: viewModel.calculator.totalExpenses
+                totalExpenses: viewModel.calculator.totalExpenses,
+                onRecordSettlement: { settlement in
+                    settlementBeingPaid = QuickAddMoney.paymentPrefill(
+                        from: settlement.from.id,
+                        to: settlement.to.id,
+                        amount: settlement.amount
+                    )
+                }
             )
 
             if !viewModel.calculator.payments.isEmpty {
@@ -403,9 +637,10 @@ struct BalancesTabView: View {
                 }
             }
         }
-        .sheet(item: $activeSheet) { _ in
+        .sheet(item: $settlementBeingPaid) { prefill in
             AddPaymentView(
                 viewModel: viewModel,
+                prefill: prefill,
                 saveDirectPayment: saveDirectPayment,
                 usesExternalPersistence: usesExternalPersistence
             )

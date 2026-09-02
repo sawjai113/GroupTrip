@@ -2279,3 +2279,155 @@ final class TripStoreParticipantAccountIDTests: XCTestCase {
         XCTAssertNil(store.syncError)
     }
 }
+
+final class UserMoneyResolverTests: XCTestCase {
+    private let accountID = UUID(uuidString: "00000000-0000-0000-0000-00000000C001")!
+    private let otherAccountID = UUID(uuidString: "00000000-0000-0000-0000-00000000C002")!
+
+    private func makeParticipant(id: String, name: String, accountID: UUID?) -> Participant {
+        Participant(
+            id: UUID(uuidString: id)!,
+            name: name,
+            accountID: accountID
+        )
+    }
+
+    /// Balance built directly so resolver tests stay independent of expense math.
+    private func resolve(
+        accountID: UUID?,
+        participants: [Participant],
+        net: [UUID: Decimal]
+    ) -> UserMoneyStatus {
+        UserMoneyResolver.resolve(
+            accountID: accountID,
+            participants: participants,
+            netByParticipantID: net
+        )
+    }
+
+    func testNilAccountIDResolvesToUnmapped() {
+        let status = resolve(accountID: nil, participants: [], net: [:])
+        XCTAssertEqual(status, .unmapped)
+        XCTAssertEqual(status.displayText, "All settled")
+    }
+
+    func testUnmatchedAccountIDFallsBackToUnmapped() {
+        let me = makeParticipant(id: "00000000-0000-0000-0000-00000000C011", name: "Sawjai", accountID: accountID)
+        let status = resolve(accountID: otherAccountID, participants: [me], net: [:])
+        XCTAssertEqual(status, .unmapped)
+    }
+
+    func testMappedSettledParticipantReportsAllSettled() {
+        let me = makeParticipant(id: "00000000-0000-0000-0000-00000000C011", name: "Sawjai", accountID: accountID)
+        let status = resolve(accountID: accountID, participants: [me], net: [me.id: 0])
+        XCTAssertEqual(status, .settled)
+        XCTAssertEqual(status.displayText, "All settled")
+    }
+
+    func testMappedParticipantWithNegativeNetOwesMoney() {
+        let me = makeParticipant(id: "00000000-0000-0000-0000-00000000C011", name: "Sawjai", accountID: accountID)
+        let status = resolve(accountID: accountID, participants: [me], net: [me.id: Decimal(string: "-42.50")!])
+        XCTAssertEqual(status, .youOwe(Decimal(string: "42.50")!))
+        XCTAssertEqual(status.displayText, "You owe $42")
+        XCTAssertEqual(status.amount, Decimal(string: "42.50")!)
+    }
+
+    func testMappedParticipantWithPositiveNetGetsBackMoney() {
+        let me = makeParticipant(id: "00000000-0000-0000-0000-00000000C011", name: "Sawjai", accountID: accountID)
+        let status = resolve(accountID: accountID, participants: [me], net: [me.id: Decimal(string: "128.40")!])
+        XCTAssertEqual(status, .youGetBack(Decimal(string: "128.40")!))
+        XCTAssertEqual(status.displayText, "You get back $128")
+    }
+
+    func testMappedParticipantWithNegativeNetRoundsUpAtHalfBoundary() {
+        let me = makeParticipant(id: "00000000-0000-0000-0000-00000000C011", name: "Sawjai", accountID: accountID)
+        let status = resolve(accountID: accountID, participants: [me], net: [me.id: Decimal(string: "-42.60")!])
+        XCTAssertEqual(status.displayText, "You owe $43")
+    }
+
+    func testNonMappedParticipantBalancesDoNotAffectResolution() {
+        let me = makeParticipant(id: "00000000-0000-0000-0000-00000000C011", name: "Sawjai", accountID: accountID)
+        let other = makeParticipant(id: "00000000-0000-0000-0000-00000000C012", name: "Alex", accountID: otherAccountID)
+        let status = resolve(accountID: accountID, participants: [me, other], net: [other.id: Decimal(500)])
+        XCTAssertEqual(status, .settled)
+    }
+}
+
+final class QuickAddMoneyLogicTests: XCTestCase {
+    private func participant(id: String, name: String) -> Participant {
+        Participant(id: UUID(uuidString: id)!, name: name)
+    }
+
+    func testSplitSetContainsAllParticipantsIncludingPayer() {
+        let a = participant(id: "00000000-0000-0000-0000-00000000D001", name: "A")
+        let b = participant(id: "00000000-0000-0000-0000-00000000D002", name: "B")
+        let c = participant(id: "00000000-0000-0000-0000-00000000D003", name: "C")
+
+        let split = QuickAddMoney.equalSplitParticipants(
+            payerID: b.id,
+            allParticipants: [a, b, c]
+        )
+
+        XCTAssertEqual(split, Set([a.id, b.id, c.id]))
+    }
+
+    func testSingleParticipantSplitIncludesPayerOnly() {
+        let a = participant(id: "00000000-0000-0000-0000-00000000D001", name: "A")
+        let split = QuickAddMoney.equalSplitParticipants(payerID: a.id, allParticipants: [a])
+        XCTAssertEqual(split, [a.id])
+    }
+
+    func testZeroParticipantsSplitIsEmpty() {
+        let payerID = UUID(uuidString: "00000000-0000-0000-0000-00000000D009")!
+        let split = QuickAddMoney.equalSplitParticipants(payerID: payerID, allParticipants: [])
+        XCTAssertTrue(split.isEmpty)
+    }
+
+    func testPayerMissingFromListYieldsEmptySplit() {
+        let a = participant(id: "00000000-0000-0000-0000-00000000D001", name: "A")
+        let b = participant(id: "00000000-0000-0000-0000-00000000D002", name: "B")
+        let orphanPayer = UUID(uuidString: "00000000-0000-0000-0000-00000000D00A")!
+        XCTAssertEqual(
+            QuickAddMoney.equalSplitParticipants(payerID: orphanPayer, allParticipants: [a, b]),
+            []
+        )
+    }
+
+    func testExpenseAutoTitleUsesFixedDayFormat() {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 9
+        components.day = 2
+        let date = Calendar(identifier: .gregorian).date(from: components)!
+
+        XCTAssertEqual(QuickAddMoney.autoTitle(for: date), "Expense · Sep 2")
+    }
+
+    func testPaymentAutoTitleUsesFixedDayFormat() {
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 11
+        components.day = 23
+        let date = Calendar(identifier: .gregorian).date(from: components)!
+
+        XCTAssertEqual(QuickAddMoney.paymentAutoTitle(for: date), "Payment · Nov 23")
+    }
+
+    func testSettlementToPaymentPrefillMapsExactFields() {
+        let fromID = UUID(uuidString: "00000000-0000-0000-0000-00000000D001")!
+        let toID = UUID(uuidString: "00000000-0000-0000-0000-00000000D002")!
+        let amount = Decimal(string: "42.00")!
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 9
+        components.day = 2
+        let date = Calendar(identifier: .gregorian).date(from: components)!
+
+        let prefill = QuickAddMoney.paymentPrefill(from: fromID, to: toID, amount: amount, on: date)
+
+        XCTAssertEqual(prefill.from, fromID)
+        XCTAssertEqual(prefill.to, toID)
+        XCTAssertEqual(prefill.amount, amount)
+        XCTAssertEqual(prefill.title, "Payment · Sep 2")
+    }
+}

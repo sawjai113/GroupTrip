@@ -145,14 +145,12 @@ enum ActiveSheet: Identifiable {
     case person
     case editPerson(Participant)
     case expense
-    case payment
 
     var id: String {
         switch self {
         case .person: "person"
         case .editPerson(let participant): "edit-person-\(participant.id)"
         case .expense: "expense"
-        case .payment: "payment"
         }
     }
 }
@@ -414,6 +412,9 @@ struct AddPaymentView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var viewModel: TripCalculatorViewModel
     var existingPayment: DirectPayment?
+    /// Suggested-settlement prefill (from/to/amount). Editable; title is an
+    /// auto-title so the store's non-empty-title guard is never relaxed.
+    var prefill: QuickAddMoney.PaymentPrefill?
     var saveDirectPayment: (String, Participant.ID, Participant.ID, Decimal) async -> Void = { _, _, _, _ in }
     var updateDirectPayment: (DirectPayment) async -> Void = { _ in }
     var usesExternalPersistence: Bool = false
@@ -471,6 +472,11 @@ struct AddPaymentView: View {
                     amount = existingPayment.amount.currencyText.replacingOccurrences(of: "$", with: "")
                     from = existingPayment.from
                     to = existingPayment.to
+                } else if let prefill, from == nil {
+                    title = prefill.title
+                    amount = prefill.amount.currencyText.replacingOccurrences(of: "$", with: "")
+                    from = prefill.from
+                    to = prefill.to
                 } else if from == nil {
                     from = viewModel.calculator.participants.first?.id
                     to = viewModel.calculator.participants.dropFirst().first?.id ?? viewModel.calculator.participants.first?.id
