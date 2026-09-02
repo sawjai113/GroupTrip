@@ -51,6 +51,7 @@ Default workflow: start cheap in `general` for discovery/specification. Spawn or
 - Prefer small, reviewable changes over broad rewrites.
 - Keep feature logic close to its feature area unless it is clearly reusable.
 - **No overlapping interactive elements**: when layering views in a ZStack (buttons over heroes, pills over photos, dots over rows), never place a tappable control on top of a label/pill/badge/another tappable target in the same region — same-corner pins with similar paddings are the classic failure (BackButton over the hero status pill, todo-feedback #27). The QA gate (Step 5b) checks this on every UI diff.
+- **Capture failures, don't just fix them**: after any notable failure or near-miss (quota kill, delivery bounce, test-gap bug, design drift), file an entry in `docs/lessons-learned.md` (what failed / root cause / what absorbed it / durable rule / recurrence risk) AND confirm the durable rule exists in AGENTS.md, a skill, or the plan doc — same turn or next natural checkpoint. Unavoidable issues (token quotas) must name the robust mechanism that keeps the workflow working through them. Review the register at milestone retrospectives.
 - Run a build after source changes:
 
 ```sh
@@ -393,6 +394,7 @@ After every major milestone or large multi-session push, run a short retrospecti
 - Which AI workflows helped most: inline agent, subagent, spawned profile, skill, cron, or manual smoke test.
 - Token/model efficiency: did we use DeepSeek/general for planning and admin, and reserve Codex/coding for implementation and code review?
 - For major retrospectives or high-stakes process decisions, consider running the `general` profile's `/moa` retrospective preset once to get a concise Codex engineering perspective while keeping DeepSeek as the aggregator.
+- **Review `docs/lessons-learned.md`**: check each entry's durable rule still holds, mark superseded mitigations, and confirm no incident class recurred since the last review. If one did, the rule was insufficient — escalate to a skill or workflow change. This is the standing failure-review step of every retrospective.
 - Whether any tasks should have started with a cheaper scoping pass before Codex work.
 - Whether any new process should become a skill, memory, or AGENTS.md rule.
 - One concrete workflow adjustment for the next milestone.
