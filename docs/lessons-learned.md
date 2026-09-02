@@ -40,6 +40,16 @@
 
 ---
 
+## 2026-09-02 — Interim-spec drift RECURRED (Chunk 4: UI wired before @design handoff landed)
+
+- **What failed:** Same class as the 2026-09-01 interim-spec entry. Chunk 4's UI wiring was done against the scope bullet points only — @coding's single turn ran start-to-finish while @design's visual handoff was still in flight. Three deviations found at review: dated rows as standalone cards (vs one shared per-day container), day headers via EditorialSectionHeader (uppercase small-caps vs the serif date moment), backlog label "Backlog" (vs "Undated backlog").
+- **Root cause:** Dispatching @coding while the design handoff was "in flight" assumes the handoff lands DURING the logic phase — but @coding's turn runs continuously and can't receive mid-turn deliveries (target_busy lesson). The handoff landed after their turn finished.
+- **What absorbed it:** Scope + the eventual handoff were in the plan doc (durable channel); orchestrator diff inspection against @design's verdict caught all three deviations; one focused revision pass closed them.
+- **Durable rule (ESCALATED — previous rule insufficient):** A design-dependent chunk's UI wiring must NOT be dispatched until the @design handoff is ALREADY IN the plan doc. Two options: (a) sequential — dispatch @coding only after the handoff lands; (b) split dispatch — send @coding the pure-logic half first, and dispatch the UI-wiring half as a SEPARATE follow-up turn AFTER the handoff is recorded. Never dispatch "logic now, UI when handoff arrives" as one turn — the handoff cannot reach a running turn.
+- **Recurrence risk:** Was MEDIUM; now LOW if the escalated rule is followed. This is the second occurrence of the same class — the register's escalation clause applies.
+
+---
+
 ## Review cadence
 
 - The register is reviewed at every milestone retrospective (AGENTS.md "Milestone Retrospectives").
