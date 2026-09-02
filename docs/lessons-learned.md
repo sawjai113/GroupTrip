@@ -50,6 +50,15 @@
 
 ---
 
+## 2026-09-02 — Per-chunk full pipeline has diminishing returns (process decision)
+
+- **What failed (process inefficiency, not an incident):** Five chunks ran the full pipeline (architect scope → design handoff → coding → @review gate) regardless of risk. Cost: 2+ Codex-lane activations per chunk, quota hit 3–4 times. Value analysis: BOTH real review catches (chunk 3 case-sensitivity, chunk 4 time-dropped) lived in data-touching work; pure-UI chunks had nothing for review to find (visual risk is caught best by the user's device review).
+- **Decision adopted:** RISK-TIERED pipeline. Tier 2 = schema/RLS/DTO/store-rebuild/persistence/novel-SDK → full pipeline + @review per commit (review reads wiring, not just tests). Tier 1 = pattern-following UI on established data → thin scope → design only if new surface → coding → user visual checkpoint → orchestrator verification → commit; @review batched to milestone closeout. Milestones get one comprehensive closeout audit.
+- **Durable rule:** AGENTS.md "Risk-tiered pipeline" section. Unit tests passing is NOT sufficient for Tier 2 — the two real bugs both passed unit tests.
+- **Recurrence risk:** N/A (process decision) — monitor at next retrospective whether Tier 1 chunks ship clean without per-commit review.
+
+---
+
 ## Review cadence
 
 - The register is reviewed at every milestone retrospective (AGENTS.md "Milestone Retrospectives").
