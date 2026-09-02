@@ -72,13 +72,23 @@ Implement the approved 005 prototype into the SwiftUI app: the user-facing room 
 - **Sequencing:** logic-first at resume (zero design dep) → @design handoff lands in parallel → UI wiring → build + full suite + @review gate.
 - **Handoff notes for @coding:** chips row = separate section above list (no row overlays — QA 5b); confirm async openURL-Bool fallback compiles on iOS target (iOS 15+).
 
-**Interim chip UI spec (drafted by @general from approved prototype + design-system skill; @design to review/refine at resume — their handoff run hit the quota 429):**
+**Interim chip UI spec (drafted by @general from approved prototype + design-system skill; @design REVIEWED 2026-09-02 — APPROVE WITH CORRECTIONS, relayed to @coding; corrections below supersede the draft where they differ):**
 - Chip language from prototype (`variants/005-calm-prototype/index.html` `.chips`/`.chip`): horizontal scroll row, capsule chips, `.chip.active` = forest fill + white text. SwiftUI: `ScrollView(.horizontal, showsIndicators: false)` + HStack; capsule via `Capsule()` clip; chip = `Text` + `.padding(.horizontal, 11).padding(.vertical, 8)` + `.font(.caption.weight(.bold))` (prototype 11.5px/850); active: `AppTheme.Editorial.forest` bg + white text; inactive: `Editorial.card` bg + `Editorial.border` stroke + `Editorial.secondaryText`.
 - Tag chip row in AddTripPlaceView: chips from `TripTag.subset(for: .place)` + a `Custom` chip; custom chip selected → reveal `EditorialTextField` below the row; tap target ≥44pt; active custom chip shows forest fill while field is visible.
 - Filter chip row on list: same chip component, own section above list (`EditorialSectionHeader(title: "Filter")` optional — prototype uses plain chip row); All = no selection state.
 - Place row redesign: `HStack` — `WaniIconBadge(systemImage: "mappin", tint: FeatureColor.places)` thumb, name (`.body.weight(.semibold)`, primaryText), tag pill (`.pill`-style: capsule, `Editorial.border`, secondaryText, caption), trailing controls: pencil (`pencil` icon, forest) + trash (destructive). Row body `.contentShape(Rectangle())` + `.onTapGesture` → maps; `.buttonStyle(.plain)` on icon buttons (no nested Buttons inside the tap row).
 - Empty filter state: `EmptyFeatureCard`-style ("No places match this tag") with `Editorial.card` surface.
 - Contrast check (light+dark): forest-on-card active chip meets 4.5:1; secondaryText on card verified in existing tokens.
+
+**@design corrections (2026-09-02, apply to UI wiring — supersede draft where they differ):**
+1. Chips: h-pad 11 / v-pad 8 / gap 8 / capsule; `.frame(minHeight: 44)` for tap target without bulk; `.font(.caption.weight(.bold))`; TITLE-CASE labels (no all-caps).
+2. Active = Editorial.forest + white text + forest border. Inactive = Editorial.card + Editorial.border + Editorial.secondaryText. NEVER FeatureColor.places as active fill. Dark = same semantic tokens.
+3. Custom chip: selects + reveals EditorialTextField below (spacing 8–12, "Custom tag" label, placeholder e.g. "bakery"). Custom active while field visible; typed value only in field (NOT duplicated as second chip). Canonical tap while custom active → deselect custom, resolve canonical. Custom trimmed text wins. Tap active canonical again = no tag.
+4. Filter rail: plain chip row in own section between page header and list — NO "Filter" header, NOT sticky, never overlaid on rows.
+5. ROW (most important): row body tap = Maps BUT mappin thumb reads NON-INTERACTIVE identity (display only). Thumb `mappin.and.ellipse` FeatureColor.places. Main: name (.body.weight(.semibold) primaryText) + tag pill + note. Tag pill inline after title only if no crowding, else second line. Trailing: pencil (forest, 44pt) then trash (destructive, 44pt). Maps affordance: subtle "Open in Maps" caption + arrow.up.right.square ONLY when no note.
+6. Tag pill QUIET: Editorial.card/raisedCard fill + Editorial.border stroke + Editorial.secondaryText, caption2 semibold, h8 v4 capsule — NOT places red/orange (competes with trash). Canonical labels title case; custom shows trimmed text as-is.
+7. Empty-filter: EmptyFeatureCard "No places match this tag" / "Try All or choose another tag." — only when places exist + filter matches none; places.isEmpty keeps existing "No places saved yet".
+8. A11y: row "Open <place> in Maps"; pencil "Edit <place>"; trash "Delete <place>". No nested Buttons — row onTapGesture + separate trailing Buttons.
 - (Voting/weights/pins/MapKit = M5, chunk 6.)
 
 ### Chunk 4 — Itinerary (M4): day grouping + optional times
