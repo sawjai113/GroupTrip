@@ -1,6 +1,6 @@
 # 005 Calm Trip Design — App Implementation Brief (M4 + M5)
 
-**Status:** Chunk 1 SHIPPED (commit `026773a`, 2026-09-01, QA PASS) — Chunk 2 scoping in progress (@architect)
+**Status:** Chunk 1 SHIPPED (`026773a`) · Chunk 2 SHIPPED (`ac0a3d9`, live schema applied + smoke green, 108/108 tests) — CLOSED OUT 2026-09-01 17:19 PDT for Codex quota reset (resume ~21:00 PDT). Next: Chunk 3.
 **Date:** 2026-09-01
 **Approved design:** `wanderaid-designs/variants/005-calm-prototype/` (commits `f2190a0` → `b1ab181` → `58ca81f`, pushed by @design)
 **Sources:** docs/design-thoughts.md (room specs), docs/plans/rooms-to-milestones.md, docs/product-roadmap.md (M4/M5), docs/todo-feedback.md
@@ -50,7 +50,7 @@ Implement the approved 005 prototype into the SwiftUI app: the user-facing room 
 - @review gate passed before commit.
 
 ### Chunk 2 — Cross-cutting foundation: tags + participant sets (M4, schema + TDD)
-**Status: SCOPE APPROVED 2026-09-01 (@architect) — full spec in `docs/plans/005-chunk2-scope.md`.**
+**Status: SHIPPED 2026-09-01 (commit `ac0a3d9`; migration applied live + idempotent; extended two-account RLS smoke GREEN; 108/108 tests; build green).** QA run by orchestrator fallback (@review was rate-limited on provider quota — formal @review sign-off can be re-run at resume if desired).
 - One `tag` column on places + planning items (rename `trip_places.category` → `tag`, values preserved); no lookup table/CHECK — vocabulary is a client-side `TripTag` type (custom tags spec'd). One tag per item.
 - Participant sets = join tables `trip_place_participants` + `trip_planning_item_participants` mirroring `trip_expense_splits` (composite PK, cascade FKs, participant_id index for M5 "their calendar"). NOT uuid[] (no FK integrity, full-row replace, no per-person RLS).
 - Migration: `supabase/migrations/002_item_tags_participant_sets.sql` + schema.sql append; apply live via `npx supabase db query --linked --file`, re-run proves idempotency (guarded DO block for the rename).
