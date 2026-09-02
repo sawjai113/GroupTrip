@@ -147,12 +147,13 @@ Implement the approved 005 prototype into the SwiftUI app: the user-facing room 
 - **INTERIM @design handoff (drafted by @general from 005 prototype kitty screen + chunk-5 money conventions; @design review pending quota):** user-first hero atop ExpenseTrackerView — two metric cells (You owe forest/owed / You get back forestDeep) in the chunk-5 two-cell grid style (raisedCard + border + radius 18, serif 23–24 value), honest fallback keeps existing trip-relative BalanceCards below; quick-add card = compact non-formy sheet: amount EditorialTextField (decimal), who-paid EditorialMenuField (default self), caption "Split equally among all N travelers", primary forest "Add Expense" → saveExpense + auto-title; repayment: SettlementCards rows gain explicit action ("Pay Maya $42" pill/button) opening pre-filled AddPaymentView; remove standalone Record Payment button; expense list rows keep status pills. Tokens: Editorial.* + PersonBalancePhrase colors (Gets back forest / Owes owed / Settled secondaryText); no new tokens expected.
 
 ### Chunk 7 — M5 core: voting, bookings, feeds/action-needed, chat, MapKit
+**Status: DECOMPOSED 2026-09-02 (@architect) — full spec in `docs/plans/005-chunk7-scope.md`. Tier 2 (full pipeline, @review per sub-chunk commit). Dispatch order: 5A → 5B-1 → 5C → 5D-1 → 5E → 5D-2 → 5B-2.**
+- Sub-chunks: 5A Places voting + pins + call-for-vote (first — proves the participant-identity RLS helper that 5C/5D reuse); 5B-1 bookings data + timeline coordination; 5B-2 calendar view (DEFERRABLE to M6 per D4 — design-heavy, user checkpoint); 5C trip_activity feed + action-needed; 5D-1 chat infra (schema/RLS/RPCs/service, no UI); 5D-2 chat UI (design-heavy, user checkpoint); 5E MapKit in-room map (user checkpoint).
+- Proceed WITHOUT user: 5A, 5B-1, 5C, 5D-1 (offline-pickup test). User visual checkpoints gate: 5B-2, 5D-2, 5E.
+- **Hard decisions D1–D7 pending user sign-off (each blocks its sub-chunk):** D1 chat identity = authenticated trip members only, DM only to account-linked participants (guests keep share handoff); D2 trip_activity write path = DB triggers (automatic, drift-proof) over service-layer writes; D3 booking model = NEW trip_bookings table (not planning-item reuse) + vocabulary extension flag ('activity'/'custom' not in TripTag today — UI-visible); D4 calendar scope = M5 ships bookings-on-timeline first, month grid deferrable to M6; D5 MapKit coords = thread lat/lng + geocode-on-save via CLGeocoder (adds network to save path); D6 action-needed MVP = place vote calls only; D7 realtime ops = project-level enablement (NOT in SQL file) + manual two-account checklist for verification.
 - Places voting: yes +1 / weak +0.5 / no −1, abstain null; pins; locked-in markers linking to Itinerary.
-- Itinerary calendar + bookings (flights/stays/activities, participant sets, coordination overlay).
-- trip_activity data layer + grouped feeds + call-for-vote → action-needed on Home.
-- Chat: trip channel + cross-trip DMs, text realtime MVP on Supabase Realtime, unread dots.
-- MapKit in-room map view.
-- Journal/Memories guest book = M6 (not in this pass; keep placeholder entry).
+- Feed grouping + action-needed: activity log (trip_activity data layer) + grouped feed events; call-for-vote on items → Home action-needed.
+- Crew: arrival/departure windows derived from bookings (5B-1).
 
 ## Out of scope (explicit deferrals)
 - Push notifications, typing indicators, read receipts, media, threads (chat).
