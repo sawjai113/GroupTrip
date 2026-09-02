@@ -73,7 +73,8 @@ struct TripSummaryView: View {
                         savePlace: { place in await store.savePlace(place, to: tripID) },
                         deletePlace: { placeID in await store.removePlace(placeID, from: tripID) },
                         updatePlace: { place in await store.updatePlace(place, in: tripID) },
-                        usesExternalPersistence: store.supportsCloudSync
+                        usesExternalPersistence: store.supportsCloudSync,
+                        participants: viewModel.calculator.participants
                     )),
                     itineraryDestination: AnyView(TripPlanningView(
                         items: planningItemsBinding,
@@ -81,15 +82,20 @@ struct TripSummaryView: View {
                         toggleItem: { itemID in await store.togglePlanningItemRemotely(itemID, for: tripID) },
                         updateItem: { item in await store.updatePlanningItem(item, in: tripID) },
                         deleteItem: { itemID in await store.removePlanningItem(itemID, from: tripID) },
-                        usesExternalPersistence: store.supportsCloudSync
+                        usesExternalPersistence: store.supportsCloudSync,
+                        participants: viewModel.calculator.participants
                     )),
                     peopleDestination: AnyView(PeopleFeatureView(
                         viewModel: viewModel,
                         tripID: tripID,
+                        tripName: viewModel.tripName,
                         createdInvite: store.createdInvite,
+                        places: trip.places,
+                        planningItems: trip.planningItems,
                         saveParticipants: { names in await store.saveParticipants(names: names, to: tripID) },
                         updateParticipant: { participant in await store.updateParticipant(participant, in: tripID) },
                         createInvite: { Task { await store.createInvite(for: tripID) } },
+                        createInviteAsync: { await store.createInvite(for: tripID) },
                         usesExternalPersistence: store.supportsCloudSync
                     )),
                     moneyDestination: AnyView(ExpenseTrackerView(

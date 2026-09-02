@@ -535,6 +535,66 @@ struct WanderaidLogoMark: View {
     }
 }
 
+/// Reusable multi-select participant row list for add/edit sheets.
+/// Avatar + name + checkmark rows (not chips); hidden when no people exist.
+struct ParticipantPickerSection: View {
+    let participants: [Participant]
+    @Binding var selectedIDs: [UUID]
+
+    private var sortedParticipants: [Participant] {
+        participants.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    var body: some View {
+        Section {
+            VStack(spacing: 0) {
+                ForEach(Array(sortedParticipants.enumerated()), id: \.element.id) { index, participant in
+                    Button {
+                        toggle(participant.id)
+                    } label: {
+                        HStack(spacing: AppTheme.Spacing.medium) {
+                            AvatarInitial(name: participant.name, size: 32)
+
+                            Text(participant.name)
+                                .font(.body)
+                                .foregroundStyle(AppTheme.Editorial.primaryText)
+
+                            Spacer(minLength: 0)
+
+                            Image(systemName: isSelected(participant.id) ? "checkmark.circle.fill" : "circle")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(isSelected(participant.id) ? AppTheme.Editorial.forest : AppTheme.Editorial.border)
+                        }
+                        .padding(.vertical, AppTheme.Spacing.small)
+                        .contentShape(Rectangle())
+                        .frame(minHeight: 44)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(participant.name), \(isSelected(participant.id) ? "selected" : "not selected")")
+
+                    if index < sortedParticipants.count - 1 {
+                        Divider()
+                    }
+                }
+            }
+        } header: {
+            EditorialSectionHeader(title: "Who's in?")
+        }
+    }
+
+    private func isSelected(_ participantID: UUID) -> Bool {
+        selectedIDs.contains(participantID)
+    }
+
+    private func toggle(_ participantID: UUID) {
+        if isSelected(participantID) {
+            selectedIDs.removeAll { $0 == participantID }
+        } else {
+            selectedIDs.append(participantID)
+        }
+    }
+}
+
 struct WaniIconBadge: View {
     enum BadgeShape {
         case roundedSquare

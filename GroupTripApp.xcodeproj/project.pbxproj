@@ -34,6 +34,7 @@
 		7B0000012C00000000000093 /* DashboardSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000094 /* DashboardSummary.swift */; };
 		7B0000012C00000000000095 /* DashboardSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000096 /* DashboardSummaryTests.swift */; };
 		7B0000012C000000000000A0 /* AppAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C000000000000A1 /* AppAppearance.swift */; };
+		7B0000012C00000000000097 /* PersonDetailViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0000012C00000000000098 /* PersonDetailViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -76,6 +77,7 @@
 		7B0000012C00000000000094 /* DashboardSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardSummary.swift; sourceTree = "<group>"; };
 		7B0000012C00000000000096 /* DashboardSummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardSummaryTests.swift; sourceTree = "<group>"; };
 		7B0000012C000000000000A1 /* AppAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppAppearance.swift; sourceTree = "<group>"; };
+		7B0000012C00000000000098 /* PersonDetailViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonDetailViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -129,6 +131,7 @@
 				7B0000012C0000000000008A /* TripPlanningView.swift */,
 				7B0000012C00000000000085 /* ExpenseViews.swift */,
 				7B0000012C00000000000086 /* PeopleViews.swift */,
+				7B0000012C00000000000098 /* PersonDetailViews.swift */,
 				7B0000012C00000000000087 /* TripForms.swift */,
 				7B0000012C00000000000088 /* SharedViews.swift */,
 				7B0000012C00000000000013 /* TripExpenseCalculator.swift */,
@@ -285,6 +288,7 @@
 				7B0000012C0000000000007A /* TripPlanningView.swift in Sources */,
 				7B0000012C00000000000075 /* ExpenseViews.swift in Sources */,
 				7B0000012C00000000000076 /* PeopleViews.swift in Sources */,
+				7B0000012C00000000000097 /* PersonDetailViews.swift in Sources */,
 				7B0000012C00000000000077 /* TripForms.swift in Sources */,
 				7B0000012C00000000000078 /* SharedViews.swift in Sources */,
 				7B0000012C00000000000003 /* TripExpenseCalculator.swift in Sources */,

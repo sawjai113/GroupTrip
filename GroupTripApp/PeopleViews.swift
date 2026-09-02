@@ -79,27 +79,68 @@ struct PeopleTabView: View {
 struct PeopleFeatureView: View {
     @ObservedObject var viewModel: TripCalculatorViewModel
     var tripID: TripPlan.ID?
+    var tripName: String = ""
     var createdInvite: TripInvite?
+    var places: [TripPlace] = []
+    var planningItems: [TripPlanningItem] = []
     var saveParticipants: ([String]) async -> Void = { _ in }
     var updateParticipant: (Participant) async -> Void = { _ in }
     var createInvite: () -> Void = { }
+    var createInviteAsync: () async -> Void = { }
     var usesExternalPersistence: Bool = false
     @State private var activeSheet: ActiveSheet?
+    @State private var participantPendingDeletion: Participant?
+
+    private var balancesByID: [Participant.ID: Decimal] {
+        Dictionary(uniqueKeysWithValues: viewModel.calculator.balances().map { ($0.participant.id, $0.net) })
+    }
+
+    private var placeCountsByParticipantID: [Participant.ID: Int] {
+        var counts: [Participant.ID: Int] = [:]
+        for place in places {
+            for id in place.participantIDs {
+                counts[id, default: 0] += 1
+            }
+        }
+        return counts
+    }
+
+    private func detailDestination(for participant: Participant) -> AnyView {
+        AnyView(
+            PersonDetailView(
+                participant: participant,
+                tripName: tripName.isEmpty ? viewModel.tripName : tripName,
+                places: places,
+                planningItems: planningItems,
+                expenses: viewModel.calculator.expenses,
+                balanceNet: balancesByID[participant.id] ?? 0,
+                createdInvite: createdInvite,
+                createInvite: createInviteAsync,
+                usesExternalPersistence: usesExternalPersistence
+            )
+        )
+    }
 
     var body: some View {
-        List {
-            if usesExternalPersistence, let tripID {
-                InvitePeopleCard(tripID: tripID, createdInvite: createdInvite, createInvite: createInvite)
-            }
-
-            PeopleSection(
-                viewModel: viewModel,
-                editParticipant: { participant in
-                    activeSheet = .editPerson(participant)
+        ScrollView {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
+                if usesExternalPersistence, let tripID {
+                    InvitePeopleCard(tripID: tripID, createdInvite: createdInvite, createInvite: createInvite)
                 }
-            )
-            SettlementSection(settlements: viewModel.settlements)
+
+                if viewModel.calculator.participants.isEmpty {
+                    EmptyFeatureCard(
+                        title: "No people yet",
+                        subtitle: "Add travelers before tracking shared expenses and places."
+                    )
+                } else {
+                    hallSections
+                    settlementCards
+                }
+            }
+            .padding(AppTheme.Spacing.large)
         }
+        .background(AppTheme.Editorial.background)
         .navigationTitle("People")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -131,6 +172,141 @@ struct PeopleFeatureView: View {
                 EmptyView()
             }
         }
+        .confirmationDialog(
+            "Remove this person?",
+            isPresented: Binding(
+                get: { participantPendingDeletion != nil },
+                set: { isPresented in
+                    if !isPresented { participantPendingDeletion = nil }
+                }
+            ),
+            titleVisibility: .visible,
+            presenting: participantPendingDeletion
+        ) { participant in
+            Button("Remove Person", role: .destructive) {
+                deleteParticipant(participant)
+            }
+            Button("Cancel", role: .cancel) { participantPendingDeletion = nil }
+        } message: { participant in
+            Text("This removes \(participant.name) from the people list. Existing expense references may change.")
+        }
+    }
+
+    private var hallSections: some View {
+        let hall = PeopleHall.grouped(viewModel.calculator.participants)
+        return VStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
+            if !hall.organizers.isEmpty {
+                personSection(title: "Organizer", people: hall.organizers)
+            }
+            if !hall.travelers.isEmpty {
+                personSection(title: "Travelers", people: hall.travelers)
+            }
+        }
+    }
+
+    private func personSection(title: String, people: [Participant]) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
+            EditorialSectionHeader(
+                title: "\(title) · \(people.count)"
+            )
+
+            WaniCard(radius: AppTheme.Radius.large) {
+                VStack(spacing: 0) {
+                    ForEach(Array(people.enumerated()), id: \.element.id) { index, participant in
+                        hallRow(for: participant)
+
+                        if index < people.count - 1 {
+                            Divider()
+                                .padding(.leading, AppTheme.IconSize.large + AppTheme.Spacing.medium + 2)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func hallRow(for participant: Participant) -> some View {
+        HStack(spacing: AppTheme.Spacing.medium) {
+            NavigationLink(destination: detailDestination(for: participant)) {
+                HStack(spacing: AppTheme.Spacing.medium) {
+                    AvatarInitial(name: participant.name, size: 48)
+
+                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
+                        HStack(spacing: AppTheme.Spacing.small) {
+                            Text(participant.name)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(AppTheme.Editorial.primaryText)
+                            if participant.isOrganizer {
+                                OrganizerBadge()
+                            }
+                        }
+
+                        Text(hallMetaText(for: participant))
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(hallMetaTint(for: participant))
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 0)
+
+            Button {
+                activeSheet = .editPerson(participant)
+            } label: {
+                Image(systemName: "pencil")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+                    .foregroundStyle(AppTheme.Editorial.forest)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Edit \(participant.name)")
+
+            Button(role: .destructive) {
+                participantPendingDeletion = participant
+            } label: {
+                Image(systemName: "trash")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel("Delete \(participant.name)")
+        }
+        .padding(.vertical, AppTheme.Spacing.medium)
+    }
+
+    private var settlementCards: some View {
+        SettlementCards(
+            settlements: viewModel.settlements,
+            participantCount: viewModel.calculator.participants.count,
+            totalExpenses: viewModel.calculator.totalExpenses
+        )
+    }
+
+    private func hallMetaText(for participant: Participant) -> String {
+        let placeCount = placeCountsByParticipantID[participant.id] ?? 0
+        let balanceText = PersonBalancePhrase(net: balancesByID[participant.id] ?? 0).text
+        if placeCount > 0 {
+            return "\(placeCount) \(placeCount == 1 ? "place" : "places") · \(balanceText)"
+        }
+        return balanceText
+    }
+
+    private func hallMetaTint(for participant: Participant) -> Color {
+        let net = balancesByID[participant.id] ?? 0
+        if net > 0 {
+            return AppTheme.Editorial.forest
+        } else if net < 0 {
+            return AppTheme.Editorial.owed
+        }
+        return AppTheme.Editorial.secondaryText
+    }
+
+    private func deleteParticipant(_ participant: Participant) {
+        viewModel.deleteParticipants(at: IndexSet(integer: viewModel.calculator.participants.firstIndex(where: { $0.id == participant.id }) ?? 0))
+        participantPendingDeletion = nil
     }
 }
 
@@ -371,99 +547,5 @@ struct SettlementCards: View {
         }
 
         return "No outstanding balances."
-    }
-}
-
-struct PeopleSection: View {
-    @ObservedObject var viewModel: TripCalculatorViewModel
-    var editParticipant: (Participant) -> Void = { _ in }
-    @State private var participantPendingDeletion: Participant?
-
-    var body: some View {
-        Section {
-            if viewModel.calculator.participants.isEmpty {
-                EmptyRow(title: "No people yet", systemImage: "person.2")
-            } else {
-                ForEach(viewModel.calculator.participants.sorted { $0.name < $1.name }) { participant in
-                    HStack {
-                        Label(participant.name, systemImage: "person.fill")
-
-                        Spacer()
-
-                        Button {
-                            editParticipant(participant)
-                        } label: {
-                            Image(systemName: "pencil")
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Edit \(participant.name)")
-                    }
-                }
-                .onDelete { offsets in
-                    let sortedParticipants = viewModel.calculator.participants.sorted { $0.name < $1.name }
-                    if let offset = offsets.first, sortedParticipants.indices.contains(offset) {
-                        participantPendingDeletion = sortedParticipants[offset]
-                    }
-                }
-            }
-        } header: {
-            Text("People")
-        }
-        .confirmationDialog(
-            "Remove this person?",
-            isPresented: Binding(
-                get: { participantPendingDeletion != nil },
-                set: { isPresented in
-                    if !isPresented { participantPendingDeletion = nil }
-                }
-            ),
-            titleVisibility: .visible,
-            presenting: participantPendingDeletion
-        ) { participant in
-            Button("Remove Person", role: .destructive) {
-                deleteParticipant(participant)
-            }
-            Button("Cancel", role: .cancel) { participantPendingDeletion = nil }
-        } message: { participant in
-            Text("This removes \(participant.name) from the people list. Existing expense references may change.")
-        }
-    }
-
-    private func deleteParticipant(_ participant: Participant) {
-        let sortedParticipants = viewModel.calculator.participants.sorted { $0.name < $1.name }
-        if let index = sortedParticipants.firstIndex(where: { $0.id == participant.id }) {
-            viewModel.deleteParticipants(at: IndexSet(integer: index))
-        }
-        participantPendingDeletion = nil
-    }
-}
-
-struct SettlementSection: View {
-    let settlements: [Settlement]
-
-    var body: some View {
-        Section {
-            if settlements.isEmpty {
-                EmptyRow(title: "All settled", systemImage: "checkmark.circle")
-            } else {
-                ForEach(settlements) { settlement in
-                    HStack(spacing: 12) {
-                        Image(systemName: "arrow.right.circle.fill")
-                            .foregroundStyle(AppTheme.Editorial.forest)
-
-                        Text("\(settlement.from.name) pays \(settlement.to.name)")
-                            .font(.body.weight(.semibold))
-
-                        Spacer()
-
-                        Text(settlement.amount.currencyText)
-                            .font(.headline)
-                            .monospacedDigit()
-                    }
-                }
-            }
-        } header: {
-            Text("Suggested payments")
-        }
     }
 }

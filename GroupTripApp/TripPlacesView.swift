@@ -7,6 +7,7 @@ struct TripPlacesView: View {
     var deletePlace: (TripPlace.ID) async -> Void
     var updatePlace: (TripPlace) async -> Void
     var usesExternalPersistence: Bool
+    var participants: [Participant] = []
     @State private var isShowingAddPlace = false
     @State private var isShowingEditPlace = false
     @State private var placePendingDeletion: TripPlace?
@@ -18,13 +19,15 @@ struct TripPlacesView: View {
         savePlace: @escaping (TripPlace) async -> Void = { _ in },
         deletePlace: @escaping (TripPlace.ID) async -> Void = { _ in },
         updatePlace: @escaping (TripPlace) async -> Void = { _ in },
-        usesExternalPersistence: Bool = false
+        usesExternalPersistence: Bool = false,
+        participants: [Participant] = []
     ) {
         _places = places
         self.savePlace = savePlace
         self.deletePlace = deletePlace
         self.updatePlace = updatePlace
         self.usesExternalPersistence = usesExternalPersistence
+        self.participants = participants
     }
 
     private var filteredPlaces: [TripPlace] {
@@ -89,7 +92,7 @@ struct TripPlacesView: View {
             }
         }
         .sheet(isPresented: $isShowingAddPlace) {
-            AddTripPlaceView { place in
+            AddTripPlaceView(participants: participants) { place in
                 Task { await addPlace(place) }
             }
         }
@@ -97,7 +100,8 @@ struct TripPlacesView: View {
             if let place = placePendingEdit {
                 AddTripPlaceView(
                     editing: place,
-                    title: "Edit Place"
+                    title: "Edit Place",
+                    participants: participants
                 ) { updated in
                     Task { await performUpdatePlace(updated) }
                 }
@@ -274,19 +278,21 @@ private struct TripPlaceCard: View {
 
 private struct AddTripPlaceView: View {
     @Environment(\.dismiss) private var dismiss
+    let participants: [Participant]
     @State private var name = ""
     @State private var tagInput = PlaceTagInput()
     @State private var note = ""
+    @State private var selectedParticipantIDs: [UUID]
     private let editingID: TripPlace.ID?
-    private let editingParticipantIDs: [UUID]
     var save: (TripPlace) -> Void
     var navTitle: String
 
-    init(editing place: TripPlace? = nil, title: String = "Add Place", save: @escaping (TripPlace) -> Void) {
+    init(editing place: TripPlace? = nil, title: String = "Add Place", participants: [Participant] = [], save: @escaping (TripPlace) -> Void) {
+        self.participants = participants
         self.save = save
         self.navTitle = title
         self.editingID = place?.id
-        self.editingParticipantIDs = place?.participantIDs ?? []
+        _selectedParticipantIDs = State(initialValue: place?.participantIDs ?? [])
         _name = State(initialValue: place?.name ?? "")
         _tagInput = State(initialValue: PlaceTagInput(prefilling: place?.tag ?? ""))
         _note = State(initialValue: place?.note ?? "")
@@ -311,6 +317,10 @@ private struct AddTripPlaceView: View {
                     }
                 } header: {
                     EditorialSectionHeader(title: "Place")
+                }
+
+                if !participants.isEmpty {
+                    ParticipantPickerSection(participants: participants, selectedIDs: $selectedParticipantIDs)
                 }
 
                 Section {
@@ -344,7 +354,7 @@ private struct AddTripPlaceView: View {
                                 name: trimmedName,
                                 note: note.trimmingCharacters(in: .whitespacesAndNewlines),
                                 tag: tagInput.resolvedTag,
-                                participantIDs: editingParticipantIDs
+                                participantIDs: selectedParticipantIDs
                             )
                         )
                         dismiss()

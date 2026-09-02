@@ -100,6 +100,135 @@ enum PlanningDateTimeInput {
     }
 }
 
+struct PeopleHall: Equatable {
+    var organizers: [Participant]
+    var travelers: [Participant]
+
+    static func grouped(_ participants: [Participant]) -> PeopleHall {
+        PeopleHall(
+            organizers: participants.filter(\.isOrganizer).sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending },
+            travelers: participants.filter { !$0.isOrganizer }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        )
+    }
+
+    static func grouped(_ participants: Participant...) -> PeopleHall {
+        grouped(participants)
+    }
+}
+
+/// Trip-relative money status. Foundation-only — the view layer maps the phrase
+/// to a tint (TripStatus.tint precedent).
+enum PersonBalancePhrase: Equatable {
+    case getsBack(Decimal)
+    case owes(Decimal)
+    case settled
+
+    init(net: Decimal) {
+        if net > 0 {
+            self = .getsBack(net)
+        } else if net < 0 {
+            self = .owes(-net)
+        } else {
+            self = .settled
+        }
+    }
+
+    var text: String {
+        switch self {
+        case let .getsBack(amount):
+            "Gets back \(amount.wholeCurrencyText)"
+        case let .owes(amount):
+            "Owes \(amount.wholeCurrencyText)"
+        case .settled:
+            "Settled"
+        }
+    }
+}
+
+enum PersonBalance {
+    static func phrase(net: Decimal) -> PersonBalancePhrase {
+        PersonBalancePhrase(net: net)
+    }
+}
+
+struct PersonFootprint: Equatable {
+    var paidExpenses: [ExpenseItem]
+    var sharedExpenses: [ExpenseItem]
+    var places: [TripPlace]
+    var plans: [TripPlanningItem]
+
+    static func aggregate(
+        participantID: Participant.ID,
+        tripID _: TripPlan.ID,
+        expenses: [ExpenseItem],
+        places: [TripPlace],
+        planningItems: [TripPlanningItem]
+    ) -> PersonFootprint {
+        PersonFootprint(
+            paidExpenses: expenses
+                .filter { $0.paidBy == participantID }
+                .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending },
+            sharedExpenses: expenses
+                .filter { $0.paidBy != participantID && $0.participants.contains(participantID) }
+                .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending },
+            places: places
+                .filter { $0.participantIDs.contains(participantID) }
+                .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending },
+            plans: planningItems
+                .filter { $0.participantIDs.contains(participantID) }
+                .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+        )
+    }
+}
+
+struct ParticipantSelection: Equatable {
+    private var ordered: [UUID]
+    private var membership: Set<UUID>
+
+    init(participantIDs: [UUID] = []) {
+        ordered = []
+        membership = []
+        for id in participantIDs where !membership.contains(id) {
+            ordered.append(id)
+            membership.insert(id)
+        }
+    }
+
+    var orderedIDs: [UUID] { ordered }
+
+    func contains(_ participantID: UUID) -> Bool {
+        membership.contains(participantID)
+    }
+
+    mutating func toggle(_ participantID: UUID) {
+        if membership.contains(participantID) {
+            membership.remove(participantID)
+            ordered.removeAll { $0 == participantID }
+        } else {
+            membership.insert(participantID)
+            ordered.append(participantID)
+        }
+    }
+
+    mutating func set(_ participantID: UUID, isSelected: Bool) {
+        if isSelected != membership.contains(participantID) {
+            toggle(participantID)
+        }
+    }
+}
+
+enum TripShareTextBuilder {
+    static func text(tripName: String, inviteCode: String?) -> String? {
+        let trimmedCode = (inviteCode ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+        guard !trimmedCode.isEmpty else { return nil }
+        let trimmedTripName = tripName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayName = trimmedTripName.isEmpty ? "this trip" : trimmedTripName
+        return "Join \(displayName) on Wanderaid — invite code \(trimmedCode)"
+    }
+}
+
 struct TripTag: RawRepresentable, Hashable, Identifiable {
     enum ItemKind {
         case place

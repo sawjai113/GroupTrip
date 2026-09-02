@@ -7,6 +7,7 @@ struct TripPlanningView: View {
     var updateItemRemotely: (TripPlanningItem) async -> Void
     var deleteItemRemotely: (TripPlanningItem.ID) async -> Void
     var usesExternalPersistence: Bool
+    var participants: [Participant] = []
     @State private var isShowingAddItem = false
     @State private var isShowingEditItem = false
     @State private var itemPendingDeletion: TripPlanningItem?
@@ -22,7 +23,8 @@ struct TripPlanningView: View {
         toggleItem: @escaping (TripPlanningItem.ID) async -> Void = { _ in },
         updateItem: @escaping (TripPlanningItem) async -> Void = { _ in },
         deleteItem: @escaping (TripPlanningItem.ID) async -> Void = { _ in },
-        usesExternalPersistence: Bool = false
+        usesExternalPersistence: Bool = false,
+        participants: [Participant] = []
     ) {
         _items = items
         self.saveItem = saveItem
@@ -30,6 +32,7 @@ struct TripPlanningView: View {
         self.updateItemRemotely = updateItem
         self.deleteItemRemotely = deleteItem
         self.usesExternalPersistence = usesExternalPersistence
+        self.participants = participants
     }
 
     var body: some View {
@@ -62,7 +65,7 @@ struct TripPlanningView: View {
             }
         }
         .sheet(isPresented: $isShowingAddItem) {
-            AddTripPlanningItemView { item in
+            AddTripPlanningItemView(participants: participants) { item in
                 Task { await addItem(item) }
             }
         }
@@ -70,7 +73,8 @@ struct TripPlanningView: View {
             if let item = itemPendingEdit {
                 AddTripPlanningItemView(
                     editing: item,
-                    title: "Edit Item"
+                    title: "Edit Item",
+                    participants: participants
                 ) { updated in
                     Task { await updateItem(updated) }
                 }
@@ -345,20 +349,24 @@ private struct TripPlanningItemCard: View {
 
 private struct AddTripPlanningItemView: View {
     @Environment(\.dismiss) private var dismiss
+    let participants: [Participant]
     @State private var title = ""
     @State private var note = ""
     @State private var hasDate = false
     @State private var hasTime = false
     @State private var date = Date()
     @State private var time = Date()
+    @State private var selectedParticipantIDs: [UUID]
     private let existingItem: TripPlanningItem?
     var navTitle: String
     var save: (TripPlanningItem) -> Void
 
-    init(editing item: TripPlanningItem? = nil, title: String = "Add Item", save: @escaping (TripPlanningItem) -> Void) {
+    init(editing item: TripPlanningItem? = nil, title: String = "Add Item", participants: [Participant] = [], save: @escaping (TripPlanningItem) -> Void) {
+        self.participants = participants
         self.existingItem = item
         self.navTitle = title
         self.save = save
+        _selectedParticipantIDs = State(initialValue: item?.participantIDs ?? [])
         _title = State(initialValue: item?.title ?? "")
         _note = State(initialValue: item?.note ?? "")
         _hasDate = State(initialValue: item?.date != nil)
@@ -394,6 +402,10 @@ private struct AddTripPlanningItemView: View {
                     )
                 } header: {
                     EditorialSectionHeader(title: "Notes")
+                }
+
+                if !participants.isEmpty {
+                    ParticipantPickerSection(participants: participants, selectedIDs: $selectedParticipantIDs)
                 }
 
                 Section {
@@ -440,7 +452,7 @@ private struct AddTripPlanningItemView: View {
                                 time: PlanningDateTimeInput.resolvedTime(hasDate: hasDate, hasTime: hasTime, time: time),
                                 isDone: existingItem?.isDone ?? false,
                                 tag: existingItem?.tag ?? "",
-                                participantIDs: existingItem?.participantIDs ?? []
+                                participantIDs: selectedParticipantIDs
                             )
                         )
                         dismiss()

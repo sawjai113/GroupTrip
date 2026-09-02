@@ -152,6 +152,56 @@ final class SupabaseDTOTests: XCTestCase {
         ).participant.accountID)
     }
 
+    func testParticipantDTOOrganizerRoundTripsBothDirections() {
+        let tripID = UUID(uuidString: "11111111-1111-1111-1111-1111111111A1")!
+        let organizerID = UUID(uuidString: "55555555-5555-5555-5555-5555555555A1")!
+        let travelerID = UUID(uuidString: "55555555-5555-5555-5555-5555555555A2")!
+
+        let organizerDTO = SupabaseTripParticipantDTO(
+            id: organizerID,
+            tripID: tripID,
+            displayName: "Alex",
+            isOrganizer: true
+        )
+        let travelerDTO = SupabaseTripParticipantDTO(
+            id: travelerID,
+            tripID: tripID,
+            displayName: "Sam"
+        )
+
+        XCTAssertTrue(organizerDTO.participant.isOrganizer)
+        XCTAssertFalse(travelerDTO.participant.isOrganizer)
+
+        let encodedOrganizer = SupabaseTripParticipantDTO(tripID: tripID, participant: organizerDTO.participant)
+        let encodedTraveler = SupabaseTripParticipantDTO(tripID: tripID, participant: travelerDTO.participant)
+        XCTAssertTrue(encodedOrganizer.isOrganizer)
+        XCTAssertFalse(encodedTraveler.isOrganizer)
+    }
+
+    func testAssembledCloudTripParticipantsCarryIsOrganizer() throws {
+        let tripID = UUID(uuidString: "11111111-1111-1111-1111-1111111111A2")!
+        let alexID = UUID(uuidString: "55555555-5555-5555-5555-5555555555A3")!
+        let samID = UUID(uuidString: "55555555-5555-5555-5555-5555555555A4")!
+
+        let trips = SupabaseTripService.assembleTrips(
+            trips: [SupabaseTripDTO(id: tripID, name: "Austin Weekend", destination: "Austin", emoji: "🤠", imageURL: nil, startDate: "2026-07-03", endDate: "2026-07-06")],
+            participants: [
+                SupabaseTripParticipantDTO(id: alexID, tripID: tripID, displayName: "Alex", isOrganizer: true),
+                SupabaseTripParticipantDTO(id: samID, tripID: tripID, displayName: "Sam")
+            ],
+            places: [],
+            planningItems: [],
+            expenses: [],
+            splits: [],
+            directPayments: []
+        )
+
+        let trip = try XCTUnwrap(trips.first)
+        let byID = Dictionary(uniqueKeysWithValues: trip.viewModel.calculator.participants.map { ($0.id, $0) })
+        XCTAssertTrue(byID[alexID]?.isOrganizer == true)
+        XCTAssertFalse(byID[samID]?.isOrganizer ?? true)
+    }
+
     func testParticipantDTOInitFromParticipantCarriesAccountIDAsLinkedUserID() {
         let accountID = UUID(uuidString: "33333333-3333-3333-3333-333333333334")!
         let participant = Participant(
@@ -294,6 +344,115 @@ final class SupabaseDTOTests: XCTestCase {
         XCTAssertEqual(TripTag.subset(for: .place).map(\.rawValue), ["food", "hotel", "show", "museum"])
         XCTAssertEqual(TripTag.subset(for: .planningItem).map(\.rawValue), ["flight", "hotel", "show", "museum", "custom"])
         XCTAssertEqual(TripTag("ramen").rawValue, "ramen")
+    }
+}
+
+final class PeopleRoomsLogicTests: XCTestCase {
+    private let tripID = UUID(uuidString: "00000000-0000-4000-8000-00000000C501")!
+
+    private func participant(_ name: String, organizer: Bool = false) -> Participant {
+        Participant(name: name, isOrganizer: organizer)
+    }
+
+    func testHallGroupingSplitsOrganizersAndTravelersAlphabetically() {
+        let alex = participant("Alex", organizer: true)
+        let sawjai = participant("Sawjai", organizer: true)
+        let zoe = participant("Zoe")
+        let maya = participant("Maya")
+
+        let grouped = PeopleHall.grouped(alex, zoe, sawjai, maya)
+
+        XCTAssertEqual(grouped.organizers.map(\.name), ["Alex", "Sawjai"])
+        XCTAssertEqual(grouped.travelers.map(\.name), ["Maya", "Zoe"])
+    }
+
+    func testHallGroupingHidesEmptyGroups() {
+        let solo = participant("Solo", organizer: true)
+        let grouped = PeopleHall.grouped(solo)
+
+        XCTAssertEqual(grouped.organizers.map(\.name), ["Solo"])
+        XCTAssertTrue(grouped.travelers.isEmpty)
+    }
+
+    func testBalancePhraseGetsBackOwesAndSettled() {
+        XCTAssertEqual(PersonBalancePhrase(net: 128).text, "Gets back $128")
+        XCTAssertEqual(PersonBalancePhrase(net: -42).text, "Owes $42")
+        XCTAssertEqual(PersonBalancePhrase(net: 0).text, "Settled")
+    }
+
+    func testPersonFootprintAggregatesExpensesPlacesAndPlans() {
+        let tripID = self.tripID
+        let alex = participant("Alex")
+        let sam = participant("Sam")
+        let expenses = [
+            ExpenseItem(title: "Hotel", paidBy: alex.id, amount: 200, participants: [alex.id, sam.id]),
+            ExpenseItem(title: "Tacos", paidBy: sam.id, amount: 60, participants: [alex.id, sam.id]),
+            ExpenseItem(title: "Solo shirt", paidBy: sam.id, amount: 30, participants: [sam.id])
+        ]
+        let places = [
+            TripPlace(name: "Zilker", participantIDs: [alex.id]),
+            TripPlace(name: "Barton Springs", participantIDs: [alex.id, sam.id])
+        ]
+        let plans = [
+            TripPlanningItem(title: "Book dinner", participantIDs: [alex.id]),
+            TripPlanningItem(title: "Kayak", participantIDs: [sam.id])
+        ]
+
+        let footprint = PersonFootprint.aggregate(
+            participantID: alex.id,
+            tripID: tripID,
+            expenses: expenses,
+            places: places,
+            planningItems: plans
+        )
+
+        XCTAssertEqual(footprint.paidExpenses.map(\.title), ["Hotel"])
+        XCTAssertEqual(footprint.sharedExpenses.map(\.title), ["Tacos"])
+        XCTAssertEqual(footprint.places.map(\.name), ["Barton Springs", "Zilker"])
+        XCTAssertEqual(footprint.plans.map(\.title), ["Book dinner"])
+    }
+
+    func testPickerToggleResolutionAddsAndRemovesMembership() {
+        let alexID = UUID(uuidString: "00000000-0000-4000-8000-00000000A501")!
+        let samID = UUID(uuidString: "00000000-0000-4000-8000-00000000A502")!
+        let zoeID = UUID(uuidString: "00000000-0000-4000-8000-00000000A503")!
+        var selection = ParticipantSelection()
+        XCTAssertFalse(selection.contains(alexID))
+
+        selection.toggle(alexID)
+        selection.toggle(samID)
+        XCTAssertEqual(selection.orderedIDs, [alexID, samID])
+        XCTAssertTrue(selection.contains(alexID))
+        XCTAssertFalse(selection.contains(zoeID))
+
+        selection.toggle(alexID)
+        XCTAssertEqual(selection.orderedIDs, [samID])
+        XCTAssertFalse(selection.contains(alexID))
+    }
+
+    func testShareTextBuilderTrimsAndUppercasesCode() {
+        XCTAssertEqual(
+            TripShareTextBuilder.text(tripName: "  Japan Spring 2027 ", inviteCode: "  abc123 "),
+            "Join Japan Spring 2027 on Wanderaid — invite code ABC123"
+        )
+        XCTAssertNil(TripShareTextBuilder.text(tripName: "Trip", inviteCode: "   "))
+    }
+
+    func testPersonBalanceUsesTripRelativeNetFromCalculator() {
+        let alex = participant("Alex")
+        let sam = participant("Sam")
+        let calculator = TripExpenseCalculator(
+            participants: [alex, sam],
+            expenses: [
+                ExpenseItem(title: "Hotel", paidBy: alex.id, amount: 200, participants: [alex.id, sam.id])
+            ],
+            payments: []
+        )
+
+        let alexProfile = PersonBalance.phrase(net: calculator.balances().first { $0.participant.id == alex.id }!.net)
+        let samProfile = PersonBalance.phrase(net: calculator.balances().first { $0.participant.id == sam.id }!.net)
+        XCTAssertEqual(alexProfile.text, "Gets back $100")
+        XCTAssertEqual(samProfile.text, "Owes $100")
     }
 }
 
@@ -638,6 +797,26 @@ final class TripStoreCloudSyncTests: XCTestCase {
         let restoredTrip = try XCTUnwrap(TripStore.cachedTrips(in: cache, key: cacheKey).first)
         XCTAssertEqual(restoredTrip.viewModel.calculator.participants.first?.accountID, accountID)
         cache.removePersistentDomain(forName: "TripStoreCacheTests-participant-account")
+    }
+
+    func testTripCachePreservesParticipantIsOrganizer() throws {
+        let cache = UserDefaults(suiteName: "TripStoreCacheTests-participant-organizer")!
+        cache.removePersistentDomain(forName: "TripStoreCacheTests-participant-organizer")
+        let cacheKey = "test.cached.trips.participant.organizer"
+        let participantID = UUID(uuidString: "00000000-0000-0000-0000-00000000B091")!
+        var cachedTrip = makeTrip(id: UUID(uuidString: "00000000-0000-0000-0000-00000000B090")!, name: "Cached Weekend")
+        cachedTrip.viewModel.calculator.participants = [
+            Participant(id: participantID, name: "Sawjai", isOrganizer: true),
+            Participant(name: "Maya")
+        ]
+
+        TripStore.cacheTrips([cachedTrip], in: cache, key: cacheKey)
+
+        let restoredTrip = try XCTUnwrap(TripStore.cachedTrips(in: cache, key: cacheKey).first)
+        let byID = Dictionary(uniqueKeysWithValues: restoredTrip.viewModel.calculator.participants.map { ($0.id, $0) })
+        XCTAssertTrue(byID[participantID]?.isOrganizer == true)
+        XCTAssertFalse(byID[byID.keys.first { $0 != participantID }!]?.isOrganizer ?? true)
+        cache.removePersistentDomain(forName: "TripStoreCacheTests-participant-organizer")
     }
 
     func testCloudStoreCreatesRemoteTripWithTrimmedValuesAndAppendsReturnedTrip() async throws {

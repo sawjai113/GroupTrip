@@ -6,11 +6,15 @@ struct Participant: Identifiable, Hashable {
     /// Optional linkage to a signed-in account (Supabase `linked_user_id`),
     /// used to resolve dashboard money for the current user per trip.
     var accountID: UUID?
+    /// True when this person organizes the trip (display grouping only in M4;
+    /// assignment/transfer is a follow-up RLS/RPC feature).
+    var isOrganizer: Bool
 
-    init(id: UUID = UUID(), name: String, accountID: UUID? = nil) {
+    init(id: UUID = UUID(), name: String, accountID: UUID? = nil, isOrganizer: Bool = false) {
         self.id = id
         self.name = name
         self.accountID = accountID
+        self.isOrganizer = isOrganizer
     }
 }
 

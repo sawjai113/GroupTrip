@@ -175,7 +175,8 @@ final class TripStore: ObservableObject {
         let trimmedParticipant = Participant(
             id: participant.id,
             name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines),
-            accountID: participant.accountID
+            accountID: participant.accountID,
+            isOrganizer: participant.isOrganizer
         )
         guard !trimmedParticipant.name.isEmpty else { return }
 
@@ -746,14 +747,19 @@ private struct CachedParticipant: Codable {
     var id: UUID
     var name: String
     var accountID: UUID?
+    /// Optional for forward compatibility: caches written before Chunk 5 omit it.
+    var isOrganizer: Bool?
 
     init(participant: Participant) {
         id = participant.id
         name = participant.name
         accountID = participant.accountID
+        isOrganizer = participant.isOrganizer
     }
 
-    var participant: Participant { Participant(id: id, name: name, accountID: accountID) }
+    var participant: Participant {
+        Participant(id: id, name: name, accountID: accountID, isOrganizer: isOrganizer ?? false)
+    }
 }
 
 private struct CachedExpense: Codable {
@@ -846,7 +852,7 @@ extension TripStore {
         let startDate = calendar.date(from: DateComponents(year: 2027, month: 3, day: 24)) ?? Date()
         let endDate = calendar.date(from: DateComponents(year: 2027, month: 4, day: 4)) ?? startDate
 
-        let sawjai = Participant(name: "Sawjai")
+        let sawjai = Participant(name: "Sawjai", isOrganizer: true)
         let alex = Participant(name: "Alex")
         let sam = Participant(name: "Sam")
         let taylor = Participant(name: "Taylor")
@@ -898,7 +904,7 @@ extension TripStore {
         let startDate = calendar.date(from: DateComponents(year: 2026, month: 8, day: 14)) ?? Date()
         let endDate = calendar.date(from: DateComponents(year: 2026, month: 8, day: 16)) ?? startDate
 
-        let sawjai = Participant(name: "Sawjai")
+        let sawjai = Participant(name: "Sawjai", isOrganizer: true)
         let maya = Participant(name: "Maya")
         let noah = Participant(name: "Noah")
         let people = [sawjai, maya, noah]

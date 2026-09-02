@@ -39,7 +39,12 @@ final class TripCalculatorViewModel: ObservableObject {
         let trimmed = participant.name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty,
               let index = calculator.participants.firstIndex(where: { $0.id == participant.id }) else { return }
-        calculator.participants[index] = Participant(id: participant.id, name: trimmed, accountID: participant.accountID)
+        calculator.participants[index] = Participant(
+            id: participant.id,
+            name: trimmed,
+            accountID: participant.accountID,
+            isOrganizer: participant.isOrganizer
+        )
     }
 
     func deleteParticipants(at offsets: IndexSet) {

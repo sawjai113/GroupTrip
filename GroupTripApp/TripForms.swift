@@ -209,7 +209,8 @@ struct AddPersonView: View {
                             let updatedParticipant = Participant(
                                 id: existingParticipant.id,
                                 name: parsedNames.first ?? "",
-                                accountID: existingParticipant.accountID
+                                accountID: existingParticipant.accountID,
+                                isOrganizer: existingParticipant.isOrganizer
                             )
                             if usesExternalPersistence {
                                 Task {

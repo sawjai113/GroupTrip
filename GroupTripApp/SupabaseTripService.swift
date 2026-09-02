@@ -219,7 +219,8 @@ struct SupabaseTripService: TripSyncServicing {
         let trimmedParticipant = Participant(
             id: participant.id,
             name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines),
-            accountID: participant.accountID
+            accountID: participant.accountID,
+            isOrganizer: participant.isOrganizer
         )
         guard !trimmedParticipant.name.isEmpty else { return trimmedParticipant }
 
@@ -235,7 +236,8 @@ struct SupabaseTripService: TripSyncServicing {
         let trimmedParticipant = Participant(
             id: participant.id,
             name: participant.name.trimmingCharacters(in: .whitespacesAndNewlines),
-            accountID: participant.accountID
+            accountID: participant.accountID,
+            isOrganizer: participant.isOrganizer
         )
         guard !trimmedParticipant.name.isEmpty else {
             throw SupabaseTripServiceValidationError.invalidParticipant
@@ -902,12 +904,13 @@ struct SupabaseTripParticipantDTO: Codable, Hashable {
             id: participant.id,
             tripID: tripID,
             displayName: participant.name,
-            linkedUserID: participant.accountID
+            linkedUserID: participant.accountID,
+            isOrganizer: participant.isOrganizer
         )
     }
 
     var participant: Participant {
-        Participant(id: id, name: displayName, accountID: linkedUserID)
+        Participant(id: id, name: displayName, accountID: linkedUserID, isOrganizer: isOrganizer)
     }
 
     var expenseParticipant: ExpenseParticipant {
