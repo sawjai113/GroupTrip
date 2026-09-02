@@ -1,6 +1,6 @@
 # 005 Calm Trip Design — App Implementation Brief (M4 + M5)
 
-**Status:** Chunk 1 SHIPPED (`026773a`, user visual review APPROVED 2026-09-01) · Chunk 2 SHIPPED (`ac0a3d9`, live schema applied + smoke green, 108/108 tests) — CLOSED OUT 2026-09-01 17:19 PDT for Codex quota reset (resume ~21:00 PDT). Next: Chunk 3 (pre-scoping in flight).
+**Status:** Chunks 1–6 SHIPPED (`026773a`…`7c9e135`) — Chunk 6 (Money) awaiting user visual checkpoint. Chunk 7 (M5 core) scoping in progress (@architect decomposition dispatched 2026-09-02). Offline-pickup test in progress: pipeline continues autonomously while the user reviews Chunk 6; all decisions recorded here as the durable channel.
 **Date:** 2026-09-01
 **Approved design:** `wanderaid-designs/variants/005-calm-prototype/` (commits `f2190a0` → `b1ab181` → `58ca81f`, pushed by @design)
 **Sources:** docs/design-thoughts.md (room specs), docs/plans/rooms-to-milestones.md, docs/product-roadmap.md (M4/M5), docs/todo-feedback.md
