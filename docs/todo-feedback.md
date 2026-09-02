@@ -583,6 +583,62 @@ Acceptance notes:
 
 ---
 
+### 28. Custom label library: create labels independent of items + frequency-based quick access
+
+Status: Later
+Area: Tags, Labels, Places, Expenses, UX
+
+Feedback:
+
+- Users should be able to create custom labels WITHOUT having to go into creating a new place or expense — today a custom tag only exists via the Custom chip inside an add/edit sheet (chunk 3/4).
+- Custom labels created anywhere should show up alongside the established canonical ones (food/hotel/show/museum/etc.) wherever tags appear — one shared vocabulary surfaced everywhere (this extends the chunk-2 TripTag foundation).
+- Open design question: how to keep a large list of custom labels usable — surface frequently-used ones for quick access while keeping the full list reachable (frequency/recency ranking? recently-used row? "All labels" management view?).
+
+Acceptance notes:
+
+- A label-management surface exists (create/rename/delete custom labels independent of any item).
+- Custom labels appear in the same chip rows as canonical tags on place/planning item add/edit (and anywhere tags surface).
+- Frequently used custom labels surface first / in a quick-access tier as the custom list grows; full list still reachable.
+- Needs @design direction on the management surface + frequency-tier treatment; ties into chunk 2's TripTag vocabulary design.
+
+---
+
+### 29. Itinerary single-item card height too tall for its content
+
+Status: Next
+Area: Itinerary, Layout, Real estate, UX
+
+Feedback:
+
+- With a single item in Itinerary (chunk 4 day-grouped timeline), the one box is much too tall for the info it holds and takes up too much screen real estate.
+- Source candidates in code: TripPlanningItemCard row padding (TripPlanningView.swift ~271 `.padding(.vertical, medium)`), the WaniCard day-group container, and empty note/status spacing stacking inside a single row.
+
+Acceptance notes:
+
+- A single dated item renders compact — the card/container height tracks content, not a fixed tall shell.
+- Day-group container + row paddings tightened without breaking the shared-hairline-container look (per @design chunk-4 handoff) or 44pt tap targets.
+- Visual check on device with 1 vs N items; no overlapping elements (QA 5b).
+
+---
+
+### 30. People page: invite code creation inline + friendlier add-people input
+
+Status: Later
+Area: People, Invites, Forms, UX
+
+Feedback:
+
+- (a) On the People page, "Create Invite Code" / "Create Another Code" (PeopleViews.swift InvitePeopleCard) sits as its own button below the code/copy row — it should be inline with the rest of the invite-by-code feature to free real estate. Needs @design revisit.
+- (b) The add-people input is a primitive comma-separated TextEditor (TripForms.swift AddPersonView ~175, "Alex\nSam\nTaylor" placeholder, minHeight 140) — should be more elegant and user-friendly than a raw text box (e.g. tokenized chips / per-person add row with add-another, inline suggestions).
+
+Acceptance notes:
+
+- Invite: create-code affordance reads as one inline control with the code display/copy (not a separate button block); cloud-only gating preserved; @design handoff.
+- Add people: friendly multi-person entry (chips/tokens or repeatable name rows) replacing the comma/newline text box; still supports adding several at once; edit mode (single participant rename) stays simple; demo + cloud behavior preserved.
+- 44pt targets, VoiceOver labels, no overlapping elements (QA 5b).
+
+---
+
 ## Done / Recently Resolved
 
 ### Invite sharing affordance polish

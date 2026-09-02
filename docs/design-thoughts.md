@@ -229,6 +229,8 @@ A basecamp works for two kinds of people, and so must every screen:
 
 ## Inbox
 
+- 2026-09-02 — CUSTOM LABEL LIBRARY: labels shouldn't be trapped inside item-creation flows — create custom labels anywhere, one shared vocabulary surfacing canonical + custom everywhere. Big-list problem: frequency/recency quick-access tier + full list reachable. Extends chunk-2 TripTag foundation; needs management surface + design direction (todo-feedback #28). (raw → developed: todo #28)
+
 - 2026-09-01 — NAVIGATION PREFERENCE: user prefers swipes/gestures over explicit buttons where possible — back on Trip Overview overlaps the hero status pill; direction: move back controls out of the photo area or rely on edge swipes. Apply per-page during individual page polish (todo-feedback #27). (raw → developed: todo-feedback #27)
 
 - 2026-08-20 — JOURNAL vision: like a hotel guest book — one-liners to short paragraphs of trip feedback; NO rating system (friends, not reviews); a place to share pictures (external album links = MVP; hosting in-app uncertain but would enable fast easy sharing); mirror/link the trip chat for conversations. → developed into Room spec: The Journal v0.1. THE FRAME IS NOW COMPLETE — all 7 rooms specced. (raw → developed)
