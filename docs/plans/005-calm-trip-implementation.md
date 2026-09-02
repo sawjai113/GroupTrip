@@ -61,9 +61,16 @@ Implement the approved 005 prototype into the SwiftUI app: the user-facing room 
 - Risk flags: create+link two-call window (syncError, no local mutation); rename touches view files mechanically (compile-only); participant-set persistence has no M4 UI consumer (exercised by tests + smoke until M5).
 
 ### Chunk 3 — Places (M4): tags UI + Google Maps tap-through
-- Category/tag chips in add/edit place (todo 14: one-tap common categories + custom).
-- "Open in Maps" tap-through (URL scheme) on place rows (M4).
-- Consistent edit affordance on place rows (todo 14a).
+**Status: SCOPE APPROVED 2026-09-01 (@architect) — full spec below. @design chip handoff in flight (parallel, quota pause). Logic-first TDD at resume.**
+- (a) Tag chips in add/edit sheet (todo #14): replace Category text field with chip row from `TripTag.subset(for: .place)` (food/hotel/show/museum) + Custom chip revealing a text field. Precedence: custom text wins over chip; tap-again deselects; prefill correct (canonical → chip, custom → Custom+field, empty → none). Save writes via existing TripPlace.tag (chunk 2 persistence — store untouched).
+- (b) Filter chips on list (client-side): All + food/hotel/show/museum above the list; single-select exact-match; no-match → EmptyFeatureCard; no Custom filter chip (entry mode, not filter); no Pinned/Calls (M5).
+- (c) Google Maps tap-through (todo #21 M4 step): pure URL builders (TDD) — `comgooglemaps://?q=<encoded name>` app URL + `https://www.google.com/maps/search/?api=1&query=` web fallback, built via URLComponents (correct %-encoding for &, ?, unicode; test "D&D Diner", "Café"). Open: `@Environment(\.openURL)` async-Bool, fallback to web on failure; NO canOpenURL/LSApplicationQueriesSchemes; NO confirm (non-destructive). Row body tap = Open in Maps (additive — no current tap action), pencil = edit, trash = delete.
+- (d) #14a resolution: visible pencil icon replaces mappin as edit affordance (mappin reads "location"; matches other editable items). Row tap = maps is additive.
+- **Out of scope:** voting/weights/pins/locked-in markers, MapKit + map-card visual, notes enrichment, Places search/autocomplete/previews, lat/lng threading (all M5/Later).
+- **TDD (pure Foundation):** PlaceTagInput (resolvedTag precedence, prefill mapping), filter `filtered(by:)`, PlaceMapsLink (app/web shapes, percent-encoding, nil for empty), TripTag subset pin test. UI-only: chip visuals/filter row/row layout (needs @design).
+- **Files:** TripModels.swift (+PlaceTagInput, filtered(by:), PlaceMapsLink — Foundation-pure, no pbxproj churn); TripPlacesView.swift (filter row + row redesign + AddTripPlaceView chip row + openURL env); tests in TripCollaborationModelsTests.swift (new TripPlacesLogicTests class).
+- **Sequencing:** logic-first at resume (zero design dep) → @design handoff lands in parallel → UI wiring → build + full suite + @review gate.
+- **Handoff notes for @coding:** chips row = separate section above list (no row overlays — QA 5b); confirm async openURL-Bool fallback compiles on iOS target (iOS 15+).
 - (Voting/weights/pins/MapKit = M5, chunk 6.)
 
 ### Chunk 4 — Itinerary (M4): day grouping + optional times
