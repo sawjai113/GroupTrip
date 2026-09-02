@@ -6,6 +6,16 @@
 **User visual checkpoints gate:** 5B-2, 5D-2, 5E. Proceed without user: 5A, 5B-1, 5C, 5D-1.
 **Hard decisions (D1–D7) need user sign-off — listed at top of doc.**
 
+## 5A design notes (interim, drafted by @general from prototype Places screen; @design review when quota clears)
+
+- Vote control on place rows/cards (per prototype `.vote-line`/`.vote-btn`): 3-column grid, gap 7, three buttons "Yes +1" / "Weak +0.5" / "No −1"; `.vote-btn` = border 1pt Editorial.border, background Editorial.raisedCard, secondaryText, radius 14, padding v8/h4, caption weight bold, minHeight 44 (QA 5b); active = Editorial.forest fill + white text (chip precedent from chunk 3 PlaceChip). Tap sets/updates own vote; tapping active vote again = abstain (clear).
+- Score line under title (per prototype `data-score` line): "Score 4.0 · 4 yes · 0 weak · 0 no · 2 abstain" — caption, secondaryText; score serif-emphasis optional (money precedent) — keep caption for density, flag @design.
+- Pin: small pin button/affordance per row ("Pin" label + mappin icon, forest when pinned → "Pinned by <name>" subtitle swap); "Call for vote" action on the place (sets called_for_vote_at) surfaces an "Vote called" owed-colored pill (prototype `.pill.owed`).
+- List filter chips (chunk 3 rail) gain Pinned + Calls chips (prototype chips); TripTag chips stay. Active chip forest/white (existing PlaceChip).
+- Locked-in marker (5B dependency — render only when bookings exist): sand pill "Booked"/"Locked" + row tap-through to Itinerary (prototype locked pin row).
+- Tokens: Editorial.* only; vote active = forest (NOT FeatureColor.places red — chip-language precedent); no new tokens expected.
+- A11y: vote buttons labeled "Yes on <place>"/"Weak yes on <place>"/"No on <place>", selected state announced; pin "Pin <place>"/"Unpin <place>"; score line not individually tappable.
+
 CHUNK 7 (M5 CORE) — DECOMPOSITION. Tier 2, full pipeline. 7 sub-chunks, dependency-ordered, each independently buildable + gateable. Built on verified shipped foundations (chunks 2-6) and the M5 specs.
 
 === HARD DECISIONS NEEDING INPUT BEFORE CODING (each blocks one sub-chunk) ===
