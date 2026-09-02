@@ -423,6 +423,7 @@ struct SupabaseTripService: TripSyncServicing {
             title: item.title.trimmingCharacters(in: .whitespacesAndNewlines),
             note: item.note.trimmingCharacters(in: .whitespacesAndNewlines),
             date: item.date,
+            time: item.time,
             isDone: item.isDone,
             tag: item.tag.trimmingCharacters(in: .whitespacesAndNewlines),
             participantIDs: item.participantIDs
@@ -986,6 +987,7 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
     var title: String
     var note: String
     var scheduledDate: String?
+    var scheduledTime: String?
     var isDone: Bool
     var tag: String
 
@@ -995,6 +997,7 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
         case title
         case note
         case scheduledDate = "scheduled_date"
+        case scheduledTime = "scheduled_time"
         case isDone = "is_done"
         case tag
     }
@@ -1005,6 +1008,7 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
         title: String,
         note: String,
         scheduledDate: String?,
+        scheduledTime: String? = nil,
         isDone: Bool,
         tag: String = ""
     ) {
@@ -1013,6 +1017,7 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
         self.title = title
         self.note = note
         self.scheduledDate = scheduledDate
+        self.scheduledTime = scheduledTime
         self.isDone = isDone
         self.tag = tag
     }
@@ -1024,6 +1029,7 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
             title: item.title,
             note: item.note,
             scheduledDate: item.date.map(SupabaseDateFormatter.string(from:)),
+            scheduledTime: item.time.map(SupabaseTimeFormatter.string(from:)),
             isDone: item.isDone,
             tag: item.tag
         )
@@ -1035,10 +1041,47 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
             title: title,
             note: note,
             date: SupabaseDateFormatter.date(from: scheduledDate),
+            time: SupabaseTimeFormatter.date(from: scheduledTime),
             isDone: isDone,
             tag: tag,
             participantIDs: participantIDs
         )
+    }
+}
+
+enum SupabaseTimeFormatter {
+    private static let formatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "HH:mm"
+        return formatter
+    }()
+
+    private static let referenceCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }()
+
+    static func string(from date: Date) -> String {
+        formatter.string(from: date)
+    }
+
+    static func date(from string: String?) -> Date? {
+        guard let string, !string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        guard let parsed = formatter.date(from: string) else { return nil }
+        let components = referenceCalendar.dateComponents([.hour, .minute], from: parsed)
+        return referenceCalendar.date(from: DateComponents(
+            calendar: referenceCalendar,
+            timeZone: referenceCalendar.timeZone,
+            year: 2000,
+            month: 1,
+            day: 1,
+            hour: components.hour,
+            minute: components.minute
+        ))
     }
 }
 

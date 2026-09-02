@@ -21,18 +21,82 @@ struct TripPlanningItem: Identifiable, Hashable {
     var title: String
     var note: String
     var date: Date?
+    var time: Date?
     var isDone: Bool
     var tag: String
     var participantIDs: [UUID]
 
-    init(id: UUID = UUID(), title: String, note: String = "", date: Date? = nil, isDone: Bool = false, tag: String = "", participantIDs: [UUID] = []) {
+    init(id: UUID = UUID(), title: String, note: String = "", date: Date? = nil, time: Date? = nil, isDone: Bool = false, tag: String = "", participantIDs: [UUID] = []) {
         self.id = id
         self.title = title
         self.note = note
         self.date = date
+        self.time = date == nil ? nil : time
         self.isDone = isDone
         self.tag = tag
         self.participantIDs = participantIDs
+    }
+}
+
+struct PlanningDaySection: Equatable {
+    var date: Date
+    var items: [TripPlanningItem]
+}
+
+enum PlanningTimeline {
+    static func sections(from items: [TripPlanningItem], calendar: Calendar = .current) -> (dated: [PlanningDaySection], undated: [TripPlanningItem]) {
+        let indexedItems = items.enumerated().map { index, item in
+            IndexedPlanningItem(index: index, item: item)
+        }
+        let datedItems = indexedItems.compactMap { indexed -> (date: Date, indexed: IndexedPlanningItem)? in
+            guard let date = indexed.item.date else { return nil }
+            return (calendar.startOfDay(for: date), indexed)
+        }
+        let dates = Array(Set(datedItems.map(\.date))).sorted()
+        let sections = dates.map { date in
+            let dayItems = datedItems
+                .filter { $0.date == date }
+                .map(\.indexed)
+                .sorted { lhs, rhs in
+                    switch (lhs.item.time, rhs.item.time) {
+                    case let (lhsTime?, rhsTime?):
+                        let lhsComponents = calendar.dateComponents([.hour, .minute], from: lhsTime)
+                        let rhsComponents = calendar.dateComponents([.hour, .minute], from: rhsTime)
+                        if lhsComponents.hour != rhsComponents.hour {
+                            return (lhsComponents.hour ?? 0) < (rhsComponents.hour ?? 0)
+                        }
+                        if lhsComponents.minute != rhsComponents.minute {
+                            return (lhsComponents.minute ?? 0) < (rhsComponents.minute ?? 0)
+                        }
+                        return lhs.index < rhs.index
+                    case (_?, nil):
+                        return true
+                    case (nil, _?):
+                        return false
+                    case (nil, nil):
+                        return lhs.index < rhs.index
+                    }
+                }
+                .map(\.item)
+            return PlanningDaySection(date: date, items: dayItems)
+        }
+        let undated = indexedItems.filter { $0.item.date == nil }.map(\.item)
+        return (sections, undated)
+    }
+
+    private struct IndexedPlanningItem {
+        var index: Int
+        var item: TripPlanningItem
+    }
+}
+
+enum PlanningDateTimeInput {
+    static func resolvedDate(hasDate: Bool, date: Date) -> Date? {
+        hasDate ? date : nil
+    }
+
+    static func resolvedTime(hasDate: Bool, hasTime: Bool, time: Date) -> Date? {
+        hasDate && hasTime ? time : nil
     }
 }
 

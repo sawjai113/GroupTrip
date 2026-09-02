@@ -797,6 +797,7 @@ create table if not exists public.trip_planning_items (
   title text not null,
   note text not null default '',
   scheduled_date date,
+  scheduled_time time,
   is_done boolean not null default false,
   added_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
@@ -1262,6 +1263,7 @@ end $$;
 
 alter table public.trip_places add column if not exists tag text not null default '';
 alter table public.trip_planning_items add column if not exists tag text not null default '';
+alter table public.trip_planning_items add column if not exists scheduled_time time;
 
 alter table public.trip_places drop constraint if exists trip_places_tag_check;
 alter table public.trip_places

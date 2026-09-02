@@ -127,13 +127,14 @@ values (
   auth.uid()
 );
 
-insert into public.trip_planning_items (id, trip_id, title, note, scheduled_date, is_done, tag, added_by)
+insert into public.trip_planning_items (id, trip_id, title, note, scheduled_date, scheduled_time, is_done, tag, added_by)
 values (
   '00000000-0000-4000-8000-00000000a002',
   '00000000-0000-4000-8000-00000000c001',
   'Book dinner reservation',
   'Smoke test plan item',
   current_date + 1,
+  '08:20',
   false,
   'show',
   auth.uid()
@@ -238,6 +239,7 @@ begin
   from public.trip_planning_items
   where trip_id = '00000000-0000-4000-8000-00000000c001'
     and title = 'Book dinner reservation'
+    and scheduled_time = '08:20'::time
     and tag = 'show';
 
   select count(*) into plan_link_count
@@ -300,7 +302,7 @@ select
     join public.trip_places p on p.id = pp.place_id
     where p.trip_id = '00000000-0000-4000-8000-00000000c001'
   ) as place_participants_readable_by_user_b,
-  (select count(*) from public.trip_planning_items where trip_id = '00000000-0000-4000-8000-00000000c001' and tag = 'show') as tagged_plans_readable_by_user_b,
+  (select count(*) from public.trip_planning_items where trip_id = '00000000-0000-4000-8000-00000000c001' and tag = 'show' and scheduled_time = '08:20'::time) as tagged_plans_readable_by_user_b,
   (
     select count(*)
     from public.trip_planning_item_participants ip

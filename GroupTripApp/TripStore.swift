@@ -311,6 +311,7 @@ final class TripStore: ObservableObject {
             title: item.title.trimmingCharacters(in: .whitespacesAndNewlines),
             note: item.note.trimmingCharacters(in: .whitespacesAndNewlines),
             date: item.date,
+            time: item.time,
             isDone: item.isDone,
             tag: item.tag.trimmingCharacters(in: .whitespacesAndNewlines),
             participantIDs: item.participantIDs
@@ -347,6 +348,7 @@ final class TripStore: ObservableObject {
             title: item.title.trimmingCharacters(in: .whitespacesAndNewlines),
             note: item.note.trimmingCharacters(in: .whitespacesAndNewlines),
             date: item.date,
+            time: item.time,
             isDone: item.isDone,
             tag: item.tag.trimmingCharacters(in: .whitespacesAndNewlines),
             participantIDs: item.participantIDs

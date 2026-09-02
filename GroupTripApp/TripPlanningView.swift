@@ -12,6 +12,10 @@ struct TripPlanningView: View {
     @State private var itemPendingDeletion: TripPlanningItem?
     @State private var itemPendingEdit: TripPlanningItem?
 
+    private var timelineSections: (dated: [PlanningDaySection], undated: [TripPlanningItem]) {
+        PlanningTimeline.sections(from: items)
+    }
+
     init(
         items: Binding<[TripPlanningItem]>,
         saveItem: @escaping (TripPlanningItem) async -> Void = { _ in },
@@ -33,34 +37,13 @@ struct TripPlanningView: View {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
                 header
 
-                calendarPlaceholder
-
                 if items.isEmpty {
                     EmptyFeatureCard(
                         title: "No itinerary items yet",
                         subtitle: "Plans, bookings, and daily schedule ideas for this trip will appear here."
                     )
                 } else {
-                    VStack(spacing: AppTheme.Spacing.medium) {
-                        ForEach(items) { item in
-                            SwipeRevealActionRow(
-                                actionTitle: "Delete",
-                                actionSystemImage: "trash",
-                                actionAccessibilityLabel: "Delete \(item.title)"
-                            ) {
-                                itemPendingDeletion = item
-                            } content: {
-                                TripPlanningItemCard(item: item) {
-                                    Task { await toggleItem(item) }
-                                } delete: {
-                                    itemPendingDeletion = item
-                                } edit: {
-                                    itemPendingEdit = item
-                                    isShowingEditItem = true
-                                }
-                            }
-                        }
-                    }
+                    planningSections
                 }
             }
             .padding(AppTheme.Spacing.large)
@@ -120,26 +103,83 @@ struct TripPlanningView: View {
         )
     }
 
-    private var calendarPlaceholder: some View {
-        WaniCard(radius: AppTheme.Radius.xLarge) {
-            VStack(alignment: .leading, spacing: AppTheme.Spacing.medium + 2) {
-                HStack(alignment: .top, spacing: AppTheme.Spacing.medium) {
-                    WaniIconBadge(systemImage: "calendar", tint: AppTheme.FeatureColor.itinerary)
+    private var planningSections: some View {
+        VStack(alignment: .leading, spacing: 24) {
+            ForEach(timelineSections.dated, id: \.date) { section in
+                VStack(alignment: .leading, spacing: 10) {
+                    PlanningTimelineHeader(
+                        title: Self.dayHeaderFormatter.string(from: section.date),
+                        meta: Self.itemCountText(for: section.items.count),
+                        fontSize: 20
+                    )
 
-                    VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall) {
-                        Text("Calendar View")
-                            .font(.headline)
-                        Text("Placeholder for a future native, third-party, or hybrid calendar integration.")
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.Editorial.secondaryText)
+                    WaniCard {
+                        VStack(spacing: 0) {
+                            ForEach(Array(section.items.enumerated()), id: \.element.id) { index, item in
+                                planningRow(for: item, showsTime: true, isEmbedded: true)
+
+                                if index < section.items.count - 1 {
+                                    Divider()
+                                        .padding(.leading, AppTheme.IconSize.large + AppTheme.Spacing.medium + 2)
+                                }
+                            }
+                        }
                     }
-
-                    Spacer(minLength: 0)
                 }
+            }
 
-                CalendarPreviewGrid()
+            if !timelineSections.undated.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    PlanningTimelineHeader(
+                        title: "Undated backlog",
+                        meta: Self.itemCountText(for: timelineSections.undated.count),
+                        fontSize: 18
+                    )
+
+                    WaniCard {
+                        VStack(spacing: 0) {
+                            ForEach(Array(timelineSections.undated.enumerated()), id: \.element.id) { index, item in
+                                planningRow(for: item, showsTime: false, isEmbedded: true)
+
+                                if index < timelineSections.undated.count - 1 {
+                                    Divider()
+                                        .padding(.leading, AppTheme.IconSize.large + AppTheme.Spacing.medium + 2)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private func planningRow(for item: TripPlanningItem, showsTime: Bool, isEmbedded: Bool = false) -> some View {
+        SwipeRevealActionRow(
+            actionTitle: "Delete",
+            actionSystemImage: "trash",
+            actionAccessibilityLabel: "Delete \(item.title)"
+        ) {
+            itemPendingDeletion = item
+        } content: {
+            TripPlanningItemCard(item: item, showsTime: showsTime, isEmbedded: isEmbedded) {
+                Task { await toggleItem(item) }
+            } delete: {
+                itemPendingDeletion = item
+            } edit: {
+                itemPendingEdit = item
+                isShowingEditItem = true
+            }
+        }
+    }
+
+    private static let dayHeaderFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("EEEE MMMM d")
+        return formatter
+    }()
+
+    private static func itemCountText(for count: Int) -> String {
+        count == 1 ? "1 item" : "\(count) items"
     }
 
     private func addItem(_ item: TripPlanningItem) async {
@@ -187,50 +227,31 @@ struct TripPlanningView: View {
     }
 }
 
-private struct CalendarPreviewGrid: View {
-    private let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-    private let highlightedDays: Set<Int> = [6, 9, 13, 17]
+private struct PlanningTimelineHeader: View {
+    let title: String
+    let meta: String
+    var fontSize: CGFloat
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("Sample Month")
-                    .font(.subheadline.weight(.semibold))
-                Spacer()
-                Text("Not connected yet")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(AppTheme.FeatureColor.itinerary)
-                    .padding(.horizontal, AppTheme.Spacing.small)
-                    .padding(.vertical, AppTheme.Spacing.xSmall)
-                    .background(AppTheme.FeatureColor.itinerary.opacity(0.12))
-                    .clipShape(Capsule())
-            }
+        HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.small) {
+            Text(title)
+                .font(.system(size: fontSize, weight: .semibold, design: .serif))
+                .tracking(-0.3)
+                .foregroundStyle(AppTheme.Editorial.primaryText)
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: AppTheme.Spacing.small) {
-                ForEach(weekdays, id: \.self) { weekday in
-                    Text(weekday)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(AppTheme.Editorial.secondaryText)
-                        .frame(maxWidth: .infinity)
-                }
+            Spacer(minLength: AppTheme.Spacing.small)
 
-                ForEach(1...21, id: \.self) { day in
-                    Text("\(day)")
-                        .font(.caption.weight(highlightedDays.contains(day) ? .semibold : .regular))
-                        .foregroundStyle(highlightedDays.contains(day) ? .white : AppTheme.Editorial.secondaryText)
-                        .frame(maxWidth: .infinity, minHeight: 30)
-                        .background(highlightedDays.contains(day) ? AppTheme.FeatureColor.itinerary : AppTheme.Editorial.background)
-                        .clipShape(RoundedRectangle(cornerRadius: AppTheme.Radius.small, style: .continuous))
-                }
-            }
+            Text(meta)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(AppTheme.Editorial.secondaryText)
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Calendar placeholder. Calendar integration is not connected yet.")
     }
 }
 
 private struct TripPlanningItemCard: View {
     let item: TripPlanningItem
+    var showsTime: Bool = false
+    var isEmbedded: Bool = false
     var toggle: () -> Void
     var delete: () -> Void
     var edit: () -> Void
@@ -239,57 +260,67 @@ private struct TripPlanningItemCard: View {
         item.isDone ? AppTheme.Editorial.forest : AppTheme.FeatureColor.itinerary
     }
 
+    @ViewBuilder
     var body: some View {
-        WaniCard {
-            HStack(alignment: .top, spacing: AppTheme.Spacing.medium + 2) {
-                Button(action: toggle) {
-                    WaniIconBadge(systemImage: item.isDone ? "checkmark.circle.fill" : "circle", tint: itemTint)
+        if isEmbedded {
+            cardContent
+                .padding(.vertical, AppTheme.Spacing.medium)
+        } else {
+            WaniCard {
+                cardContent
+            }
+        }
+    }
+
+    private var cardContent: some View {
+        HStack(alignment: .top, spacing: AppTheme.Spacing.medium + 2) {
+            Button(action: toggle) {
+                WaniIconBadge(systemImage: item.isDone ? "checkmark.circle.fill" : "circle", tint: itemTint)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(item.isDone ? "Mark \(item.title) as to do" : "Mark \(item.title) done")
+
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
+                HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.small) {
+                    Text(item.title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(item.isDone ? AppTheme.Editorial.secondaryText : AppTheme.Editorial.primaryText)
+                        .strikethrough(item.isDone, color: AppTheme.Editorial.secondaryText)
+
+                    Spacer(minLength: AppTheme.Spacing.small)
+
+                    statusBadge
+
+                    Button(action: edit) {
+                        Image(systemName: "pencil")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(width: AppTheme.IconSize.large, height: AppTheme.IconSize.large)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Edit \(item.title)")
+
+                    Button(role: .destructive, action: delete) {
+                        Image(systemName: "trash")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(width: AppTheme.IconSize.large, height: AppTheme.IconSize.large)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Delete \(item.title)")
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(item.isDone ? "Mark \(item.title) as to do" : "Mark \(item.title) done")
 
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
-                    HStack(alignment: .firstTextBaseline, spacing: AppTheme.Spacing.small) {
-                        Text(item.title)
-                            .font(.body.weight(.semibold))
-                            .foregroundStyle(item.isDone ? AppTheme.Editorial.secondaryText : AppTheme.Editorial.primaryText)
-                            .strikethrough(item.isDone, color: AppTheme.Editorial.secondaryText)
+                if let note = item.displayNote {
+                    Text(note)
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
-                        Spacer(minLength: AppTheme.Spacing.small)
-
-                        statusBadge
-
-                        Button(action: edit) {
-                            Image(systemName: "pencil")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(width: AppTheme.IconSize.large, height: AppTheme.IconSize.large)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Edit \(item.title)")
-
-                        Button(role: .destructive, action: delete) {
-                            Image(systemName: "trash")
-                                .font(.subheadline.weight(.semibold))
-                                .frame(width: AppTheme.IconSize.large, height: AppTheme.IconSize.large)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel("Delete \(item.title)")
-                    }
-
-                    if let note = item.displayNote {
-                        Text(note)
-                            .font(.subheadline)
-                            .foregroundStyle(AppTheme.Editorial.secondaryText)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-
-                    if let date = item.date {
-                        Label(Self.dateFormatter.string(from: date), systemImage: "calendar")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(AppTheme.Editorial.secondaryText)
-                    }
+                if showsTime, let time = item.time {
+                    Label(Self.timeFormatter.string(from: time), systemImage: "clock")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(AppTheme.Editorial.secondaryText)
                 }
             }
         }
@@ -305,9 +336,9 @@ private struct TripPlanningItemCard: View {
             .clipShape(Capsule())
     }
 
-    private static let dateFormatter: DateFormatter = {
+    private static let timeFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.setLocalizedDateFormatFromTemplate("MMM d yyyy")
+        formatter.setLocalizedDateFormatFromTemplate("h:mm")
         return formatter
     }()
 }
@@ -317,7 +348,9 @@ private struct AddTripPlanningItemView: View {
     @State private var title = ""
     @State private var note = ""
     @State private var hasDate = false
+    @State private var hasTime = false
     @State private var date = Date()
+    @State private var time = Date()
     private let existingItem: TripPlanningItem?
     var navTitle: String
     var save: (TripPlanningItem) -> Void
@@ -329,7 +362,9 @@ private struct AddTripPlanningItemView: View {
         _title = State(initialValue: item?.title ?? "")
         _note = State(initialValue: item?.note ?? "")
         _hasDate = State(initialValue: item?.date != nil)
+        _hasTime = State(initialValue: item?.date != nil && item?.time != nil)
         _date = State(initialValue: item?.date ?? Date())
+        _time = State(initialValue: item?.time ?? Date())
     }
 
     private var trimmedTitle: String {
@@ -367,10 +402,20 @@ private struct AddTripPlanningItemView: View {
 
                         if hasDate {
                             EditorialDateField(label: "Date", selection: $date)
+
+                            EditorialToggleRow(title: "Add time", isOn: addTimeBinding)
+
+                            if hasTime {
+                                DatePicker("Time", selection: $time, displayedComponents: .hourAndMinute)
+                                    .datePickerStyle(.compact)
+                            }
                         }
                     }
                 } header: {
-                    EditorialSectionHeader(title: "Date")
+                    EditorialSectionHeader(title: "Date & Time")
+                }
+                .onChange(of: hasDate) { _, newValue in
+                    if !newValue { hasTime = false }
                 }
             }
             .editorialForm()
@@ -391,8 +436,11 @@ private struct AddTripPlanningItemView: View {
                                 id: existingItem?.id ?? UUID(),
                                 title: trimmedTitle,
                                 note: note.trimmingCharacters(in: .whitespacesAndNewlines),
-                                date: hasDate ? date : nil,
-                                isDone: existingItem?.isDone ?? false
+                                date: PlanningDateTimeInput.resolvedDate(hasDate: hasDate, date: date),
+                                time: PlanningDateTimeInput.resolvedTime(hasDate: hasDate, hasTime: hasTime, time: time),
+                                isDone: existingItem?.isDone ?? false,
+                                tag: existingItem?.tag ?? "",
+                                participantIDs: existingItem?.participantIDs ?? []
                             )
                         )
                         dismiss()
@@ -401,6 +449,16 @@ private struct AddTripPlanningItemView: View {
                 }
             }
         }
+    }
+
+    private var addTimeBinding: Binding<Bool> {
+        Binding(
+            get: { hasTime },
+            set: { newValue in
+                if newValue { hasDate = true }
+                hasTime = newValue
+            }
+        )
     }
 }
 

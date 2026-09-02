@@ -457,6 +457,115 @@ private final class FakeAuthService: AuthServicing {
     }
 }
 
+final class PlanningTimelineLogicTests: XCTestCase {
+    func testPlanningTimelineGroupsDatedItemsAscendingWithTimedItemsFirst() {
+        let calendar = Calendar(identifier: .gregorian)
+        let september2 = Self.date(2026, 9, 2, calendar: calendar)
+        let september3 = Self.date(2026, 9, 3, calendar: calendar)
+        let breakfast = TripPlanningItem(title: "Breakfast", date: september2, time: Self.time(8, 20, calendar: calendar))
+        let museum = TripPlanningItem(title: "Museum", date: september2, time: Self.time(10, 0, calendar: calendar))
+        let wander = TripPlanningItem(title: "Wander", date: september2)
+        let flight = TripPlanningItem(title: "Flight", date: september3, time: Self.time(7, 30, calendar: calendar))
+
+        let sections = PlanningTimeline.sections(from: [wander, flight, museum, breakfast], calendar: calendar)
+
+        XCTAssertEqual(sections.dated.map { SupabaseDateFormatter.string(from: $0.date) }, ["2026-09-02", "2026-09-03"])
+        XCTAssertEqual(sections.dated[0].items.map(\.title), ["Breakfast", "Museum", "Wander"])
+        XCTAssertEqual(sections.dated[1].items.map(\.title), ["Flight"])
+        XCTAssertTrue(sections.undated.isEmpty)
+    }
+
+    func testPlanningTimelineKeepsDoneItemsInDayGroupAndPreservesTies() {
+        let calendar = Calendar(identifier: .gregorian)
+        let date = Self.date(2026, 9, 2, calendar: calendar)
+        let first = TripPlanningItem(title: "First", date: date, time: Self.time(9, 0, calendar: calendar), isDone: true)
+        let second = TripPlanningItem(title: "Second", date: date, time: Self.time(9, 0, calendar: calendar))
+        let third = TripPlanningItem(title: "Third", date: date)
+        let fourth = TripPlanningItem(title: "Fourth", date: date)
+
+        let firstRun = PlanningTimeline.sections(from: [third, first, second, fourth], calendar: calendar)
+        let secondRun = PlanningTimeline.sections(from: [third, first, second, fourth], calendar: calendar)
+
+        XCTAssertEqual(firstRun.dated.single?.items.map(\.title), ["First", "Second", "Third", "Fourth"])
+        XCTAssertEqual(firstRun.dated.single?.items.first?.isDone, true)
+        XCTAssertEqual(firstRun.dated, secondRun.dated)
+        XCTAssertEqual(firstRun.undated, secondRun.undated)
+    }
+
+    func testPlanningTimelineSeparatesUndatedBacklogInInputOrder() {
+        let calendar = Calendar(identifier: .gregorian)
+        let dated = TripPlanningItem(title: "Dated", date: Self.date(2026, 9, 2, calendar: calendar))
+        let maybe = TripPlanningItem(title: "Maybe")
+        let later = TripPlanningItem(title: "Later")
+
+        let sections = PlanningTimeline.sections(from: [maybe, dated, later], calendar: calendar)
+
+        XCTAssertEqual(sections.dated.single?.items.map(\.title), ["Dated"])
+        XCTAssertEqual(sections.undated.map(\.title), ["Maybe", "Later"])
+    }
+
+    func testSupabaseTimeFormatterRoundTripsHourAndMinuteOnFixedReferenceDay() throws {
+        let time = try XCTUnwrap(SupabaseTimeFormatter.date(from: "08:20"))
+
+        XCTAssertEqual(SupabaseTimeFormatter.string(from: time), "08:20")
+        XCTAssertEqual(SupabaseDateFormatter.string(from: time), "2000-01-01")
+        XCTAssertNil(SupabaseTimeFormatter.date(from: nil))
+        XCTAssertNil(SupabaseTimeFormatter.date(from: ""))
+    }
+
+    func testPlanningDateTimeInputDropsTimeWhenDateIsDisabled() {
+        let calendar = Calendar(identifier: .gregorian)
+        let date = Self.date(2026, 9, 2, calendar: calendar)
+        let time = Self.time(8, 20, calendar: calendar)
+
+        XCTAssertEqual(PlanningDateTimeInput.resolvedTime(hasDate: true, hasTime: true, time: time), time)
+        XCTAssertNil(PlanningDateTimeInput.resolvedTime(hasDate: false, hasTime: true, time: time))
+        XCTAssertNil(PlanningDateTimeInput.resolvedTime(hasDate: true, hasTime: false, time: time))
+        XCTAssertEqual(PlanningDateTimeInput.resolvedDate(hasDate: true, date: date), date)
+        XCTAssertNil(PlanningDateTimeInput.resolvedDate(hasDate: false, date: date))
+    }
+
+    func testPlanningItemDTORoundTripsScheduledTime() throws {
+        let tripID = UUID(uuidString: "11111111-1111-1111-1111-111111111184")!
+        let itemID = UUID(uuidString: "66666666-6666-6666-6666-666666666685")!
+        let json = """
+        {
+          "id": "66666666-6666-6666-6666-666666666685",
+          "trip_id": "11111111-1111-1111-1111-111111111184",
+          "title": "Breakfast",
+          "note": "Before museum",
+          "scheduled_date": "2026-09-02",
+          "scheduled_time": "08:20",
+          "is_done": false,
+          "tag": "food"
+        }
+        """.data(using: .utf8)!
+
+        let dto = try JSONDecoder().decode(SupabaseTripPlanningItemDTO.self, from: json)
+        let item = dto.tripPlanningItem()
+        let encoded = SupabaseTripPlanningItemDTO(tripID: tripID, item: item)
+
+        XCTAssertEqual(dto.id, itemID)
+        XCTAssertEqual(dto.scheduledTime, "08:20")
+        XCTAssertEqual(item.time.map(SupabaseTimeFormatter.string(from:)), "08:20")
+        XCTAssertEqual(encoded.scheduledTime, "08:20")
+    }
+
+    private static func date(_ year: Int, _ month: Int, _ day: Int, calendar: Calendar) -> Date {
+        calendar.date(from: DateComponents(year: year, month: month, day: day))!
+    }
+
+    private static func time(_ hour: Int, _ minute: Int, calendar: Calendar) -> Date {
+        calendar.date(from: DateComponents(year: 2000, month: 1, day: 1, hour: hour, minute: minute))!
+    }
+}
+
+private extension Array {
+    var single: Element? {
+        count == 1 ? first : nil
+    }
+}
+
 @MainActor
 final class TripStoreCloudSyncTests: XCTestCase {
     func testCloudStoreLoadsTripsFromInjectedService() async throws {
@@ -743,6 +852,33 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(service.setPlanningItemParticipantsRequest?.tripID, tripID)
         XCTAssertEqual(service.setPlanningItemParticipantsRequest?.planningItemID, savedItem.id)
         XCTAssertEqual(service.setPlanningItemParticipantsRequest?.participantIDs, [participantID])
+        XCTAssertEqual(store.trips.first?.planningItems, [savedItem])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStorePersistsPlanningItemTimeThroughTrimmedRebuild() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B090")!
+        let date = SupabaseDateFormatter.date(from: "2026-07-03")
+        let time = SupabaseTimeFormatter.date(from: "08:20")
+        let savedItem = TripPlanningItem(
+            id: UUID(uuidString: "00000000-0000-0000-0000-00000000E091")!,
+            title: "Fushimi Inari sunrise",
+            note: "Early train",
+            date: date,
+            time: time,
+            isDone: false
+        )
+        service.planningItemToCreate = savedItem
+        let store = TripStore(trips: [makeTrip(id: tripID, name: "Kyoto Spring")], service: service)
+
+        await store.savePlanningItem(
+            TripPlanningItem(title: " Fushimi Inari sunrise ", note: " Early train ", date: date, time: time),
+            to: tripID
+        )
+
+        XCTAssertEqual(service.createdPlanningItemRequest?.item.date, date)
+        XCTAssertEqual(service.createdPlanningItemRequest?.item.time, time)
         XCTAssertEqual(store.trips.first?.planningItems, [savedItem])
         XCTAssertNil(store.syncError)
     }
