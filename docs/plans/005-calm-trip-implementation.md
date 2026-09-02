@@ -92,8 +92,16 @@ Implement the approved 005 prototype into the SwiftUI app: the user-facing room 
 - (Voting/weights/pins/MapKit = M5, chunk 6.)
 
 ### Chunk 4 — Itinerary (M4): day grouping + optional times
-- Day-grouped timeline (date headers, serif accents) + optional time fields; undated backlog section.
-- (Calendar view + bookings + coordination = M5, chunk 7.)
+**Status: SCOPE APPROVED 2026-09-02 (@architect) — full spec below. NOT UI-only (migration 003). @design handoff in flight.**
+- Day grouping: client-side pure logic `PlanningTimeline.sections(from:)` → chronological day sections + undated bucket. Rules (test-pinned): sections ascending; within-day timed-first by time asc, untimed trailing; ties stable; **done items stay in their day group** (strikethrough/badge carries done state — no bottom Done section); day headers = absolute date (e.g. "Tuesday, September 2"), serif accent; NO "Day 1/2/3" numbering (needs trip-date plumbing for zero M4 benefit).
+- Optional times: new nullable `scheduled_time time` column (migration 003) — additive sibling, NOT timestamptz (preserves date-only semantics/backfills). Model `time: Date? = nil`; DTO `scheduledTime` String? + `SupabaseTimeFormatter` ("HH:mm", fixed reference day). Form: "Add time" toggle under "Add date" (disabled unless hasDate); resolution guard pure + tested (date nil ⇒ time nil). Card display: per-card date label replaced by optional time label (clock + "8:20") inside dated sections (day header carries the date); backlog cards show neither.
+- Undated backlog: bottom section, own EditorialSectionHeader (label: @design — "Undated"/"Backlog"), one shared hairline container; hidden when empty (absence = none); whole-list empty state unchanged.
+- **Fake calendar placeholder REMOVED** — CalendarPreviewGrid ("Sample Month", hardcoded highlightedDays [6,9,13,17]) is misleading fake data; M5 builds the real calendar. ~40 lines removed.
+- **Deferred to M5:** planning-item tag chips (todo #14 was Places-scoped; no M4 consumer), date ranges (#17), bookings + coordination, participant chips, calendar grid.
+- TDD (pure): PlanningTimeline.sections (empty/dated/undated/mixed/unsorted/done-in-group/time-asc/stable/idempotent), SupabaseTimeFormatter round-trip, date+time guard, DTO round-trip. UI-only: day header typography, container treatment, backlog header, time label, add-sheet toggle (@design).
+- Files: `supabase/migrations/003_planning_item_time.sql` (ADD COLUMN IF NOT EXISTS scheduled_time time — idempotent, no backfill) + schema.sql append; TripModels.swift (time + sections logic + guard); SupabaseTripService.swift (DTO + formatter + assembly); TripStore verify-only (likely NO change); TripPlanningView.swift (remove placeholder, day groups + backlog, time label, "Add time" toggle); tests; live smoke extended (planning insert gains '08:20', User B reads it — hard gate).
+- Sequencing: model/logic/DTO TDD first (no DB) → migration 003 apply live + idempotent re-run + extended smoke green → UI wiring (needs @design) → full suite + build + re-smoke → @review gate.
+- Handoff notes for @coding: EditorialDateField needs hourAndMinute variant (or small EditorialTimeField sibling); card needs showsDate=false/showsTime=true flag (keep card dumb); confirm '08:20' literal casts with date-only inserts in smoke.
 
 ### Chunk 5 — People (M4): person rooms + message handoff
 - Organizer/Travelers grouping (from 004 spec).
