@@ -4,13 +4,15 @@ struct TripPlace: Identifiable, Hashable {
     let id: UUID
     var name: String
     var note: String
-    var category: String
+    var tag: String
+    var participantIDs: [UUID]
 
-    init(id: UUID = UUID(), name: String, note: String = "", category: String = "") {
+    init(id: UUID = UUID(), name: String, note: String = "", tag: String = "", participantIDs: [UUID] = []) {
         self.id = id
         self.name = name
         self.note = note
-        self.category = category
+        self.tag = tag
+        self.participantIDs = participantIDs
     }
 }
 
@@ -20,13 +22,54 @@ struct TripPlanningItem: Identifiable, Hashable {
     var note: String
     var date: Date?
     var isDone: Bool
+    var tag: String
+    var participantIDs: [UUID]
 
-    init(id: UUID = UUID(), title: String, note: String = "", date: Date? = nil, isDone: Bool = false) {
+    init(id: UUID = UUID(), title: String, note: String = "", date: Date? = nil, isDone: Bool = false, tag: String = "", participantIDs: [UUID] = []) {
         self.id = id
         self.title = title
         self.note = note
         self.date = date
         self.isDone = isDone
+        self.tag = tag
+        self.participantIDs = participantIDs
+    }
+}
+
+struct TripTag: RawRepresentable, Hashable, Identifiable {
+    enum ItemKind {
+        case place
+        case planningItem
+    }
+
+    let rawValue: String
+
+    init(rawValue: String) {
+        self.rawValue = rawValue
+    }
+
+    init(_ rawValue: String) {
+        self.rawValue = rawValue
+    }
+
+    var id: String { rawValue }
+
+    static let food = TripTag("food")
+    static let hotel = TripTag("hotel")
+    static let flight = TripTag("flight")
+    static let show = TripTag("show")
+    static let museum = TripTag("museum")
+    static let custom = TripTag("custom")
+
+    static let canonical: [TripTag] = [.food, .hotel, .flight, .show, .museum, .custom]
+
+    static func subset(for itemKind: ItemKind) -> [TripTag] {
+        switch itemKind {
+        case .place:
+            [.food, .hotel, .show, .museum, .custom]
+        case .planningItem:
+            [.flight, .hotel, .show, .museum, .custom]
+        }
     }
 }
 

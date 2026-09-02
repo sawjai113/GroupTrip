@@ -100,8 +100,8 @@ final class SupabaseDTOTests: XCTestCase {
                 SupabaseTripParticipantDTO(id: UUID(uuidString: "55555555-5555-5555-5555-555555555553")!, tripID: unrelatedTripID, displayName: "Unrelated", linkedMemberID: nil, linkedUserID: nil, isOrganizer: false)
             ],
             places: [
-                SupabaseTripPlaceDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666661")!, tripID: austinTripID, name: "Zilker Park", note: "Picnic", category: "Outdoors", googlePlaceID: nil, latitude: nil, longitude: nil),
-                SupabaseTripPlaceDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666662")!, tripID: unrelatedTripID, name: "Unrelated Place", note: "", category: "", googlePlaceID: nil, latitude: nil, longitude: nil)
+                SupabaseTripPlaceDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666661")!, tripID: austinTripID, name: "Zilker Park", note: "Picnic", tag: "Outdoors", googlePlaceID: nil, latitude: nil, longitude: nil),
+                SupabaseTripPlaceDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666662")!, tripID: unrelatedTripID, name: "Unrelated Place", note: "", tag: "", googlePlaceID: nil, latitude: nil, longitude: nil)
             ],
             planningItems: [
                 SupabaseTripPlanningItemDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666663")!, tripID: austinTripID, title: "Book dinner", note: "Friday", scheduledDate: "2026-07-03", isDone: false)
@@ -188,7 +188,7 @@ final class SupabaseDTOTests: XCTestCase {
                 SupabaseTripParticipantDTO(id: samID, tripID: tripDTO.id, displayName: "Sam", linkedMemberID: nil, linkedUserID: nil, isOrganizer: false)
             ],
             places: [
-                SupabaseTripPlaceDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666666")!, tripID: tripDTO.id, name: "Zilker Park", note: "Picnic", category: "Outdoors", googlePlaceID: "zilker", latitude: 30.2669, longitude: -97.7729)
+                SupabaseTripPlaceDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666666")!, tripID: tripDTO.id, name: "Zilker Park", note: "Picnic", tag: "Outdoors", googlePlaceID: "zilker", latitude: 30.2669, longitude: -97.7729)
             ],
             planningItems: [
                 SupabaseTripPlanningItemDTO(id: UUID(uuidString: "66666666-6666-6666-6666-666666666667")!, tripID: tripDTO.id, title: "Book dinner", note: "Friday night", scheduledDate: "2026-07-03", isDone: false)
@@ -213,6 +213,87 @@ final class SupabaseDTOTests: XCTestCase {
         let balances = Dictionary(uniqueKeysWithValues: trip.viewModel.calculator.balances().map { ($0.participant.name, $0.net) })
         XCTAssertEqual(balances["Alex"], 50)
         XCTAssertEqual(balances["Sam"], -50)
+    }
+
+    func testItemTagDTOsAndLinkDTOsMapSnakeCaseRows() throws {
+        let placeID = UUID(uuidString: "66666666-6666-6666-6666-666666666681")!
+        let planID = UUID(uuidString: "66666666-6666-6666-6666-666666666682")!
+        let tripID = UUID(uuidString: "11111111-1111-1111-1111-111111111181")!
+        let participantID = UUID(uuidString: "55555555-5555-5555-5555-555555555581")!
+        let json = """
+        {
+          "id": "66666666-6666-6666-6666-666666666681",
+          "trip_id": "11111111-1111-1111-1111-111111111181",
+          "name": "Zilker Park",
+          "note": "Picnic",
+          "tag": "food",
+          "google_place_id": "zilker",
+          "latitude": 30.2669,
+          "longitude": -97.7729
+        }
+        """.data(using: .utf8)!
+
+        let place = try JSONDecoder().decode(SupabaseTripPlaceDTO.self, from: json)
+        let placeLink = SupabasePlaceParticipantDTO(placeID: placeID, participantID: participantID)
+        let planningLink = SupabasePlanningItemParticipantDTO(planningItemID: planID, participantID: participantID)
+        let planning = SupabaseTripPlanningItemDTO(
+            id: planID,
+            tripID: tripID,
+            title: "Book dinner",
+            note: "Friday",
+            scheduledDate: "2026-07-03",
+            isDone: false,
+            tag: "show"
+        )
+
+        XCTAssertEqual(place.tag, "food")
+        XCTAssertEqual(place.tripPlace().tag, "food")
+        XCTAssertEqual(SupabaseTripPlaceDTO(tripID: tripID, place: TripPlace(id: placeID, name: "Cafe", tag: "food")).tag, "food")
+        XCTAssertEqual(planning.tripPlanningItem().tag, "show")
+        XCTAssertEqual(SupabaseTripPlanningItemDTO(tripID: tripID, item: planning.tripPlanningItem()).tag, "show")
+        XCTAssertEqual(placeLink.placeID, placeID)
+        XCTAssertEqual(placeLink.participantID, participantID)
+        XCTAssertEqual(planningLink.planningItemID, planID)
+        XCTAssertEqual(planningLink.participantID, participantID)
+    }
+
+    func testAssemblesItemTagsAndParticipantIDsFromFetchedLinks() throws {
+        let tripID = UUID(uuidString: "11111111-1111-1111-1111-111111111182")!
+        let placeID = UUID(uuidString: "66666666-6666-6666-6666-666666666683")!
+        let planID = UUID(uuidString: "66666666-6666-6666-6666-666666666684")!
+        let alexID = UUID(uuidString: "55555555-5555-5555-5555-555555555582")!
+        let samID = UUID(uuidString: "55555555-5555-5555-5555-555555555583")!
+
+        let trips = SupabaseTripService.assembleTrips(
+            trips: [SupabaseTripDTO(id: tripID, name: "Austin Weekend", destination: "Austin", emoji: "🤠", imageURL: nil, startDate: "2026-07-03", endDate: "2026-07-06")],
+            participants: [
+                SupabaseTripParticipantDTO(id: alexID, tripID: tripID, displayName: "Alex"),
+                SupabaseTripParticipantDTO(id: samID, tripID: tripID, displayName: "Sam")
+            ],
+            places: [SupabaseTripPlaceDTO(id: placeID, tripID: tripID, name: "Zilker", note: "", tag: "food")],
+            planningItems: [SupabaseTripPlanningItemDTO(id: planID, tripID: tripID, title: "Book dinner", note: "", scheduledDate: nil, isDone: false, tag: "show")],
+            expenses: [],
+            splits: [],
+            directPayments: [],
+            placeParticipants: [
+                SupabasePlaceParticipantDTO(placeID: placeID, participantID: alexID),
+                SupabasePlaceParticipantDTO(placeID: placeID, participantID: samID)
+            ],
+            planningItemParticipants: [SupabasePlanningItemParticipantDTO(planningItemID: planID, participantID: samID)]
+        )
+
+        let trip = try XCTUnwrap(trips.first)
+        XCTAssertEqual(trip.places.first?.tag, "food")
+        XCTAssertEqual(trip.places.first?.participantIDs, [alexID, samID])
+        XCTAssertEqual(trip.planningItems.first?.tag, "show")
+        XCTAssertEqual(trip.planningItems.first?.participantIDs, [samID])
+    }
+
+    func testTripTagVocabularyAndPerItemSubsets() {
+        XCTAssertEqual(TripTag.canonical.map(\.rawValue), ["food", "hotel", "flight", "show", "museum", "custom"])
+        XCTAssertEqual(TripTag.subset(for: .place).map(\.rawValue), ["food", "hotel", "show", "museum", "custom"])
+        XCTAssertEqual(TripTag.subset(for: .planningItem).map(\.rawValue), ["flight", "hotel", "show", "museum", "custom"])
+        XCTAssertEqual(TripTag("ramen").rawValue, "ramen")
     }
 }
 
@@ -499,16 +580,16 @@ final class TripStoreCloudSyncTests: XCTestCase {
     func testCloudStorePersistsAddedPlaceAndUpdatesLocalTrip() async throws {
         let service = FakeTripSyncService()
         let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B003")!
-        let savedPlace = TripPlace(id: UUID(uuidString: "00000000-0000-0000-0000-00000000D001")!, name: "Zilker Park", note: "Picnic", category: "Outdoors")
+        let savedPlace = TripPlace(id: UUID(uuidString: "00000000-0000-0000-0000-00000000D001")!, name: "Zilker Park", note: "Picnic", tag: "Outdoors")
         service.placeToCreate = savedPlace
         let store = TripStore(trips: [makeTrip(id: tripID, name: "Austin Weekend")], service: service)
 
-        await store.savePlace(TripPlace(name: " Zilker Park ", note: " Picnic ", category: " Outdoors "), to: tripID)
+        await store.savePlace(TripPlace(name: " Zilker Park ", note: " Picnic ", tag: " Outdoors "), to: tripID)
 
         XCTAssertEqual(service.createdPlaceRequest?.tripID, tripID)
         XCTAssertEqual(service.createdPlaceRequest?.place.name, "Zilker Park")
         XCTAssertEqual(service.createdPlaceRequest?.place.note, "Picnic")
-        XCTAssertEqual(service.createdPlaceRequest?.place.category, "Outdoors")
+        XCTAssertEqual(service.createdPlaceRequest?.place.tag, "Outdoors")
         XCTAssertEqual(store.trips.first?.places, [savedPlace])
         XCTAssertNil(store.syncError)
     }
@@ -521,6 +602,42 @@ final class TripStoreCloudSyncTests: XCTestCase {
 
         await store.savePlace(TripPlace(name: "Zilker Park"), to: tripID)
 
+        XCTAssertTrue(store.trips.first?.places.isEmpty == true)
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
+    func testCloudStorePersistsPlaceParticipantLinksBeforeLocalMutation() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B086")!
+        let alexID = UUID(uuidString: "00000000-0000-0000-0000-00000000F086")!
+        let samID = UUID(uuidString: "00000000-0000-0000-0000-00000000F087")!
+        let place = TripPlace(name: " Zilker Park ", note: " Picnic ", tag: " Food ", participantIDs: [alexID, samID])
+        let savedPlace = TripPlace(id: place.id, name: "Zilker Park", note: "Picnic", tag: "Food", participantIDs: [alexID, samID])
+        service.placeToCreate = savedPlace
+        let store = TripStore(trips: [makeTrip(id: tripID, name: "Austin Weekend")], service: service)
+
+        await store.savePlace(place, to: tripID)
+
+        XCTAssertEqual(service.createdPlaceRequest?.place.tag, "Food")
+        XCTAssertEqual(service.createdPlaceRequest?.place.participantIDs, [alexID, samID])
+        XCTAssertEqual(service.setPlaceParticipantsRequest?.tripID, tripID)
+        XCTAssertEqual(service.setPlaceParticipantsRequest?.placeID, savedPlace.id)
+        XCTAssertEqual(service.setPlaceParticipantsRequest?.participantIDs, [alexID, samID])
+        XCTAssertEqual(store.trips.first?.places, [savedPlace])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsPlaceParticipantLinkFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.linkError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B087")!
+        let participantID = UUID(uuidString: "00000000-0000-0000-0000-00000000F088")!
+        let store = TripStore(trips: [makeTrip(id: tripID, name: "Austin Weekend")], service: service)
+
+        await store.savePlace(TripPlace(name: "Zilker", tag: "food", participantIDs: [participantID]), to: tripID)
+
+        XCTAssertNotNil(service.createdPlaceRequest)
+        XCTAssertEqual(service.setPlaceParticipantsRequest?.participantIDs, [participantID])
         XCTAssertTrue(store.trips.first?.places.isEmpty == true)
         XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
     }
@@ -606,6 +723,60 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertEqual(service.createdPlanningItemRequest?.item.note, "Friday night")
         XCTAssertEqual(service.createdPlanningItemRequest?.item.date, savedItem.date)
         XCTAssertEqual(store.trips.first?.planningItems, [savedItem])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStorePersistsPlanningItemParticipantLinksBeforeLocalMutation() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B088")!
+        let participantID = UUID(uuidString: "00000000-0000-0000-0000-00000000F089")!
+        let date = SupabaseDateFormatter.date(from: "2026-07-03")
+        let item = TripPlanningItem(title: " Book dinner ", note: " Friday ", date: date, tag: " Show ", participantIDs: [participantID])
+        let savedItem = TripPlanningItem(id: item.id, title: "Book dinner", note: "Friday", date: date, tag: "Show", participantIDs: [participantID])
+        service.planningItemToCreate = savedItem
+        let store = TripStore(trips: [makeTrip(id: tripID, name: "Austin Weekend")], service: service)
+
+        await store.savePlanningItem(item, to: tripID)
+
+        XCTAssertEqual(service.createdPlanningItemRequest?.item.tag, "Show")
+        XCTAssertEqual(service.createdPlanningItemRequest?.item.participantIDs, [participantID])
+        XCTAssertEqual(service.setPlanningItemParticipantsRequest?.tripID, tripID)
+        XCTAssertEqual(service.setPlanningItemParticipantsRequest?.planningItemID, savedItem.id)
+        XCTAssertEqual(service.setPlanningItemParticipantsRequest?.participantIDs, [participantID])
+        XCTAssertEqual(store.trips.first?.planningItems, [savedItem])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreUpdatesPlaceRowAndParticipantLinks() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B089")!
+        let participantID = UUID(uuidString: "00000000-0000-0000-0000-00000000F08A")!
+        let placeID = UUID(uuidString: "00000000-0000-0000-0000-00000000D08A")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.places = [TripPlace(id: placeID, name: "Old", tag: "museum")]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.updatePlace(TripPlace(id: placeID, name: " Zilker ", note: " Picnic ", tag: " Food ", participantIDs: [participantID]), in: tripID)
+
+        XCTAssertEqual(service.updatedPlaceRequest?.place.name, "Zilker")
+        XCTAssertEqual(service.updatedPlaceRequest?.place.tag, "Food")
+        XCTAssertEqual(service.setPlaceParticipantsRequest?.placeID, placeID)
+        XCTAssertEqual(service.setPlaceParticipantsRequest?.participantIDs, [participantID])
+        XCTAssertEqual(store.trips.first?.places.first?.name, "Zilker")
+        XCTAssertEqual(store.trips.first?.places.first?.participantIDs, [participantID])
+        XCTAssertNil(store.syncError)
+    }
+
+    func testDemoStoreAddsTaggedPlaceLocallyWithoutCloudCalls() async {
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B08A")!
+        let participantID = UUID(uuidString: "00000000-0000-0000-0000-00000000F08B")!
+        let store = TripStore(trips: [makeTrip(id: tripID, name: "Austin Weekend")])
+
+        await store.savePlace(TripPlace(name: " Zilker ", tag: " Food ", participantIDs: [participantID]), to: tripID)
+
+        XCTAssertEqual(store.trips.first?.places.first?.name, "Zilker")
+        XCTAssertEqual(store.trips.first?.places.first?.tag, "Food")
+        XCTAssertEqual(store.trips.first?.places.first?.participantIDs, [participantID])
         XCTAssertNil(store.syncError)
     }
 
@@ -996,7 +1167,7 @@ final class TripStoreCloudSyncTests: XCTestCase {
     func testCloudStoreUpdatesPlaceRemotelyBeforeReplacingLocalPlace() async throws {
         let service = FakeTripSyncService()
         let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B025")!
-        let place = TripPlace(name: "  Zilker Park  ", note: "  Picnic spot  ", category: "  Outdoors  ")
+        let place = TripPlace(name: "  Zilker Park  ", note: "  Picnic spot  ", tag: "  Outdoors  ")
         var trip = makeTrip(id: tripID, name: "Austin Weekend")
         trip.places = [place]
         let store = TripStore(trips: [trip], service: service)
@@ -1006,7 +1177,7 @@ final class TripStoreCloudSyncTests: XCTestCase {
         let request = try XCTUnwrap(service.updatedPlaceRequest)
         XCTAssertEqual(request.place.name, "Zilker Park")
         XCTAssertEqual(request.place.note, "Picnic spot")
-        XCTAssertEqual(request.place.category, "Outdoors")
+        XCTAssertEqual(request.place.tag, "Outdoors")
         XCTAssertEqual(store.trips.first?.places.first?.name, "Zilker Park")
         XCTAssertNil(store.syncError)
     }
@@ -1015,7 +1186,7 @@ final class TripStoreCloudSyncTests: XCTestCase {
         let service = FakeTripSyncService()
         service.createError = TestError.intentional
         let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B026")!
-        let place = TripPlace(name: "Zilker Park", note: "Picnic", category: "Outdoors")
+        let place = TripPlace(name: "Zilker Park", note: "Picnic", tag: "Outdoors")
         var trip = makeTrip(id: tripID, name: "Austin Weekend")
         trip.places = [place]
         let store = TripStore(trips: [trip], service: service)
@@ -1261,6 +1432,12 @@ private final class FakeTripSyncService: TripSyncServicing {
         var placeID: UUID
     }
 
+    struct SetPlaceParticipantsRequest: Equatable {
+        var tripID: UUID
+        var placeID: UUID
+        var participantIDs: [UUID]
+    }
+
     struct CreatePlanningItemRequest: Equatable {
         var tripID: UUID
         var item: TripPlanningItem
@@ -1274,6 +1451,12 @@ private final class FakeTripSyncService: TripSyncServicing {
     struct DeletePlanningItemRequest: Equatable {
         var tripID: UUID
         var itemID: UUID
+    }
+
+    struct SetPlanningItemParticipantsRequest: Equatable {
+        var tripID: UUID
+        var planningItemID: UUID
+        var participantIDs: [UUID]
     }
 
     struct CreateExpenseRequest: Equatable {
@@ -1320,9 +1503,11 @@ private final class FakeTripSyncService: TripSyncServicing {
     var createdParticipantRequest: CreateParticipantRequest?
     var updatedParticipantRequest: UpdateParticipantRequest?
     var createdPlaceRequest: CreatePlaceRequest?
+    var setPlaceParticipantsRequest: SetPlaceParticipantsRequest?
     var deletedPlaceRequest: DeletePlaceRequest?
     var createdPlanningItemRequest: CreatePlanningItemRequest?
     var updatedPlanningItemRequest: UpdatePlanningItemRequest?
+    var setPlanningItemParticipantsRequest: SetPlanningItemParticipantsRequest?
     var deletedPlanningItemRequest: DeletePlanningItemRequest?
     var createdExpenseRequest: CreateExpenseRequest?
     var deletedExpenseRequest: DeleteExpenseRequest?
@@ -1336,6 +1521,7 @@ private final class FakeTripSyncService: TripSyncServicing {
     var updatedExpenseRequest: UpdateExpenseRequest?
     var updatedPaymentRequest: UpdateDirectPaymentRequest?
     var createError: Error?
+    var linkError: Error?
     var loadError: Error?
 
     func loadTrips() async throws -> [TripPlan] {
@@ -1368,6 +1554,11 @@ private final class FakeTripSyncService: TripSyncServicing {
         return placeToCreate ?? place
     }
 
+    func setPlaceParticipants(_ participantIDs: [UUID], for placeID: UUID, in tripID: UUID) async throws {
+        setPlaceParticipantsRequest = SetPlaceParticipantsRequest(tripID: tripID, placeID: placeID, participantIDs: participantIDs)
+        if let linkError { throw linkError }
+    }
+
     func deletePlace(_ placeID: UUID, from tripID: UUID) async throws {
         deletedPlaceRequest = DeletePlaceRequest(tripID: tripID, placeID: placeID)
         if let createError { throw createError }
@@ -1383,6 +1574,11 @@ private final class FakeTripSyncService: TripSyncServicing {
         updatedPlanningItemRequest = UpdatePlanningItemRequest(tripID: tripID, item: item)
         if let createError { throw createError }
         return item
+    }
+
+    func setPlanningItemParticipants(_ participantIDs: [UUID], for planningItemID: UUID, in tripID: UUID) async throws {
+        setPlanningItemParticipantsRequest = SetPlanningItemParticipantsRequest(tripID: tripID, planningItemID: planningItemID, participantIDs: participantIDs)
+        if let linkError { throw linkError }
     }
 
     func deletePlanningItem(_ itemID: UUID, from tripID: UUID) async throws {

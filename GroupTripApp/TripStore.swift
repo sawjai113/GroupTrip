@@ -210,7 +210,8 @@ final class TripStore: ObservableObject {
             id: place.id,
             name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
             note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            category: place.category.trimmingCharacters(in: .whitespacesAndNewlines)
+            tag: place.tag.trimmingCharacters(in: .whitespacesAndNewlines),
+            participantIDs: place.participantIDs
         )
         guard !trimmedPlace.name.isEmpty else { return }
 
@@ -221,6 +222,7 @@ final class TripStore: ObservableObject {
 
         do {
             let savedPlace = try await service.createPlace(trimmedPlace, in: tripID)
+            try await service.setPlaceParticipants(savedPlace.participantIDs, for: savedPlace.id, in: tripID)
             addPlace(savedPlace, to: tripID)
             syncError = nil
         } catch {
@@ -250,7 +252,8 @@ final class TripStore: ObservableObject {
             id: place.id,
             name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
             note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            category: place.category.trimmingCharacters(in: .whitespacesAndNewlines)
+            tag: place.tag.trimmingCharacters(in: .whitespacesAndNewlines),
+            participantIDs: place.participantIDs
         )
         guard !trimmed.name.isEmpty else { return }
 
@@ -261,6 +264,7 @@ final class TripStore: ObservableObject {
 
         do {
             let updated = try await service.updatePlace(trimmed, in: tripID)
+            try await service.setPlaceParticipants(updated.participantIDs, for: updated.id, in: tripID)
             replacePlace(updated, in: tripID)
             syncError = nil
         } catch {
@@ -307,7 +311,9 @@ final class TripStore: ObservableObject {
             title: item.title.trimmingCharacters(in: .whitespacesAndNewlines),
             note: item.note.trimmingCharacters(in: .whitespacesAndNewlines),
             date: item.date,
-            isDone: item.isDone
+            isDone: item.isDone,
+            tag: item.tag.trimmingCharacters(in: .whitespacesAndNewlines),
+            participantIDs: item.participantIDs
         )
         guard !trimmedItem.title.isEmpty else { return }
 
@@ -318,6 +324,7 @@ final class TripStore: ObservableObject {
 
         do {
             let savedItem = try await service.createPlanningItem(trimmedItem, in: tripID)
+            try await service.setPlanningItemParticipants(savedItem.participantIDs, for: savedItem.id, in: tripID)
             addPlanningItem(savedItem, to: tripID)
             syncError = nil
         } catch {
@@ -340,7 +347,9 @@ final class TripStore: ObservableObject {
             title: item.title.trimmingCharacters(in: .whitespacesAndNewlines),
             note: item.note.trimmingCharacters(in: .whitespacesAndNewlines),
             date: item.date,
-            isDone: item.isDone
+            isDone: item.isDone,
+            tag: item.tag.trimmingCharacters(in: .whitespacesAndNewlines),
+            participantIDs: item.participantIDs
         )
         guard !trimmedItem.title.isEmpty else { return }
 
@@ -351,6 +360,7 @@ final class TripStore: ObservableObject {
 
         do {
             let savedItem = try await service.updatePlanningItem(trimmedItem, in: tripID)
+            try await service.setPlanningItemParticipants(savedItem.participantIDs, for: savedItem.id, in: tripID)
             replacePlanningItem(savedItem, in: tripID)
             syncError = nil
         } catch {
@@ -786,16 +796,18 @@ private struct CachedPlace: Codable {
     var id: UUID
     var name: String
     var note: String
-    var category: String
+    var tag: String
+    var participantIDs: [UUID]
 
     init(place: TripPlace) {
         id = place.id
         name = place.name
         note = place.note
-        category = place.category
+        tag = place.tag
+        participantIDs = place.participantIDs
     }
 
-    var place: TripPlace { TripPlace(id: id, name: name, note: note, category: category) }
+    var place: TripPlace { TripPlace(id: id, name: name, note: note, tag: tag, participantIDs: participantIDs) }
 }
 
 private struct CachedPlanningItem: Codable {
@@ -804,6 +816,8 @@ private struct CachedPlanningItem: Codable {
     var note: String
     var date: Date?
     var isDone: Bool
+    var tag: String
+    var participantIDs: [UUID]
 
     init(item: TripPlanningItem) {
         id = item.id
@@ -811,9 +825,13 @@ private struct CachedPlanningItem: Codable {
         note = item.note
         date = item.date
         isDone = item.isDone
+        tag = item.tag
+        participantIDs = item.participantIDs
     }
 
-    var item: TripPlanningItem { TripPlanningItem(id: id, title: title, note: note, date: date, isDone: isDone) }
+    var item: TripPlanningItem {
+        TripPlanningItem(id: id, title: title, note: note, date: date, isDone: isDone, tag: tag, participantIDs: participantIDs)
+    }
 }
 
 extension TripStore {
@@ -857,11 +875,11 @@ extension TripStore {
                 )
             ),
             places: [
-                TripPlace(name: "Shibuya Sky", note: "City view / sunset idea", category: "View"),
-                TripPlace(name: "Tsukiji Outer Market", note: "Breakfast and street food", category: "Food"),
-                TripPlace(name: "teamLab Planets", note: "Reserve tickets", category: "Museum"),
-                TripPlace(name: "Fushimi Inari", note: "Kyoto morning visit", category: "Shrine"),
-                TripPlace(name: "Arashiyama Bamboo Grove", note: "Kyoto half-day", category: "Nature")
+                TripPlace(name: "Shibuya Sky", note: "City view / sunset idea", tag: "View"),
+                TripPlace(name: "Tsukiji Outer Market", note: "Breakfast and street food", tag: "Food"),
+                TripPlace(name: "teamLab Planets", note: "Reserve tickets", tag: "Museum"),
+                TripPlace(name: "Fushimi Inari", note: "Kyoto morning visit", tag: "Shrine"),
+                TripPlace(name: "Arashiyama Bamboo Grove", note: "Kyoto half-day", tag: "Nature")
             ],
             planningItems: [
                 TripPlanningItem(title: "Book pocket Wi‑Fi or eSIM"),
@@ -905,9 +923,9 @@ extension TripStore {
                 )
             ),
             places: [
-                TripPlace(name: "Emerald Bay State Park", note: "Morning hike and viewpoints", category: "Hike"),
-                TripPlace(name: "Sand Harbor", note: "Beach afternoon if weather is clear", category: "Beach"),
-                TripPlace(name: "Base Camp Pizza", note: "Casual dinner after arrival", category: "Food")
+                TripPlace(name: "Emerald Bay State Park", note: "Morning hike and viewpoints", tag: "Hike"),
+                TripPlace(name: "Sand Harbor", note: "Beach afternoon if weather is clear", tag: "Beach"),
+                TripPlace(name: "Base Camp Pizza", note: "Casual dinner after arrival", tag: "Food")
             ],
             planningItems: [
                 TripPlanningItem(title: "Confirm cabin check-in instructions", isDone: true),

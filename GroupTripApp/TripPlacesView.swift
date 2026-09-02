@@ -211,7 +211,7 @@ private struct AddTripPlaceView: View {
         self.save = save
         self.navTitle = title
         _name = State(initialValue: place?.name ?? "")
-        _category = State(initialValue: place?.category ?? "")
+        _category = State(initialValue: place?.tag ?? "")
         _note = State(initialValue: place?.note ?? "")
     }
 
@@ -269,7 +269,7 @@ private struct AddTripPlaceView: View {
                             TripPlace(
                                 name: trimmedName,
                                 note: note.trimmingCharacters(in: .whitespacesAndNewlines),
-                                category: category.trimmingCharacters(in: .whitespacesAndNewlines)
+                                tag: category.trimmingCharacters(in: .whitespacesAndNewlines)
                             )
                         )
                         dismiss()
@@ -283,7 +283,7 @@ private struct AddTripPlaceView: View {
 
 private extension TripPlace {
     var displayCategory: String? {
-        let trimmed = category.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
 

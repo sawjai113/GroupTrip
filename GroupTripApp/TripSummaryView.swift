@@ -558,7 +558,7 @@ private struct PlacesPreviewCard: View {
                         WaniPreviewRow(
                             icon: "mappin.circle.fill",
                             title: place.name,
-                            subtitle: place.category.isEmpty ? nil : place.category,
+                            subtitle: place.tag.isEmpty ? nil : place.tag,
                             tint: AppTheme.FeatureColor.places
                         )
                     }

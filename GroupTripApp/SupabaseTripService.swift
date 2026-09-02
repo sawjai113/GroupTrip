@@ -7,9 +7,11 @@ protocol TripSyncServicing {
     func createParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant
     func updateParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant
     func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace
+    func setPlaceParticipants(_ participantIDs: [UUID], for placeID: UUID, in tripID: UUID) async throws
     func deletePlace(_ placeID: UUID, from tripID: UUID) async throws
     func createPlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem
     func updatePlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem
+    func setPlanningItemParticipants(_ participantIDs: [UUID], for planningItemID: UUID, in tripID: UUID) async throws
     func deletePlanningItem(_ itemID: UUID, from tripID: UUID) async throws
     func createExpense(_ expense: ExpenseItem, in tripID: UUID) async throws -> ExpenseItem
     func deleteExpense(_ expenseID: UUID, from tripID: UUID) async throws
@@ -67,6 +69,34 @@ struct SupabaseTripService: TripSyncServicing {
             .execute()
             .value
 
+        let placeIDs = places.map(\.id)
+        let placeParticipants: [SupabasePlaceParticipantDTO]
+        if placeIDs.isEmpty {
+            placeParticipants = []
+        } else {
+            let placeIDFilters = placeIDs.map { $0 as any PostgrestFilterValue }
+            placeParticipants = try await client
+                .from("trip_place_participants")
+                .select()
+                .in("place_id", values: placeIDFilters)
+                .execute()
+                .value
+        }
+
+        let planningItemIDs = planningItems.map(\.id)
+        let planningItemParticipants: [SupabasePlanningItemParticipantDTO]
+        if planningItemIDs.isEmpty {
+            planningItemParticipants = []
+        } else {
+            let planningItemIDFilters = planningItemIDs.map { $0 as any PostgrestFilterValue }
+            planningItemParticipants = try await client
+                .from("trip_planning_item_participants")
+                .select()
+                .in("planning_item_id", values: planningItemIDFilters)
+                .execute()
+                .value
+        }
+
         let expenses: [SupabaseTripExpenseDTO] = try await client
             .from("trip_expenses")
             .select()
@@ -106,7 +136,9 @@ struct SupabaseTripService: TripSyncServicing {
             planningItems: planningItems,
             expenses: expenses,
             splits: splits,
-            directPayments: directPayments
+            directPayments: directPayments,
+            placeParticipants: placeParticipants,
+            planningItemParticipants: planningItemParticipants
         )
     }
 
@@ -117,7 +149,9 @@ struct SupabaseTripService: TripSyncServicing {
         planningItems: [SupabaseTripPlanningItemDTO],
         expenses: [SupabaseTripExpenseDTO],
         splits: [SupabaseTripExpenseSplitDTO],
-        directPayments: [SupabaseTripDirectPaymentDTO]
+        directPayments: [SupabaseTripDirectPaymentDTO],
+        placeParticipants: [SupabasePlaceParticipantDTO] = [],
+        planningItemParticipants: [SupabasePlanningItemParticipantDTO] = []
     ) -> [TripPlan] {
         let participantsByTripID = Dictionary(grouping: participants, by: \.tripID)
         let placesByTripID = Dictionary(grouping: places, by: \.tripID)
@@ -125,6 +159,8 @@ struct SupabaseTripService: TripSyncServicing {
         let expensesByTripID = Dictionary(grouping: expenses, by: \.tripID)
         let directPaymentsByTripID = Dictionary(grouping: directPayments, by: \.tripID)
         let expenseIDsByTripID = expensesByTripID.mapValues { Set($0.map(\.id)) }
+        let participantIDsByPlaceID = Dictionary(grouping: placeParticipants, by: \.placeID).mapValues { $0.map(\.participantID) }
+        let participantIDsByPlanningItemID = Dictionary(grouping: planningItemParticipants, by: \.planningItemID).mapValues { $0.map(\.participantID) }
 
         return trips.map { trip in
             let tripExpenseIDs = expenseIDsByTripID[trip.id, default: []]
@@ -136,7 +172,9 @@ struct SupabaseTripService: TripSyncServicing {
                 planningItems: planningItemsByTripID[trip.id, default: []],
                 expenses: expensesByTripID[trip.id, default: []],
                 splits: tripSplits,
-                directPayments: directPaymentsByTripID[trip.id, default: []]
+                directPayments: directPaymentsByTripID[trip.id, default: []],
+                participantIDsByPlaceID: participantIDsByPlaceID,
+                participantIDsByPlanningItemID: participantIDsByPlanningItemID
             )
         }
     }
@@ -223,7 +261,8 @@ struct SupabaseTripService: TripSyncServicing {
             id: place.id,
             name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
             note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            category: place.category.trimmingCharacters(in: .whitespacesAndNewlines)
+            tag: place.tag.trimmingCharacters(in: .whitespacesAndNewlines),
+            participantIDs: place.participantIDs
         )
         guard !trimmedPlace.name.isEmpty else { return trimmedPlace }
 
@@ -235,6 +274,19 @@ struct SupabaseTripService: TripSyncServicing {
             .execute()
 
         return trimmedPlace
+    }
+
+    func setPlaceParticipants(_ participantIDs: [UUID], for placeID: UUID, in tripID: UUID) async throws {
+        try await client
+            .rpc(
+                "set_place_participants",
+                params: SupabaseSetPlaceParticipantsParams(
+                    placeID: placeID,
+                    tripID: tripID,
+                    participantIDs: participantIDs
+                )
+            )
+            .execute()
     }
 
     func deletePlace(_ placeID: UUID, from tripID: UUID) async throws {
@@ -274,6 +326,19 @@ struct SupabaseTripService: TripSyncServicing {
             .execute()
 
         return trimmedItem
+    }
+
+    func setPlanningItemParticipants(_ participantIDs: [UUID], for planningItemID: UUID, in tripID: UUID) async throws {
+        try await client
+            .rpc(
+                "set_planning_item_participants",
+                params: SupabaseSetPlanningItemParticipantsParams(
+                    planningItemID: planningItemID,
+                    tripID: tripID,
+                    participantIDs: participantIDs
+                )
+            )
+            .execute()
     }
 
     func deletePlanningItem(_ itemID: UUID, from tripID: UUID) async throws {
@@ -358,7 +423,9 @@ struct SupabaseTripService: TripSyncServicing {
             title: item.title.trimmingCharacters(in: .whitespacesAndNewlines),
             note: item.note.trimmingCharacters(in: .whitespacesAndNewlines),
             date: item.date,
-            isDone: item.isDone
+            isDone: item.isDone,
+            tag: item.tag.trimmingCharacters(in: .whitespacesAndNewlines),
+            participantIDs: item.participantIDs
         )
     }
 
@@ -414,25 +481,33 @@ struct SupabaseTripService: TripSyncServicing {
     }
 
     func updatePlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace {
+        let trimmedPlace = TripPlace(
+            id: place.id,
+            name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            tag: place.tag.trimmingCharacters(in: .whitespacesAndNewlines),
+            participantIDs: place.participantIDs
+        )
+
         try await client
             .from("trip_places")
             .update(
                 SupabaseTripPlaceDTO(
-                    id: place.id,
+                    id: trimmedPlace.id,
                     tripID: tripID,
-                    name: place.name,
-                    note: place.note,
-                    category: place.category,
+                    name: trimmedPlace.name,
+                    note: trimmedPlace.note,
+                    tag: trimmedPlace.tag,
                     googlePlaceID: nil,
                     latitude: nil,
                     longitude: nil
                 ),
                 returning: .minimal
             )
-            .eq("id", value: place.id.uuidString)
+            .eq("id", value: trimmedPlace.id.uuidString)
             .eq("trip_id", value: tripID.uuidString)
             .execute()
-        return place
+        return trimmedPlace
     }
 
     func updateExpense(_ expense: ExpenseItem, in tripID: UUID) async throws -> ExpenseItem {
@@ -573,7 +648,9 @@ struct SupabaseTripDTO: Codable, Hashable {
         planningItems: [SupabaseTripPlanningItemDTO] = [],
         expenses: [SupabaseTripExpenseDTO] = [],
         splits: [SupabaseTripExpenseSplitDTO] = [],
-        directPayments: [SupabaseTripDirectPaymentDTO] = []
+        directPayments: [SupabaseTripDirectPaymentDTO] = [],
+        participantIDsByPlaceID: [UUID: [UUID]] = [:],
+        participantIDsByPlanningItemID: [UUID: [UUID]] = [:]
     ) -> TripPlan {
         let expenseParticipants = participants.map(\.participant)
         let expenseSplits = Dictionary(grouping: splits, by: \.expenseID)
@@ -603,8 +680,8 @@ struct SupabaseTripDTO: Codable, Hashable {
                     payments: payments
                 )
             ),
-            places: places.map(\.tripPlace),
-            planningItems: planningItems.map(\.tripPlanningItem)
+            places: places.map { $0.tripPlace(participantIDs: participantIDsByPlaceID[$0.id, default: []]) },
+            planningItems: planningItems.map { $0.tripPlanningItem(participantIDs: participantIDsByPlanningItemID[$0.id, default: []]) }
         )
     }
 }
@@ -695,6 +772,30 @@ struct SupabaseUpdateTripExpenseParams: Encodable {
         case title = "p_title"
         case paidByParticipantID = "p_paid_by_participant_id"
         case amount = "p_amount"
+        case participantIDs = "p_participant_ids"
+    }
+}
+
+struct SupabaseSetPlaceParticipantsParams: Encodable {
+    var placeID: UUID
+    var tripID: UUID
+    var participantIDs: [UUID]
+
+    enum CodingKeys: String, CodingKey {
+        case placeID = "p_place_id"
+        case tripID = "p_trip_id"
+        case participantIDs = "p_participant_ids"
+    }
+}
+
+struct SupabaseSetPlanningItemParticipantsParams: Encodable {
+    var planningItemID: UUID
+    var tripID: UUID
+    var participantIDs: [UUID]
+
+    enum CodingKeys: String, CodingKey {
+        case planningItemID = "p_planning_item_id"
+        case tripID = "p_trip_id"
         case participantIDs = "p_participant_ids"
     }
 }
@@ -818,7 +919,7 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
     var tripID: UUID
     var name: String
     var note: String
-    var category: String
+    var tag: String
     var googlePlaceID: String?
     var latitude: Double?
     var longitude: Double?
@@ -828,7 +929,7 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
         case tripID = "trip_id"
         case name
         case note
-        case category
+        case tag
         case googlePlaceID = "google_place_id"
         case latitude
         case longitude
@@ -839,7 +940,7 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
         tripID: UUID,
         name: String,
         note: String,
-        category: String,
+        tag: String,
         googlePlaceID: String? = nil,
         latitude: Double? = nil,
         longitude: Double? = nil
@@ -848,7 +949,7 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
         self.tripID = tripID
         self.name = name
         self.note = note
-        self.category = category
+        self.tag = tag
         self.googlePlaceID = googlePlaceID
         self.latitude = latitude
         self.longitude = longitude
@@ -860,12 +961,22 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
             tripID: tripID,
             name: place.name,
             note: place.note,
-            category: place.category
+            tag: place.tag
         )
     }
 
-    var tripPlace: TripPlace {
-        TripPlace(id: id, name: name, note: note, category: category)
+    func tripPlace(participantIDs: [UUID] = []) -> TripPlace {
+        TripPlace(id: id, name: name, note: note, tag: tag, participantIDs: participantIDs)
+    }
+}
+
+struct SupabasePlaceParticipantDTO: Codable, Hashable {
+    var placeID: UUID
+    var participantID: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case placeID = "place_id"
+        case participantID = "participant_id"
     }
 }
 
@@ -876,6 +987,7 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
     var note: String
     var scheduledDate: String?
     var isDone: Bool
+    var tag: String
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -884,6 +996,7 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
         case note
         case scheduledDate = "scheduled_date"
         case isDone = "is_done"
+        case tag
     }
 
     init(
@@ -892,7 +1005,8 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
         title: String,
         note: String,
         scheduledDate: String?,
-        isDone: Bool
+        isDone: Bool,
+        tag: String = ""
     ) {
         self.id = id
         self.tripID = tripID
@@ -900,6 +1014,7 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
         self.note = note
         self.scheduledDate = scheduledDate
         self.isDone = isDone
+        self.tag = tag
     }
 
     init(tripID: UUID, item: TripPlanningItem) {
@@ -909,18 +1024,31 @@ struct SupabaseTripPlanningItemDTO: Codable, Hashable {
             title: item.title,
             note: item.note,
             scheduledDate: item.date.map(SupabaseDateFormatter.string(from:)),
-            isDone: item.isDone
+            isDone: item.isDone,
+            tag: item.tag
         )
     }
 
-    var tripPlanningItem: TripPlanningItem {
+    func tripPlanningItem(participantIDs: [UUID] = []) -> TripPlanningItem {
         TripPlanningItem(
             id: id,
             title: title,
             note: note,
             date: SupabaseDateFormatter.date(from: scheduledDate),
-            isDone: isDone
+            isDone: isDone,
+            tag: tag,
+            participantIDs: participantIDs
         )
+    }
+}
+
+struct SupabasePlanningItemParticipantDTO: Codable, Hashable {
+    var planningItemID: UUID
+    var participantID: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case planningItemID = "planning_item_id"
+        case participantID = "participant_id"
     }
 }
 

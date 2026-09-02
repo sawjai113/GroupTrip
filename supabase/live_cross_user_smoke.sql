@@ -14,6 +14,7 @@ insert into smoke_ids (key, id) values
   ('owner_member', '00000000-0000-4000-8000-00000000d001'),
   ('invite', '00000000-0000-4000-8000-00000000e001'),
   ('bill_participant', '00000000-0000-4000-8000-00000000f001'),
+  ('place', '00000000-0000-4000-8000-00000000a003'),
   ('plan', '00000000-0000-4000-8000-00000000a002'),
   ('expense', '00000000-0000-4000-8000-00000000e002');
 
@@ -103,7 +104,7 @@ set local "request.jwt.claim.role" = 'authenticated';
 select public.accept_trip_invite('SMOKE123');
 reset role;
 
--- User A creates a free-standing person, a planning item, and an expense involving that person.
+-- User A creates a free-standing person, tagged items, and an expense involving that person.
 set role authenticated;
 set local "request.jwt.claim.sub" = '00000000-0000-4000-8000-00000000a001';
 set local "request.jwt.claim.role" = 'authenticated';
@@ -116,7 +117,17 @@ values (
   auth.uid()
 );
 
-insert into public.trip_planning_items (id, trip_id, title, note, scheduled_date, is_done, added_by)
+insert into public.trip_places (id, trip_id, name, note, tag, added_by)
+values (
+  '00000000-0000-4000-8000-00000000a003',
+  '00000000-0000-4000-8000-00000000c001',
+  'Torchy''s Tacos',
+  'Smoke test place',
+  'food',
+  auth.uid()
+);
+
+insert into public.trip_planning_items (id, trip_id, title, note, scheduled_date, is_done, tag, added_by)
 values (
   '00000000-0000-4000-8000-00000000a002',
   '00000000-0000-4000-8000-00000000c001',
@@ -124,7 +135,29 @@ values (
   'Smoke test plan item',
   current_date + 1,
   false,
+  'show',
   auth.uid()
+);
+
+select public.set_place_participants(
+  '00000000-0000-4000-8000-00000000a003',
+  '00000000-0000-4000-8000-00000000c001',
+  array[
+    '00000000-0000-4000-8000-00000000f001'::uuid,
+    (
+      select id
+      from public.trip_participants
+      where trip_id = '00000000-0000-4000-8000-00000000c001'
+        and linked_user_id = '00000000-0000-4000-8000-00000000b001'
+      limit 1
+    )
+  ]::uuid[]
+);
+
+select public.set_planning_item_participants(
+  '00000000-0000-4000-8000-00000000a002',
+  '00000000-0000-4000-8000-00000000c001',
+  array['00000000-0000-4000-8000-00000000f001'::uuid]::uuid[]
 );
 
 insert into public.trip_expenses (id, trip_id, title, paid_by_participant_id, amount, currency_code, incurred_on, created_by)
@@ -158,7 +191,10 @@ declare
   trip_count integer;
   bill_count integer;
   linked_user_b_participant_count integer;
+  place_count integer;
+  place_link_count integer;
   plan_count integer;
+  plan_link_count integer;
   expense_count integer;
   split_count integer;
 begin
@@ -176,10 +212,40 @@ begin
   where trip_id = '00000000-0000-4000-8000-00000000c001'
     and linked_user_id = '00000000-0000-4000-8000-00000000b001';
 
+  select count(*) into place_count
+  from public.trip_places
+  where trip_id = '00000000-0000-4000-8000-00000000c001'
+    and name = 'Torchy''s Tacos'
+    and tag = 'food';
+
+  select count(*) into place_link_count
+  from public.trip_place_participants pp
+  join public.trip_places p on p.id = pp.place_id
+  where p.trip_id = '00000000-0000-4000-8000-00000000c001'
+    and p.id = '00000000-0000-4000-8000-00000000a003'
+    and pp.participant_id in (
+      '00000000-0000-4000-8000-00000000f001',
+      (
+        select id
+        from public.trip_participants
+        where trip_id = '00000000-0000-4000-8000-00000000c001'
+          and linked_user_id = '00000000-0000-4000-8000-00000000b001'
+        limit 1
+      )
+    );
+
   select count(*) into plan_count
   from public.trip_planning_items
   where trip_id = '00000000-0000-4000-8000-00000000c001'
-    and title = 'Book dinner reservation';
+    and title = 'Book dinner reservation'
+    and tag = 'show';
+
+  select count(*) into plan_link_count
+  from public.trip_planning_item_participants ip
+  join public.trip_planning_items i on i.id = ip.planning_item_id
+  where i.trip_id = '00000000-0000-4000-8000-00000000c001'
+    and i.id = '00000000-0000-4000-8000-00000000a002'
+    and ip.participant_id = '00000000-0000-4000-8000-00000000f001';
 
   select count(*) into expense_count
   from public.trip_expenses
@@ -203,8 +269,17 @@ begin
   if linked_user_b_participant_count <> 1 then
     raise exception 'Invite accept did not create/read User B linked participant. count=%', linked_user_b_participant_count;
   end if;
+  if place_count <> 1 then
+    raise exception 'User B could not read tagged place. count=%', place_count;
+  end if;
+  if place_link_count <> 2 then
+    raise exception 'User B could not read place participant links. count=%', place_link_count;
+  end if;
   if plan_count <> 1 then
-    raise exception 'User B could not read planning item. count=%', plan_count;
+    raise exception 'User B could not read tagged planning item. count=%', plan_count;
+  end if;
+  if plan_link_count <> 1 then
+    raise exception 'User B could not read planning item participant link. count=%', plan_link_count;
   end if;
   if expense_count <> 1 then
     raise exception 'User B could not read Bill expense. count=%', expense_count;
@@ -215,10 +290,23 @@ begin
 end $$;
 
 select
-  'PASS rollback cross-user smoke: User B can read trip, Bill participant, invite-created participant, planning item, expense, and expense split' as result,
+  'PASS rollback cross-user smoke: User B can read trip, participants, tagged place + links, tagged planning item + links, expense, and expense split' as result,
   (select count(*) from public.trips where id = '00000000-0000-4000-8000-00000000c001') as trips_readable_by_user_b,
   (select count(*) from public.trip_participants where trip_id = '00000000-0000-4000-8000-00000000c001') as participants_readable_by_user_b,
-  (select count(*) from public.trip_planning_items where trip_id = '00000000-0000-4000-8000-00000000c001') as plans_readable_by_user_b,
+  (select count(*) from public.trip_places where trip_id = '00000000-0000-4000-8000-00000000c001' and tag = 'food') as tagged_places_readable_by_user_b,
+  (
+    select count(*)
+    from public.trip_place_participants pp
+    join public.trip_places p on p.id = pp.place_id
+    where p.trip_id = '00000000-0000-4000-8000-00000000c001'
+  ) as place_participants_readable_by_user_b,
+  (select count(*) from public.trip_planning_items where trip_id = '00000000-0000-4000-8000-00000000c001' and tag = 'show') as tagged_plans_readable_by_user_b,
+  (
+    select count(*)
+    from public.trip_planning_item_participants ip
+    join public.trip_planning_items i on i.id = ip.planning_item_id
+    where i.trip_id = '00000000-0000-4000-8000-00000000c001'
+  ) as planning_item_participants_readable_by_user_b,
   (select count(*) from public.trip_expenses where trip_id = '00000000-0000-4000-8000-00000000c001') as expenses_readable_by_user_b,
   (
     select count(*)
