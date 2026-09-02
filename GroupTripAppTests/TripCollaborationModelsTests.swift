@@ -291,7 +291,7 @@ final class SupabaseDTOTests: XCTestCase {
 
     func testTripTagVocabularyAndPerItemSubsets() {
         XCTAssertEqual(TripTag.canonical.map(\.rawValue), ["food", "hotel", "flight", "show", "museum", "custom"])
-        XCTAssertEqual(TripTag.subset(for: .place).map(\.rawValue), ["food", "hotel", "show", "museum", "custom"])
+        XCTAssertEqual(TripTag.subset(for: .place).map(\.rawValue), ["food", "hotel", "show", "museum"])
         XCTAssertEqual(TripTag.subset(for: .planningItem).map(\.rawValue), ["flight", "hotel", "show", "museum", "custom"])
         XCTAssertEqual(TripTag("ramen").rawValue, "ramen")
     }
@@ -1850,6 +1850,86 @@ final class SupabaseRenameParticipantParamsTests: XCTestCase {
 
         XCTAssertNil(json["p_linked_user_id"])
         XCTAssertEqual(json["p_display_name"] as? String, "Sam")
+    }
+}
+
+final class TripPlacesLogicTests: XCTestCase {
+    func testPlaceTagInputResolvesSelectedCanonicalTag() {
+        let input = PlaceTagInput(selectedTag: TripTag.food, customText: "")
+
+        XCTAssertEqual(input.resolvedTag, "food")
+    }
+
+    func testPlaceTagInputCustomTextWinsOverSelectedChip() {
+        let input = PlaceTagInput(selectedTag: TripTag.food, customText: "  Rooftop  ")
+
+        XCTAssertEqual(input.resolvedTag, "Rooftop")
+    }
+
+    func testPlaceTagInputWhitespaceCustomFallsBackToChip() {
+        let input = PlaceTagInput(selectedTag: TripTag.hotel, customText: "   ")
+
+        XCTAssertEqual(input.resolvedTag, "hotel")
+    }
+
+    func testPlaceTagInputResolvesEmptyWhenNoChipOrCustomText() {
+        let input = PlaceTagInput(selectedTag: nil, customText: "")
+
+        XCTAssertEqual(input.resolvedTag, "")
+    }
+
+    func testPlaceTagInputPrefillsCanonicalCustomAndEmptyTags() {
+        XCTAssertEqual(PlaceTagInput(prefilling: "food").selectedTag, TripTag.food)
+        XCTAssertEqual(PlaceTagInput(prefilling: "food").customText, "")
+        XCTAssertEqual(PlaceTagInput(prefilling: " Rooftop ").selectedTag, TripTag.custom)
+        XCTAssertEqual(PlaceTagInput(prefilling: " Rooftop ").customText, "Rooftop")
+        XCTAssertNil(PlaceTagInput(prefilling: "   ").selectedTag)
+        XCTAssertEqual(PlaceTagInput(prefilling: "   ").customText, "")
+    }
+
+    func testPlacesFilterReturnsAllForNilAndExactMatchesForTags() {
+        let places = [
+            TripPlace(name: "Cafe", tag: "food"),
+            TripPlace(name: "Hotel", tag: "hotel"),
+            TripPlace(name: "No Tag", tag: "")
+        ]
+
+        XCTAssertEqual(places.filtered(by: nil).map(\.name), ["Cafe", "Hotel", "No Tag"])
+        XCTAssertEqual(places.filtered(by: TripTag.food).map(\.name), ["Cafe"])
+        XCTAssertTrue(places.filtered(by: TripTag.show).isEmpty)
+    }
+
+    func testPlacesFilterMatchesTitleCaseAndWhitespacePaddedTagsCaseInsensitively() {
+        // Legacy/migrated/demo data preserves old category casing (e.g. "Food")
+        // after the chunk 2 category→tag rename — filtering must be case-insensitive.
+        let places = [
+            TripPlace(name: "Nishiki", tag: "Food"),
+            TripPlace(name: "Museum A", tag: " Museum "),
+            TripPlace(name: "Cafe", tag: "food"),
+            TripPlace(name: "No Tag", tag: "")
+        ]
+
+        XCTAssertEqual(places.filtered(by: TripTag.food).map(\.name), ["Nishiki", "Cafe"])
+        XCTAssertEqual(places.filtered(by: TripTag.museum).map(\.name), ["Museum A"])
+        XCTAssertEqual(places.filtered(by: TripTag.hotel).map(\.name), [])
+    }
+
+    func testPlaceMapsLinkBuildsAppAndWebURLsWithURLComponentsEncoding() throws {
+        let diner = try XCTUnwrap(PlaceMapsLink(name: "D&D Diner"))
+        let cafe = try XCTUnwrap(PlaceMapsLink(name: "Café"))
+
+        XCTAssertEqual(diner.appURL.absoluteString, "comgooglemaps://?q=D%26D%20Diner")
+        XCTAssertEqual(diner.webURL.absoluteString, "https://www.google.com/maps/search/?api=1&query=D%26D%20Diner")
+        XCTAssertEqual(cafe.appURL.absoluteString, "comgooglemaps://?q=Caf%C3%A9")
+        XCTAssertEqual(cafe.webURL.absoluteString, "https://www.google.com/maps/search/?api=1&query=Caf%C3%A9")
+    }
+
+    func testPlaceMapsLinkReturnsNilForEmptyName() {
+        XCTAssertNil(PlaceMapsLink(name: "   "))
+    }
+
+    func testTripTagPlaceSubsetExcludesCustomFilterTag() {
+        XCTAssertEqual(TripTag.subset(for: .place).map(\.rawValue), ["food", "hotel", "show", "museum"])
     }
 }
 

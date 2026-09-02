@@ -66,10 +66,78 @@ struct TripTag: RawRepresentable, Hashable, Identifiable {
     static func subset(for itemKind: ItemKind) -> [TripTag] {
         switch itemKind {
         case .place:
-            [.food, .hotel, .show, .museum, .custom]
+            [.food, .hotel, .show, .museum]
         case .planningItem:
             [.flight, .hotel, .show, .museum, .custom]
         }
+    }
+}
+
+struct PlaceTagInput: Equatable {
+    var selectedTag: TripTag?
+    var customText: String
+
+    init(selectedTag: TripTag? = nil, customText: String = "") {
+        self.selectedTag = selectedTag
+        self.customText = customText
+    }
+
+    init(prefilling tag: String) {
+        let trimmed = tag.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            self.selectedTag = nil
+            self.customText = ""
+        } else if let canonical = TripTag.subset(for: .place).first(where: { $0.rawValue == trimmed }) {
+            self.selectedTag = canonical
+            self.customText = ""
+        } else {
+            self.selectedTag = .custom
+            self.customText = trimmed
+        }
+    }
+
+    var resolvedTag: String {
+        let custom = customText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !custom.isEmpty { return custom }
+        return selectedTag?.rawValue == TripTag.custom.rawValue ? "" : selectedTag?.rawValue ?? ""
+    }
+}
+
+extension Array where Element == TripPlace {
+    func filtered(by tag: TripTag?) -> [TripPlace] {
+        guard let tag else { return self }
+        let normalized = tag.rawValue.lowercased()
+        return filter {
+            $0.tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
+        }
+    }
+}
+
+struct PlaceMapsLink: Equatable {
+    let appURL: URL
+    let webURL: URL
+
+    init?(name: String) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return nil }
+
+        var appComponents = URLComponents()
+        appComponents.scheme = "comgooglemaps"
+        appComponents.host = ""
+        appComponents.queryItems = [URLQueryItem(name: "q", value: trimmedName)]
+
+        var webComponents = URLComponents()
+        webComponents.scheme = "https"
+        webComponents.host = "www.google.com"
+        webComponents.path = "/maps/search/"
+        webComponents.queryItems = [
+            URLQueryItem(name: "api", value: "1"),
+            URLQueryItem(name: "query", value: trimmedName)
+        ]
+
+        guard let appURL = appComponents.url, let webURL = webComponents.url else { return nil }
+        self.appURL = appURL
+        self.webURL = webURL
     }
 }
 
