@@ -1082,6 +1082,80 @@ final class TripStoreCloudSyncTests: XCTestCase {
         XCTAssertNil(store.syncError)
     }
 
+    func testCloudStoreSetsPlaceVoteThroughService() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B092")!
+        let placeID = UUID(uuidString: "00000000-0000-0000-0000-00000000D092")!
+        let participantID = UUID(uuidString: "00000000-0000-0000-0000-00000000F092")!
+        var place = TripPlace(id: placeID, name: "Zilker Park")
+        place.votes = [participantID: .no]
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.places = [place]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.setVote(.yes, for: placeID, participantID: participantID, in: tripID)
+
+        XCTAssertEqual(service.setPlaceVoteRequest?.tripID, tripID)
+        XCTAssertEqual(service.setPlaceVoteRequest?.placeID, placeID)
+        XCTAssertEqual(service.setPlaceVoteRequest?.participantID, participantID)
+        XCTAssertEqual(service.setPlaceVoteRequest?.vote, .yes)
+        XCTAssertEqual(store.trips.first?.places.first?.votes[participantID], .yes)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreReportsPlaceVoteFailureWithoutLocalMutation() async {
+        let service = FakeTripSyncService()
+        service.createError = TestError.intentional
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B093")!
+        let placeID = UUID(uuidString: "00000000-0000-0000-0000-00000000D093")!
+        let participantID = UUID(uuidString: "00000000-0000-0000-0000-00000000F093")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.places = [TripPlace(id: placeID, name: "Zilker Park")]
+        let store = TripStore(trips: [trip], service: service)
+
+        await store.setVote(.weak, for: placeID, participantID: participantID, in: tripID)
+
+        XCTAssertNil(store.trips.first?.places.first?.votes[participantID])
+        XCTAssertEqual(store.syncError, TestError.intentional.localizedDescription)
+    }
+
+    func testCloudStoreTogglesPlacePinThroughExistingPlaceUpdate() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B094")!
+        let placeID = UUID(uuidString: "00000000-0000-0000-0000-00000000D094")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.places = [TripPlace(id: placeID, name: "Zilker Park")]
+        let store = TripStore(trips: [trip], service: service)
+        let pinnedAt = SupabaseDateFormatter.date(from: "2026-09-02")!
+
+        await store.setPlacePinned(true, for: placeID, in: tripID, now: pinnedAt)
+
+        XCTAssertEqual(service.updatedPlaceRequest?.tripID, tripID)
+        XCTAssertEqual(service.updatedPlaceRequest?.place.id, placeID)
+        XCTAssertEqual(service.updatedPlaceRequest?.place.pinnedAt, pinnedAt)
+        XCTAssertEqual(store.trips.first?.places.first?.pinnedAt, pinnedAt)
+        XCTAssertNil(store.syncError)
+    }
+
+    func testCloudStoreSetsPlaceCallForVoteThroughExistingPlaceUpdate() async throws {
+        let service = FakeTripSyncService()
+        let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B095")!
+        let placeID = UUID(uuidString: "00000000-0000-0000-0000-00000000D095")!
+        let callerID = UUID(uuidString: "00000000-0000-0000-0000-00000000F095")!
+        var trip = makeTrip(id: tripID, name: "Austin Weekend")
+        trip.places = [TripPlace(id: placeID, name: "Zilker Park")]
+        let store = TripStore(trips: [trip], service: service)
+        let calledAt = SupabaseDateFormatter.date(from: "2026-09-02")!
+
+        await store.callForVote(on: placeID, by: callerID, in: tripID, now: calledAt)
+
+        XCTAssertEqual(service.updatedPlaceRequest?.place.calledForVoteAt, calledAt)
+        XCTAssertEqual(service.updatedPlaceRequest?.place.calledBy, callerID)
+        XCTAssertEqual(store.trips.first?.places.first?.calledForVoteAt, calledAt)
+        XCTAssertEqual(store.trips.first?.places.first?.calledBy, callerID)
+        XCTAssertNil(store.syncError)
+    }
+
     func testDemoStoreAddsTaggedPlaceLocallyWithoutCloudCalls() async {
         let tripID = UUID(uuidString: "00000000-0000-0000-0000-00000000B08A")!
         let participantID = UUID(uuidString: "00000000-0000-0000-0000-00000000F08B")!
@@ -1753,6 +1827,13 @@ private final class FakeTripSyncService: TripSyncServicing {
         var participantIDs: [UUID]
     }
 
+    struct SetPlaceVoteRequest: Equatable {
+        var tripID: UUID
+        var placeID: UUID
+        var participantID: UUID
+        var vote: PlaceVote
+    }
+
     struct CreatePlanningItemRequest: Equatable {
         var tripID: UUID
         var item: TripPlanningItem
@@ -1819,6 +1900,7 @@ private final class FakeTripSyncService: TripSyncServicing {
     var updatedParticipantRequest: UpdateParticipantRequest?
     var createdPlaceRequest: CreatePlaceRequest?
     var setPlaceParticipantsRequest: SetPlaceParticipantsRequest?
+    var setPlaceVoteRequest: SetPlaceVoteRequest?
     var deletedPlaceRequest: DeletePlaceRequest?
     var createdPlanningItemRequest: CreatePlanningItemRequest?
     var updatedPlanningItemRequest: UpdatePlanningItemRequest?
@@ -1872,6 +1954,11 @@ private final class FakeTripSyncService: TripSyncServicing {
     func setPlaceParticipants(_ participantIDs: [UUID], for placeID: UUID, in tripID: UUID) async throws {
         setPlaceParticipantsRequest = SetPlaceParticipantsRequest(tripID: tripID, placeID: placeID, participantIDs: participantIDs)
         if let linkError { throw linkError }
+    }
+
+    func setVote(_ vote: PlaceVote, for placeID: UUID, participantID: UUID, in tripID: UUID) async throws {
+        setPlaceVoteRequest = SetPlaceVoteRequest(tripID: tripID, placeID: placeID, participantID: participantID, vote: vote)
+        if let createError { throw createError }
     }
 
     func deletePlace(_ placeID: UUID, from tripID: UUID) async throws {
@@ -2169,7 +2256,87 @@ final class SupabaseRenameParticipantParamsTests: XCTestCase {
 }
 
 final class TripPlacesLogicTests: XCTestCase {
-    func testPlaceTagInputResolvesSelectedCanonicalTag() {
+    func testPlaceVoteSummaryWeightsYesWeakNoAndExcludesAbstain() {
+        let alexID = UUID(uuidString: "00000000-0000-0000-0000-00000000A501")!
+        let samID = UUID(uuidString: "00000000-0000-0000-0000-00000000A502")!
+        let mayaID = UUID(uuidString: "00000000-0000-0000-0000-00000000A503")!
+        let leeID = UUID(uuidString: "00000000-0000-0000-0000-00000000A504")!
+        let drewID = UUID(uuidString: "00000000-0000-0000-0000-00000000A505")!
+        let participants = [
+            Participant(id: alexID, name: "Alex"),
+            Participant(id: samID, name: "Sam"),
+            Participant(id: mayaID, name: "Maya"),
+            Participant(id: leeID, name: "Lee"),
+            Participant(id: drewID, name: "Drew")
+        ]
+        let place = TripPlace(
+            name: "Ramen",
+            votes: [
+                alexID: .yes,
+                samID: .yes,
+                mayaID: .weak,
+                leeID: .no
+            ]
+        )
+
+        let summary = PlaceVoteSummary(place: place, participants: participants)
+
+        XCTAssertEqual(summary.score, 1.5)
+        XCTAssertEqual(summary.yesCount, 2)
+        XCTAssertEqual(summary.weakCount, 1)
+        XCTAssertEqual(summary.noCount, 1)
+        XCTAssertEqual(summary.abstainCount, 1)
+        XCTAssertEqual(summary.scoreLine, "Score 1.5 · 2 yes · 1 weak · 1 no · 1 abstain")
+    }
+
+    func testPlaceVoteSummaryFormatsWholeScoresWithOneDecimal() {
+        let alexID = UUID(uuidString: "00000000-0000-0000-0000-00000000A506")!
+        let samID = UUID(uuidString: "00000000-0000-0000-0000-00000000A507")!
+        let participants = [Participant(id: alexID, name: "Alex"), Participant(id: samID, name: "Sam")]
+        let place = TripPlace(name: "Tacos", votes: [alexID: .yes, samID: .yes])
+
+        XCTAssertEqual(PlaceVoteSummary(place: place, participants: participants).scoreLine, "Score 2.0 · 2 yes · 0 weak · 0 no · 0 abstain")
+    }
+
+    func testPlaceFilterSupportsPinnedAndCallsAlongsideTags() {
+        let pinned = TripPlace(name: "Pinned", tag: "food", pinnedAt: SupabaseDateFormatter.date(from: "2026-09-02"))
+        let called = TripPlace(name: "Called", tag: "hotel", calledForVoteAt: SupabaseDateFormatter.date(from: "2026-09-03"))
+        let food = TripPlace(name: "Food", tag: "food")
+        let places = [pinned, called, food]
+
+        XCTAssertEqual(places.filtered(by: .tag(.food)).map(\.name), ["Pinned", "Food"])
+        XCTAssertEqual(places.filtered(by: .pinned).map(\.name), ["Pinned"])
+        XCTAssertEqual(places.filtered(by: .calls).map(\.name), ["Called"])
+        XCTAssertEqual(places.filtered(by: Optional<PlaceFilter>.none).map(\.name), ["Pinned", "Called", "Food"])
+    }
+
+    func testPlacePinToggleAndCallHelpersSetExpectedFields() {
+        let callerID = UUID(uuidString: "00000000-0000-0000-0000-00000000A508")!
+        let pinnedAt = SupabaseDateFormatter.date(from: "2026-09-02")!
+        let calledAt = SupabaseDateFormatter.date(from: "2026-09-03")!
+        let place = TripPlace(name: "Museum")
+
+        let pinned = PlacePinning.updated(place, isPinned: true, now: pinnedAt)
+        let unpinned = PlacePinning.updated(pinned, isPinned: false, now: calledAt)
+        let called = PlaceVotingCall.updated(place, callerID: callerID, now: calledAt)
+
+        XCTAssertEqual(pinned.pinnedAt, pinnedAt)
+        XCTAssertNil(unpinned.pinnedAt)
+        XCTAssertEqual(called.calledForVoteAt, calledAt)
+        XCTAssertEqual(called.calledBy, callerID)
+    }
+
+    func testPlaceVotingParticipantResolverFindsCurrentUsersParticipantOnly() {
+        let accountID = UUID(uuidString: "00000000-0000-0000-0000-00000000A509")!
+        let alex = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000A50A")!, name: "Alex", accountID: accountID)
+        let sam = Participant(id: UUID(uuidString: "00000000-0000-0000-0000-00000000A50B")!, name: "Sam")
+
+        XCTAssertEqual(PlaceVotingParticipantResolver.participantID(accountID: accountID, participants: [sam, alex]), alex.id)
+        XCTAssertNil(PlaceVotingParticipantResolver.participantID(accountID: nil, participants: [alex]))
+        XCTAssertNil(PlaceVotingParticipantResolver.participantID(accountID: UUID(uuidString: "00000000-0000-0000-0000-00000000A50C")!, participants: [alex]))
+    }
+
+    func testPlaceTagInputResolvesChipRawValue() {
         let input = PlaceTagInput(selectedTag: TripTag.food, customText: "")
 
         XCTAssertEqual(input.resolvedTag, "food")
@@ -2209,7 +2376,7 @@ final class TripPlacesLogicTests: XCTestCase {
             TripPlace(name: "No Tag", tag: "")
         ]
 
-        XCTAssertEqual(places.filtered(by: nil).map(\.name), ["Cafe", "Hotel", "No Tag"])
+        XCTAssertEqual(places.filtered(by: Optional<TripTag>.none).map(\.name), ["Cafe", "Hotel", "No Tag"])
         XCTAssertEqual(places.filtered(by: TripTag.food).map(\.name), ["Cafe"])
         XCTAssertTrue(places.filtered(by: TripTag.show).isEmpty)
     }

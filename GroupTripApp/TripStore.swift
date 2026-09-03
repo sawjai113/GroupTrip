@@ -207,13 +207,7 @@ final class TripStore: ObservableObject {
 
     @MainActor
     func savePlace(_ place: TripPlace, to tripID: TripPlan.ID) async {
-        let trimmedPlace = TripPlace(
-            id: place.id,
-            name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
-            note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            tag: place.tag.trimmingCharacters(in: .whitespacesAndNewlines),
-            participantIDs: place.participantIDs
-        )
+        let trimmedPlace = trimmedPlace(place)
         guard !trimmedPlace.name.isEmpty else { return }
 
         guard let service else {
@@ -249,13 +243,7 @@ final class TripStore: ObservableObject {
 
     @MainActor
     func updatePlace(_ place: TripPlace, in tripID: TripPlan.ID) async {
-        let trimmed = TripPlace(
-            id: place.id,
-            name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
-            note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            tag: place.tag.trimmingCharacters(in: .whitespacesAndNewlines),
-            participantIDs: place.participantIDs
-        )
+        let trimmed = trimmedPlace(place)
         guard !trimmed.name.isEmpty else { return }
 
         guard let service else {
@@ -271,6 +259,55 @@ final class TripStore: ObservableObject {
         } catch {
             syncError = error.localizedDescription
         }
+    }
+
+    @MainActor
+    func setVote(_ vote: PlaceVote, for placeID: TripPlace.ID, participantID: Participant.ID, in tripID: TripPlan.ID) async {
+        guard let service else {
+            setLocalVote(vote, for: placeID, participantID: participantID, in: tripID)
+            return
+        }
+
+        do {
+            try await service.setVote(vote, for: placeID, participantID: participantID, in: tripID)
+            setLocalVote(vote, for: placeID, participantID: participantID, in: tripID)
+            syncError = nil
+        } catch {
+            syncError = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    func setPlacePinned(_ isPinned: Bool, for placeID: TripPlace.ID, in tripID: TripPlan.ID, now: Date = Date()) async {
+        guard let place = trips.first(where: { $0.id == tripID })?.places.first(where: { $0.id == placeID }) else { return }
+        await updatePlace(PlacePinning.updated(place, isPinned: isPinned, now: now), in: tripID)
+    }
+
+    @MainActor
+    func callForVote(on placeID: TripPlace.ID, by callerID: Participant.ID?, in tripID: TripPlan.ID, now: Date = Date()) async {
+        guard let place = trips.first(where: { $0.id == tripID })?.places.first(where: { $0.id == placeID }) else { return }
+        await updatePlace(PlaceVotingCall.updated(place, callerID: callerID, now: now), in: tripID)
+    }
+
+    private func setLocalVote(_ vote: PlaceVote, for placeID: TripPlace.ID, participantID: Participant.ID, in tripID: TripPlan.ID) {
+        updateTrip(withID: tripID) { trip in
+            guard let index = trip.places.firstIndex(where: { $0.id == placeID }) else { return }
+            trip.places[index].votes[participantID] = vote
+        }
+    }
+
+    private func trimmedPlace(_ place: TripPlace) -> TripPlace {
+        TripPlace(
+            id: place.id,
+            name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            tag: place.tag.trimmingCharacters(in: .whitespacesAndNewlines),
+            participantIDs: place.participantIDs,
+            pinnedAt: place.pinnedAt,
+            calledForVoteAt: place.calledForVoteAt,
+            calledBy: place.calledBy,
+            votes: place.votes
+        )
     }
 
     func setPlanningItems(_ items: [TripPlanningItem], for tripID: TripPlan.ID) {
@@ -806,6 +843,10 @@ private struct CachedPlace: Codable {
     var note: String
     var tag: String
     var participantIDs: [UUID]
+    var pinnedAt: Date?
+    var calledForVoteAt: Date?
+    var calledBy: UUID?
+    var votes: [UUID: PlaceVote]?
 
     init(place: TripPlace) {
         id = place.id
@@ -813,9 +854,25 @@ private struct CachedPlace: Codable {
         note = place.note
         tag = place.tag
         participantIDs = place.participantIDs
+        pinnedAt = place.pinnedAt
+        calledForVoteAt = place.calledForVoteAt
+        calledBy = place.calledBy
+        votes = place.votes
     }
 
-    var place: TripPlace { TripPlace(id: id, name: name, note: note, tag: tag, participantIDs: participantIDs) }
+    var place: TripPlace {
+        TripPlace(
+            id: id,
+            name: name,
+            note: note,
+            tag: tag,
+            participantIDs: participantIDs,
+            pinnedAt: pinnedAt,
+            calledForVoteAt: calledForVoteAt,
+            calledBy: calledBy,
+            votes: votes ?? [:]
+        )
+    }
 }
 
 private struct CachedPlanningItem: Codable {

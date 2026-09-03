@@ -86,8 +86,12 @@ struct TripSummaryView: View {
                         savePlace: { place in await store.savePlace(place, to: tripID) },
                         deletePlace: { placeID in await store.removePlace(placeID, from: tripID) },
                         updatePlace: { place in await store.updatePlace(place, in: tripID) },
+                        setVote: { vote, placeID, participantID in await store.setVote(vote, for: placeID, participantID: participantID, in: tripID) },
+                        setPinned: { isPinned, placeID in await store.setPlacePinned(isPinned, for: placeID, in: tripID) },
+                        callForVote: { placeID, participantID in await store.callForVote(on: placeID, by: participantID, in: tripID) },
                         usesExternalPersistence: store.supportsCloudSync,
-                        participants: viewModel.calculator.participants
+                        participants: viewModel.calculator.participants,
+                        currentAccountID: currentAccountID
                     )),
                     itineraryDestination: AnyView(TripPlanningView(
                         items: planningItemsBinding,

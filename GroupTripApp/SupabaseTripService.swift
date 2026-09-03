@@ -8,6 +8,7 @@ protocol TripSyncServicing {
     func updateParticipant(_ participant: Participant, in tripID: UUID) async throws -> Participant
     func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace
     func setPlaceParticipants(_ participantIDs: [UUID], for placeID: UUID, in tripID: UUID) async throws
+    func setVote(_ vote: PlaceVote, for placeID: UUID, participantID: UUID, in tripID: UUID) async throws
     func deletePlace(_ placeID: UUID, from tripID: UUID) async throws
     func createPlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem
     func updatePlanningItem(_ item: TripPlanningItem, in tripID: UUID) async throws -> TripPlanningItem
@@ -71,12 +72,20 @@ struct SupabaseTripService: TripSyncServicing {
 
         let placeIDs = places.map(\.id)
         let placeParticipants: [SupabasePlaceParticipantDTO]
+        let placeVotes: [SupabaseTripPlaceVoteDTO]
         if placeIDs.isEmpty {
             placeParticipants = []
+            placeVotes = []
         } else {
             let placeIDFilters = placeIDs.map { $0 as any PostgrestFilterValue }
             placeParticipants = try await client
                 .from("trip_place_participants")
+                .select()
+                .in("place_id", values: placeIDFilters)
+                .execute()
+                .value
+            placeVotes = try await client
+                .from("trip_place_votes")
                 .select()
                 .in("place_id", values: placeIDFilters)
                 .execute()
@@ -138,6 +147,7 @@ struct SupabaseTripService: TripSyncServicing {
             splits: splits,
             directPayments: directPayments,
             placeParticipants: placeParticipants,
+            placeVotes: placeVotes,
             planningItemParticipants: planningItemParticipants
         )
     }
@@ -151,6 +161,7 @@ struct SupabaseTripService: TripSyncServicing {
         splits: [SupabaseTripExpenseSplitDTO],
         directPayments: [SupabaseTripDirectPaymentDTO],
         placeParticipants: [SupabasePlaceParticipantDTO] = [],
+        placeVotes: [SupabaseTripPlaceVoteDTO] = [],
         planningItemParticipants: [SupabasePlanningItemParticipantDTO] = []
     ) -> [TripPlan] {
         let participantsByTripID = Dictionary(grouping: participants, by: \.tripID)
@@ -160,6 +171,9 @@ struct SupabaseTripService: TripSyncServicing {
         let directPaymentsByTripID = Dictionary(grouping: directPayments, by: \.tripID)
         let expenseIDsByTripID = expensesByTripID.mapValues { Set($0.map(\.id)) }
         let participantIDsByPlaceID = Dictionary(grouping: placeParticipants, by: \.placeID).mapValues { $0.map(\.participantID) }
+        let votesByPlaceID = Dictionary(grouping: placeVotes, by: \.placeID).mapValues { votes in
+            Dictionary(uniqueKeysWithValues: votes.map { ($0.participantID, $0.placeVote) })
+        }
         let participantIDsByPlanningItemID = Dictionary(grouping: planningItemParticipants, by: \.planningItemID).mapValues { $0.map(\.participantID) }
 
         return trips.map { trip in
@@ -174,6 +188,7 @@ struct SupabaseTripService: TripSyncServicing {
                 splits: tripSplits,
                 directPayments: directPaymentsByTripID[trip.id, default: []],
                 participantIDsByPlaceID: participantIDsByPlaceID,
+                votesByPlaceID: votesByPlaceID,
                 participantIDsByPlanningItemID: participantIDsByPlanningItemID
             )
         }
@@ -259,13 +274,7 @@ struct SupabaseTripService: TripSyncServicing {
     }
 
     func createPlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace {
-        let trimmedPlace = TripPlace(
-            id: place.id,
-            name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
-            note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            tag: place.tag.trimmingCharacters(in: .whitespacesAndNewlines),
-            participantIDs: place.participantIDs
-        )
+        let trimmedPlace = Self.trimmedPlace(place)
         guard !trimmedPlace.name.isEmpty else { return trimmedPlace }
 
         let row = SupabaseTripPlaceDTO(tripID: tripID, place: trimmedPlace)
@@ -287,6 +296,16 @@ struct SupabaseTripService: TripSyncServicing {
                     tripID: tripID,
                     participantIDs: participantIDs
                 )
+            )
+            .execute()
+    }
+
+    func setVote(_ vote: PlaceVote, for placeID: UUID, participantID: UUID, in tripID: UUID) async throws {
+        try await client
+            .from("trip_place_votes")
+            .upsert(
+                SupabaseTripPlaceVoteDTO(placeID: placeID, participantID: participantID, vote: vote),
+                onConflict: "place_id,participant_id"
             )
             .execute()
     }
@@ -432,6 +451,20 @@ struct SupabaseTripService: TripSyncServicing {
         )
     }
 
+    private static func trimmedPlace(_ place: TripPlace) -> TripPlace {
+        TripPlace(
+            id: place.id,
+            name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
+            note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
+            tag: place.tag.trimmingCharacters(in: .whitespacesAndNewlines),
+            participantIDs: place.participantIDs,
+            pinnedAt: place.pinnedAt,
+            calledForVoteAt: place.calledForVoteAt,
+            calledBy: place.calledBy,
+            votes: place.votes
+        )
+    }
+
     func createInvite(for tripID: UUID, role: TripInvite.Role = .guest) async throws -> TripInvite {
         let session = try await client.auth.session
         let invite = SupabaseTripInviteDTO(
@@ -484,29 +517,11 @@ struct SupabaseTripService: TripSyncServicing {
     }
 
     func updatePlace(_ place: TripPlace, in tripID: UUID) async throws -> TripPlace {
-        let trimmedPlace = TripPlace(
-            id: place.id,
-            name: place.name.trimmingCharacters(in: .whitespacesAndNewlines),
-            note: place.note.trimmingCharacters(in: .whitespacesAndNewlines),
-            tag: place.tag.trimmingCharacters(in: .whitespacesAndNewlines),
-            participantIDs: place.participantIDs
-        )
+        let trimmedPlace = Self.trimmedPlace(place)
 
         try await client
             .from("trip_places")
-            .update(
-                SupabaseTripPlaceDTO(
-                    id: trimmedPlace.id,
-                    tripID: tripID,
-                    name: trimmedPlace.name,
-                    note: trimmedPlace.note,
-                    tag: trimmedPlace.tag,
-                    googlePlaceID: nil,
-                    latitude: nil,
-                    longitude: nil
-                ),
-                returning: .minimal
-            )
+            .update(SupabaseTripPlaceDTO(tripID: tripID, place: trimmedPlace), returning: .minimal)
             .eq("id", value: trimmedPlace.id.uuidString)
             .eq("trip_id", value: tripID.uuidString)
             .execute()
@@ -624,6 +639,11 @@ enum SupabaseDateTimeFormatter {
         guard let string else { return nil }
         return formatter.date(from: string) ?? fallbackFormatter.date(from: string)
     }
+
+    static func string(from date: Date?) -> String? {
+        guard let date else { return nil }
+        return formatter.string(from: date)
+    }
 }
 
 struct SupabaseTripDTO: Codable, Hashable {
@@ -653,6 +673,7 @@ struct SupabaseTripDTO: Codable, Hashable {
         splits: [SupabaseTripExpenseSplitDTO] = [],
         directPayments: [SupabaseTripDirectPaymentDTO] = [],
         participantIDsByPlaceID: [UUID: [UUID]] = [:],
+        votesByPlaceID: [UUID: [UUID: PlaceVote]] = [:],
         participantIDsByPlanningItemID: [UUID: [UUID]] = [:]
     ) -> TripPlan {
         let expenseParticipants = participants.map(\.participant)
@@ -683,7 +704,12 @@ struct SupabaseTripDTO: Codable, Hashable {
                     payments: payments
                 )
             ),
-            places: places.map { $0.tripPlace(participantIDs: participantIDsByPlaceID[$0.id, default: []]) },
+            places: places.map {
+                $0.tripPlace(
+                    participantIDs: participantIDsByPlaceID[$0.id, default: []],
+                    votes: votesByPlaceID[$0.id, default: [:]]
+                )
+            },
             planningItems: planningItems.map { $0.tripPlanningItem(participantIDs: participantIDsByPlanningItemID[$0.id, default: []]) }
         )
     }
@@ -927,6 +953,9 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
     var googlePlaceID: String?
     var latitude: Double?
     var longitude: Double?
+    var pinnedAt: String?
+    var calledForVoteAt: String?
+    var calledBy: UUID?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -937,6 +966,9 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
         case googlePlaceID = "google_place_id"
         case latitude
         case longitude
+        case pinnedAt = "pinned_at"
+        case calledForVoteAt = "called_for_vote_at"
+        case calledBy = "called_by"
     }
 
     init(
@@ -947,7 +979,10 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
         tag: String,
         googlePlaceID: String? = nil,
         latitude: Double? = nil,
-        longitude: Double? = nil
+        longitude: Double? = nil,
+        pinnedAt: String? = nil,
+        calledForVoteAt: String? = nil,
+        calledBy: UUID? = nil
     ) {
         self.id = id
         self.tripID = tripID
@@ -957,6 +992,9 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
         self.googlePlaceID = googlePlaceID
         self.latitude = latitude
         self.longitude = longitude
+        self.pinnedAt = pinnedAt
+        self.calledForVoteAt = calledForVoteAt
+        self.calledBy = calledBy
     }
 
     init(tripID: UUID, place: TripPlace) {
@@ -965,12 +1003,53 @@ struct SupabaseTripPlaceDTO: Codable, Hashable {
             tripID: tripID,
             name: place.name,
             note: place.note,
-            tag: place.tag
+            tag: place.tag,
+            pinnedAt: SupabaseDateTimeFormatter.string(from: place.pinnedAt),
+            calledForVoteAt: SupabaseDateTimeFormatter.string(from: place.calledForVoteAt),
+            calledBy: place.calledBy
         )
     }
 
-    func tripPlace(participantIDs: [UUID] = []) -> TripPlace {
-        TripPlace(id: id, name: name, note: note, tag: tag, participantIDs: participantIDs)
+    func tripPlace(participantIDs: [UUID] = [], votes: [UUID: PlaceVote] = [:]) -> TripPlace {
+        TripPlace(
+            id: id,
+            name: name,
+            note: note,
+            tag: tag,
+            participantIDs: participantIDs,
+            pinnedAt: SupabaseDateTimeFormatter.date(from: pinnedAt),
+            calledForVoteAt: SupabaseDateTimeFormatter.date(from: calledForVoteAt),
+            calledBy: calledBy,
+            votes: votes
+        )
+    }
+}
+
+struct SupabaseTripPlaceVoteDTO: Codable, Hashable {
+    var placeID: UUID
+    var participantID: UUID
+    var vote: String
+
+    enum CodingKeys: String, CodingKey {
+        case placeID = "place_id"
+        case participantID = "participant_id"
+        case vote
+    }
+
+    init(placeID: UUID, participantID: UUID, vote: PlaceVote) {
+        self.placeID = placeID
+        self.participantID = participantID
+        self.vote = vote.rawValue
+    }
+
+    init(placeID: UUID, participantID: UUID, vote: String) {
+        self.placeID = placeID
+        self.participantID = participantID
+        self.vote = vote
+    }
+
+    var placeVote: PlaceVote {
+        PlaceVote(rawValue: vote) ?? .weak
     }
 }
 

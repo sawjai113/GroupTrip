@@ -6,13 +6,83 @@ struct TripPlace: Identifiable, Hashable {
     var note: String
     var tag: String
     var participantIDs: [UUID]
+    var pinnedAt: Date?
+    var calledForVoteAt: Date?
+    var calledBy: UUID?
+    var votes: [UUID: PlaceVote]
 
-    init(id: UUID = UUID(), name: String, note: String = "", tag: String = "", participantIDs: [UUID] = []) {
+    init(
+        id: UUID = UUID(),
+        name: String,
+        note: String = "",
+        tag: String = "",
+        participantIDs: [UUID] = [],
+        pinnedAt: Date? = nil,
+        calledForVoteAt: Date? = nil,
+        calledBy: UUID? = nil,
+        votes: [UUID: PlaceVote] = [:]
+    ) {
         self.id = id
         self.name = name
         self.note = note
         self.tag = tag
         self.participantIDs = participantIDs
+        self.pinnedAt = pinnedAt
+        self.calledForVoteAt = calledForVoteAt
+        self.calledBy = calledBy
+        self.votes = votes
+    }
+}
+
+enum PlaceVote: String, Codable, Hashable, CaseIterable {
+    case yes
+    case weak
+    case no
+
+    var label: String {
+        switch self {
+        case .yes: "Yes"
+        case .weak: "Weak"
+        case .no: "No"
+        }
+    }
+
+    var shortLabel: String {
+        switch self {
+        case .yes: "Yes +1"
+        case .weak: "Weak +0.5"
+        case .no: "No -1"
+        }
+    }
+
+    var weight: Double {
+        switch self {
+        case .yes: 1
+        case .weak: 0.5
+        case .no: -1
+        }
+    }
+}
+
+struct PlaceVoteSummary: Equatable {
+    var score: Double
+    var yesCount: Int
+    var weakCount: Int
+    var noCount: Int
+    var abstainCount: Int
+
+    init(place: TripPlace, participants: [Participant]) {
+        let participantIDs = Set(participants.map(\.id))
+        let countedVotes = place.votes.filter { participantIDs.contains($0.key) }
+        yesCount = countedVotes.values.filter { $0 == .yes }.count
+        weakCount = countedVotes.values.filter { $0 == .weak }.count
+        noCount = countedVotes.values.filter { $0 == .no }.count
+        abstainCount = max(0, participants.count - countedVotes.count)
+        score = countedVotes.values.reduce(0) { $0 + $1.weight }
+    }
+
+    var scoreLine: String {
+        "Score \(String(format: "%.1f", score)) · \(yesCount) yes · \(weakCount) weak · \(noCount) no · \(abstainCount) abstain"
     }
 }
 
@@ -413,12 +483,53 @@ struct PlaceTagInput: Equatable {
     }
 }
 
+enum PlaceFilter: Hashable {
+    case tag(TripTag)
+    case pinned
+    case calls
+}
+
+enum PlacePinning {
+    static func updated(_ place: TripPlace, isPinned: Bool, now: Date = Date()) -> TripPlace {
+        var updated = place
+        updated.pinnedAt = isPinned ? now : nil
+        return updated
+    }
+}
+
+enum PlaceVotingCall {
+    static func updated(_ place: TripPlace, callerID: UUID?, now: Date = Date()) -> TripPlace {
+        var updated = place
+        updated.calledForVoteAt = now
+        updated.calledBy = callerID
+        return updated
+    }
+}
+
+enum PlaceVotingParticipantResolver {
+    static func participantID(accountID: UUID?, participants: [Participant]) -> Participant.ID? {
+        guard let accountID else { return nil }
+        return participants.first { $0.accountID == accountID }?.id
+    }
+}
+
 extension Array where Element == TripPlace {
     func filtered(by tag: TripTag?) -> [TripPlace] {
-        guard let tag else { return self }
-        let normalized = tag.rawValue.lowercased()
-        return filter {
-            $0.tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
+        filtered(by: tag.map(PlaceFilter.tag))
+    }
+
+    func filtered(by filter: PlaceFilter?) -> [TripPlace] {
+        guard let filter else { return self }
+        switch filter {
+        case let .tag(tag):
+            let normalized = tag.rawValue.lowercased()
+            return self.filter {
+                $0.tag.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == normalized
+            }
+        case .pinned:
+            return self.filter { $0.pinnedAt != nil }
+        case .calls:
+            return self.filter { $0.calledForVoteAt != nil }
         }
     }
 }

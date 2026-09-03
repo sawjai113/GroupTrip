@@ -6,32 +6,51 @@ struct TripPlacesView: View {
     var savePlace: (TripPlace) async -> Void
     var deletePlace: (TripPlace.ID) async -> Void
     var updatePlace: (TripPlace) async -> Void
+    var setVote: (PlaceVote, TripPlace.ID, Participant.ID) async -> Void
+    var setPinned: (Bool, TripPlace.ID) async -> Void
+    var callForVote: (TripPlace.ID, Participant.ID?) async -> Void
     var usesExternalPersistence: Bool
     var participants: [Participant] = []
+    var currentAccountID: UUID?
     @State private var isShowingAddPlace = false
     @State private var isShowingEditPlace = false
     @State private var placePendingDeletion: TripPlace?
     @State private var placePendingEdit: TripPlace?
-    @State private var selectedFilter: TripTag?
+    @State private var selectedFilter: PlaceFilter?
 
     init(
         places: Binding<[TripPlace]>,
         savePlace: @escaping (TripPlace) async -> Void = { _ in },
         deletePlace: @escaping (TripPlace.ID) async -> Void = { _ in },
         updatePlace: @escaping (TripPlace) async -> Void = { _ in },
+        setVote: @escaping (PlaceVote, TripPlace.ID, Participant.ID) async -> Void = { _, _, _ in },
+        setPinned: @escaping (Bool, TripPlace.ID) async -> Void = { _, _ in },
+        callForVote: @escaping (TripPlace.ID, Participant.ID?) async -> Void = { _, _ in },
         usesExternalPersistence: Bool = false,
-        participants: [Participant] = []
+        participants: [Participant] = [],
+        currentAccountID: UUID? = nil
     ) {
         _places = places
         self.savePlace = savePlace
         self.deletePlace = deletePlace
         self.updatePlace = updatePlace
+        self.setVote = setVote
+        self.setPinned = setPinned
+        self.callForVote = callForVote
         self.usesExternalPersistence = usesExternalPersistence
         self.participants = participants
+        self.currentAccountID = currentAccountID
     }
 
     private var filteredPlaces: [TripPlace] {
         places.filtered(by: selectedFilter)
+    }
+
+    private var currentParticipant: Participant? {
+        guard let participantID = PlaceVotingParticipantResolver.participantID(accountID: currentAccountID, participants: participants) else {
+            return nil
+        }
+        return participants.first { $0.id == participantID }
     }
 
     var body: some View {
@@ -63,13 +82,23 @@ struct TripPlacesView: View {
                             ) {
                                 placePendingDeletion = place
                             } content: {
-                                TripPlaceCard(place: place) {
+                                TripPlaceCard(
+                                    place: place,
+                                    participants: participants,
+                                    currentParticipant: currentParticipant
+                                ) {
                                     Task { await openInMaps(place) }
                                 } delete: {
                                     placePendingDeletion = place
                                 } edit: {
                                     placePendingEdit = place
                                     isShowingEditPlace = true
+                                } vote: { vote in
+                                    Task { await setVoteForCurrentParticipant(vote, place: place) }
+                                } pin: {
+                                    Task { await togglePinned(place) }
+                                } callForVote: {
+                                    Task { await performCallForVote(place) }
                                 }
                             }
                         }
@@ -141,9 +170,17 @@ struct TripPlacesView: View {
                     selectedFilter = nil
                 }
 
+                PlaceChip(title: "Pinned", isSelected: selectedFilter == .pinned) {
+                    selectedFilter = .pinned
+                }
+
+                PlaceChip(title: "Calls", isSelected: selectedFilter == .calls) {
+                    selectedFilter = .calls
+                }
+
                 ForEach(TripTag.subset(for: .place)) { tag in
-                    PlaceChip(title: tag.displayName, isSelected: selectedFilter == tag) {
-                        selectedFilter = tag
+                    PlaceChip(title: tag.displayName, isSelected: selectedFilter == .tag(tag)) {
+                        selectedFilter = .tag(tag)
                     }
                 }
             }
@@ -182,6 +219,32 @@ struct TripPlacesView: View {
         isShowingEditPlace = false
     }
 
+    private func setVoteForCurrentParticipant(_ vote: PlaceVote, place: TripPlace) async {
+        guard let participantID = currentParticipant?.id else { return }
+        if usesExternalPersistence {
+            await setVote(vote, place.id, participantID)
+        } else if let index = places.firstIndex(where: { $0.id == place.id }) {
+            places[index].votes[participantID] = vote
+        }
+    }
+
+    private func togglePinned(_ place: TripPlace) async {
+        let shouldPin = place.pinnedAt == nil
+        if usesExternalPersistence {
+            await setPinned(shouldPin, place.id)
+        } else if let index = places.firstIndex(where: { $0.id == place.id }) {
+            places[index] = PlacePinning.updated(place, isPinned: shouldPin)
+        }
+    }
+
+    private func performCallForVote(_ place: TripPlace) async {
+        if usesExternalPersistence {
+            await callForVote(place.id, currentParticipant?.id)
+        } else if let index = places.firstIndex(where: { $0.id == place.id }) {
+            places[index] = PlaceVotingCall.updated(place, callerID: currentParticipant?.id)
+        }
+    }
+
     private func openInMaps(_ place: TripPlace) async {
         guard let link = PlaceMapsLink(name: place.name) else { return }
         let didOpenApp = await open(link.appURL)
@@ -201,13 +264,28 @@ struct TripPlacesView: View {
 
 private struct TripPlaceCard: View {
     let place: TripPlace
+    let participants: [Participant]
+    let currentParticipant: Participant?
     var open: () -> Void
     var delete: () -> Void
     var edit: () -> Void
+    var vote: (PlaceVote) -> Void
+    var pin: () -> Void
+    var callForVote: () -> Void
+
+    private var summary: PlaceVoteSummary {
+        PlaceVoteSummary(place: place, participants: participants)
+    }
+
+    private var currentVote: PlaceVote? {
+        guard let currentParticipant else { return nil }
+        return place.votes[currentParticipant.id]
+    }
 
     var body: some View {
         WaniCard {
-            HStack(alignment: .top, spacing: AppTheme.Spacing.medium + 2) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                HStack(alignment: .top, spacing: AppTheme.Spacing.medium + 2) {
                 WaniIconBadge(systemImage: "mappin.and.ellipse", tint: AppTheme.FeatureColor.places)
 
                 VStack(alignment: .leading, spacing: AppTheme.Spacing.xSmall + 2) {
@@ -230,6 +308,16 @@ private struct TripPlaceCard: View {
                                     Capsule()
                                         .stroke(AppTheme.Editorial.border, lineWidth: 1)
                                 )
+                        }
+
+                        if place.calledForVoteAt != nil {
+                            Text("Vote called")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(AppTheme.Editorial.owed)
+                                .padding(.horizontal, AppTheme.Spacing.small)
+                                .padding(.vertical, AppTheme.Spacing.xSmall)
+                                .background(AppTheme.Editorial.owed.opacity(0.10))
+                                .clipShape(Capsule())
                         }
                     }
 
@@ -262,6 +350,16 @@ private struct TripPlaceCard: View {
                     .buttonStyle(.plain)
                     .accessibilityLabel("Edit \(place.name)")
 
+                    Button(action: pin) {
+                        Image(systemName: place.pinnedAt == nil ? "pin" : "pin.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(place.pinnedAt == nil ? AppTheme.Editorial.secondaryText : AppTheme.Editorial.forest)
+                            .frame(width: AppTheme.IconSize.large, height: AppTheme.IconSize.large)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(place.pinnedAt == nil ? "Pin \(place.name)" : "Unpin \(place.name)")
+
                     Button(role: .destructive, action: delete) {
                         Image(systemName: "trash")
                             .font(.subheadline.weight(.semibold))
@@ -272,7 +370,65 @@ private struct TripPlaceCard: View {
                     .accessibilityLabel("Delete \(place.name)")
                 }
             }
+
+                Text(summary.scoreLine)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.Editorial.secondaryText)
+
+                HStack(spacing: AppTheme.Spacing.small) {
+                    ForEach(PlaceVote.allCases, id: \.self) { option in
+                        PlaceVoteButton(
+                            vote: option,
+                            isSelected: currentVote == option,
+                            isEnabled: currentParticipant != nil
+                        ) {
+                            vote(option)
+                        }
+                    }
+
+                    Spacer(minLength: AppTheme.Spacing.small)
+
+                    Button(place.calledForVoteAt == nil ? "Call for vote" : "Vote called") {
+                        callForVote()
+                    }
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(place.calledForVoteAt == nil ? AppTheme.Editorial.forest : AppTheme.Editorial.owed)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 8)
+                    .frame(minHeight: 44)
+                    .background(AppTheme.Editorial.card)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(AppTheme.Editorial.border, lineWidth: 1))
+                    .disabled(place.calledForVoteAt != nil)
+                }
+            }
         }
+    }
+}
+
+private struct PlaceVoteButton: View {
+    let vote: PlaceVote
+    let isSelected: Bool
+    let isEnabled: Bool
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(vote.shortLabel)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(isSelected ? .white : AppTheme.Editorial.secondaryText)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .frame(minHeight: 44)
+                .background(isSelected ? AppTheme.Editorial.forest : AppTheme.Editorial.card)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(isSelected ? Color.clear : AppTheme.Editorial.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.55)
+        .accessibilityLabel("Vote \(vote.label)")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -284,6 +440,7 @@ private struct AddTripPlaceView: View {
     @State private var note = ""
     @State private var selectedParticipantIDs: [UUID]
     private let editingID: TripPlace.ID?
+    private let editingMetadata: (pinnedAt: Date?, calledForVoteAt: Date?, calledBy: UUID?, votes: [UUID: PlaceVote])
     var save: (TripPlace) -> Void
     var navTitle: String
 
@@ -292,6 +449,7 @@ private struct AddTripPlaceView: View {
         self.save = save
         self.navTitle = title
         self.editingID = place?.id
+        self.editingMetadata = (place?.pinnedAt, place?.calledForVoteAt, place?.calledBy, place?.votes ?? [:])
         _selectedParticipantIDs = State(initialValue: place?.participantIDs ?? [])
         _name = State(initialValue: place?.name ?? "")
         _tagInput = State(initialValue: PlaceTagInput(prefilling: place?.tag ?? ""))
@@ -354,7 +512,11 @@ private struct AddTripPlaceView: View {
                                 name: trimmedName,
                                 note: note.trimmingCharacters(in: .whitespacesAndNewlines),
                                 tag: tagInput.resolvedTag,
-                                participantIDs: selectedParticipantIDs
+                                participantIDs: selectedParticipantIDs,
+                                pinnedAt: editingMetadata.pinnedAt,
+                                calledForVoteAt: editingMetadata.calledForVoteAt,
+                                calledBy: editingMetadata.calledBy,
+                                votes: editingMetadata.votes
                             )
                         )
                         dismiss()
