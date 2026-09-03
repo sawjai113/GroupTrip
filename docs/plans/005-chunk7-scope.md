@@ -6,6 +6,10 @@
 **User visual checkpoints gate:** 5B-2, 5D-2, 5E. Proceed without user: 5A, 5B-1, 5C, 5D-1.
 **Hard decisions (D1–D7) need user sign-off — listed at top of doc.**
 
+## Decision status (user sign-off log)
+
+- **D1 — Chat identity: DECIDED 2026-09-02 (user approved @general's recommendation).** Signed-in chat only for now. Sender = auth.uid(); DM only to account-linked participants (linked_user_id NOT NULL); guests keep the chunk-5 share handoff. FUTURE GUEST PATH DESIGNED IN: guests get Supabase ANONYMOUS auth at join (unique auth user per guest device, no signup) linked via the existing `trip_participants.linked_user_id` — everything keys off auth.uid() and participants already carry linked_user_id, so guest chat lands with schema-free changes when guest-join is built (todo #1). Chat schema must NOT assume sender = real-account-only beyond auth.uid() FK. (D2–D7 still open.)
+
 ## 5A design notes (interim, drafted by @general from prototype Places screen; @design review when quota clears)
 
 - Vote control on place rows/cards (per prototype `.vote-line`/`.vote-btn`): 3-column grid, gap 7, three buttons "Yes +1" / "Weak +0.5" / "No −1"; `.vote-btn` = border 1pt Editorial.border, background Editorial.raisedCard, secondaryText, radius 14, padding v8/h4, caption weight bold, minHeight 44 (QA 5b); active = Editorial.forest fill + white text (chip precedent from chunk 3 PlaceChip). Tap sets/updates own vote; tapping active vote again = abstain (clear).
